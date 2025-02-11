@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+#
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -28,8 +31,8 @@ print('v=',v)
 #for i in range(1,m): #We run through time
 i = 1
 for j in range(1,n-2): #We run through space
-    u_x[i,j] = 
-    u[i+1,j] = (k / h ** 2) * (u[i,j+1] - 2 * u[i,j] + u[i,j-1]) + 
+    u_x[i,j] =
+    u[i+1,j] = (k / h ** 2) * (u[i,j+1] - 2 * u[i,j] + u[i,j-1]) +
     v[i,j] = (v[i,j+1] + v[i,j-1])/(2 + h**2) + h**2/(2 + h**2) * (u[i,j])**gamma
 # def solve_pde_system(L=1, Nx=50, Nt=1000, T=10):
 #     dx = L / Nx
