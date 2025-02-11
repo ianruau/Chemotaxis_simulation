@@ -12,7 +12,7 @@ def solve_pde_system(L=1, Nx=50, T=10):
     x = np.linspace(0, L, Nx + 1, dtype=np.float64)
     # u = (np.sin(np.pi * x) + 1.5).astype(np.float64)  # Initial condition for u
     # v = (np.sin(np.pi * x) + 1.5).astype(np.float64)  # Initial condition for v
-    u = np.ones_like(x) * 1.0
+    u = np.ones_like(x) * 0.5
     v = np.ones_like(x) * 1.0
     print('u=', u)
     print('v=', v)
@@ -21,13 +21,15 @@ def solve_pde_system(L=1, Nx=50, T=10):
     current_time = 0
     plt.figure()
 
+    # for n in range(3):
     for n in range(Nt):
         u_new = np.copy(u).astype(np.float64)
         v_new = np.copy(v).astype(np.float64)
 
         for i in range(1, Nx):
             v_xx = (v[i + 1] - 2*v[i] + v[i-1]) / dx**2
-            v_new[i] = v_xx + v[i] - u[i]
+            # v_new[i] = v_xx - v[i] + u[i]
+            v_new[i] = v_xx + u[i]
 
         # Neumann boundary conditions for v
         v_new[0] = v_new[1]
@@ -45,6 +47,7 @@ def solve_pde_system(L=1, Nx=50, T=10):
             reaction = u[i] - u[i]**2
 
             u_new[i] = u[i] + dt * (u_xx - term1 + term2 + term3 + reaction)
+            # u_new[i] = u[i] + dt * (u_xx + reaction)
 
         # Neumann boundary conditions for u
         u_new[0] = u_new[1]
@@ -57,9 +60,9 @@ def solve_pde_system(L=1, Nx=50, T=10):
         if np.isclose(current_time, times_to_plot, atol=dt).any():
             plt.plot(x, u, label=f't={current_time:.2f}')
         current_time += dt
-        print('n=',n)
-        print('u=',u)
-        print('v=',v)
+        # print('n=',n)
+        # print('u=',u)
+        # print('v=',v)
 
     plt.xlabel('x')
     plt.ylabel('u')
