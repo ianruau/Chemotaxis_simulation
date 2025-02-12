@@ -177,8 +177,6 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     fig_3d.savefig(f"{FileBaseName}.png")
     fig_3d.savefig(f"{FileBaseName}.jpeg")
 
-    plt.show()
-
     return x, u, v
 
 
