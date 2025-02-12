@@ -212,7 +212,7 @@ def parse_args():
     )
     parser.add_argument(
         "--m",
-        type=int,
+        type=float,
         default=3,
         help="Parameter m (default: 3)")
     parser.add_argument(
@@ -292,7 +292,7 @@ def main():
     )
     print(f"Output files will be saved with the basename:\n\t {basename}")
 
-    if questionary.confirm("Do you want to continue the simulation?").ask():
+    if questionary.confirm("\nDo you want to continue the simulation?").ask():
         print("Continuing simulation...")
         x, u, v = solve_pde_system(
             Nx=config["meshsize"], T=config["time"], FileBaseName=basename
