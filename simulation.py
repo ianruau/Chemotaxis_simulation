@@ -177,6 +177,14 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     fig_3d.savefig(f"{FileBaseName}.png")
     fig_3d.savefig(f"{FileBaseName}.jpeg")
 
+    FileBaseName="a"
+    print(f"""
+    Output files saved:
+    - Video: {FileBaseName}.mp4
+    - Image:  {FileBaseName}.png
+    - Image: {FileBaseName}.jpeg
+    """)
+
     return x, u, v
 
 
