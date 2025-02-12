@@ -2,6 +2,7 @@
 #
 
 import argparse
+
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,11 +26,23 @@ def solve_pde_system(L=1, Nx=50, T=5):
     dx = L / Nx
     dt = T / Nt
     x = np.linspace(0, L, Nx + 1, dtype=np.float64)
-    u = (np.cos(2 * np.pi * x) + 1.5).astype(np.float64)  # Initial condition for u
+    u = (
+        np.cos(
+            2 *
+            np.pi *
+            x) +
+        1.5).astype(
+            np.float64)  # Initial condition for u
     # v = (np.sin(np.pi * x) + 1.5).astype(np.float64)  # Initial condition for v
     # u = np.ones_like(x) * 0.5
     # v = np.ones_like(x) * 2.0
-    v = (np.cos(2 * np.pi * x) + 1.5).astype(np.float64)  # Initial condition for u
+    v = (
+        np.cos(
+            2 *
+            np.pi *
+            x) +
+        1.5).astype(
+            np.float64)  # Initial condition for u
     # print('u=', u)
     # print('v=', v)
 
@@ -80,9 +93,11 @@ def solve_pde_system(L=1, Nx=50, T=5):
             # print('uxx=',u_x)
 
             term1 = (
-                ((beta * chi) / (1 + v_new[i]) ** (beta + 1)) * (v_x**2) * (u[i] ** m)
+                ((beta * chi) / (1 + v_new[i]) **
+                 (beta + 1)) * (v_x**2) * (u[i] ** m)
             )
-            term2 = ((m * chi) / (1 + v_new[i]) ** beta) * (u[i] ** (m - 1)) * u_x * v_x
+            term2 = ((m * chi) / (1 + v_new[i]) **
+                     beta) * (u[i] ** (m - 1)) * u_x * v_x
             term3 = (
                 (chi / (1 + v_new[i]) ** beta)
                 * (u[i] ** m)
@@ -131,7 +146,9 @@ def solve_pde_system(L=1, Nx=50, T=5):
     )
 
     # Save the animation as an MP4 file
-    writer = animation.FFMpegWriter(fps=5, metadata=dict(artist='Me'), bitrate=1800)
+    writer = animation.FFMpegWriter(
+        fps=5, metadata=dict(
+            artist="Me"), bitrate=1800)
     ani.save("simulation.mp4", writer=writer)
 
     # plt.show()
@@ -139,8 +156,13 @@ def solve_pde_system(L=1, Nx=50, T=5):
     # 3D Plot
     fig_3d = plt.figure()
     ax_3d = fig_3d.add_subplot(111, projection="3d")
-    T_grid, X_grid = np.meshgrid(time_data, x, indexing="xy")  # Ensure consistent shape
-    ax_3d.plot_surface(T_grid, X_grid, u_data, cmap="viridis")  # Ensure correct shape
+    T_grid, X_grid = np.meshgrid(
+        time_data, x, indexing="xy")  # Ensure consistent shape
+    ax_3d.plot_surface(
+        T_grid,
+        X_grid,
+        u_data,
+        cmap="viridis")  # Ensure correct shape
 
     ax_3d.set_xlabel("Time (t)")
     ax_3d.set_ylabel("Space (x)")
@@ -161,20 +183,49 @@ def solve_pde_system(L=1, Nx=50, T=5):
     return x, u, v
 
 
-
 def main():
-    parser = argparse.ArgumentParser(description="A CLI tool for configuring parameters")
+    parser = argparse.ArgumentParser(
+        description="A CLI tool for configuring parameters"
+    )
 
     # Adding arguments with default values
-    parser.add_argument("--m", type=int, default=3, help="Parameter m (default: 3)")
-    parser.add_argument("--beta", type=float, default=1, help="Parameter beta (default: 1)")
-    parser.add_argument("--alpha", type=float, default=1, help="Parameter alpha (default: 1)")
-    parser.add_argument("--chi", type=float, default=-1, help="Parameter chi (default: -1)")
-    parser.add_argument("--a", type=float, default=1, help="Parameter a (default: 1)")
-    parser.add_argument("--b", type=float, default=2, help="Parameter b (default: 2)")
-    parser.add_argument("--mu", type=float, default=1, help="Parameter mu (default: 1)")
-    parser.add_argument("--nu", type=float, default=1, help="Parameter nu (default: 1)")
-    parser.add_argument("--gamma", type=float, default=1, help="Parameter gamma (default: 1)")
+    parser.add_argument(
+        "--m",
+        type=int,
+        default=3,
+        help="Parameter m (default: 3)")
+    parser.add_argument(
+        "--beta", type=float, default=1, help="Parameter beta (default: 1)"
+    )
+    parser.add_argument(
+        "--alpha", type=float, default=1, help="Parameter alpha (default: 1)"
+    )
+    parser.add_argument(
+        "--chi", type=float, default=-1, help="Parameter chi (default: -1)"
+    )
+    parser.add_argument(
+        "--a",
+        type=float,
+        default=1,
+        help="Parameter a (default: 1)")
+    parser.add_argument(
+        "--b",
+        type=float,
+        default=2,
+        help="Parameter b (default: 2)")
+    parser.add_argument(
+        "--mu",
+        type=float,
+        default=1,
+        help="Parameter mu (default: 1)")
+    parser.add_argument(
+        "--nu",
+        type=float,
+        default=1,
+        help="Parameter nu (default: 1)")
+    parser.add_argument(
+        "--gamma", type=float, default=1, help="Parameter gamma (default: 1)"
+    )
 
     args = parser.parse_args()
 
