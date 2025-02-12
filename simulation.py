@@ -8,10 +8,14 @@ import matplotlib.animation as animation
 m = 3
 beta = 1
 alpha = 1
-chi = 1
+chi = -1
+a = 1
+b = 2
+mu = 1
+nu = 1
 gamma = 1
 
-def solve_pde_system(L=1, Nx=50, T=10):
+def solve_pde_system(L=1, Nx=50, T=1):
     Nt = int(2 * T * Nx * Nx / L**2) + 1
     dx = L / Nx
     dt = T / Nt
@@ -19,11 +23,12 @@ def solve_pde_system(L=1, Nx=50, T=10):
     u = (np.cos(2 * np.pi * x) + 1.5).astype(np.float64)  # Initial condition for u
     # v = (np.sin(np.pi * x) + 1.5).astype(np.float64)  # Initial condition for v
     # u = np.ones_like(x) * 0.5
-    v = np.ones_like(x) * 1.0
-    print('u=', u)
-    print('v=', v)
+    # v = np.ones_like(x) * 2.0
+    v = (np.cos(2 * np.pi * x) + 1.5).astype(np.float64)  # Initial condition for u
+    # print('u=', u)
+    # print('v=', v)
 
-    times_to_plot = np.arange(0, T, 1)
+    times_to_plot = np.arange(0, T, 0.01)
     current_time = 0
     # plt.figure()
 
@@ -36,33 +41,43 @@ def solve_pde_system(L=1, Nx=50, T=10):
     ax.legend()
 
     u_data = []
+    time_data = []
 
-    # for n in range(60):
+    # for n in range(1000):
     for n in range(Nt):
+        # print('n=',n)
         u_new = np.copy(u).astype(np.float64)
         v_new = np.copy(v).astype(np.float64)
+        # print('v_newnew=',v_new)
 
-        for i in range(1, Nx):
-            v_xx = (v[i + 1] - 2*v[i] + v[i-1]) / dx**2
-            # v_new[i] = v_xx - v[i] + u[i]
-            v_new[i] = v_xx + u[i]**gamma
+        for i in range(1, Nx): # Loop for v
+            # v_xx = (v[i + 1] - 2*v[i] + v[i-1]) / dx**2
+            # print('vxx=',v_xx)
+            # # v_new[i] = v_xx - v[i] + u[i]
+            # v_new[i] = v_xx + u[i]**gamma
+            v_new[i] = (v[i+1] + v[i-1] + nu * dx**2 * u[i]**gamma) / (2 + mu * dx**2)
 
         # Neumann boundary conditions for v
         v_new[0] = v_new[1]
         v_new[-1] = v_new[-2]
+        # print('v_new=',v_new)
 
-        for i in range(1, Nx):
-            v_x = (v_new[i+1] - v_new[i-1]) / (2*dx)
-            v_xx = (v_new[i+1] - 2*v_new[i] + v_new[i-1]) / dx**2
+        for i in range(1, Nx): # Loop for u
+            v_x = (v[i+1] - v[i-1]) / (2*dx)
+            # print('vx=',v_x)
+            v_xx = (v[i+1] - 2*v[i] + v[i-1]) / dx**2
+            # print('vxx=',v_xx)
             u_x = (u[i+1] - u[i-1]) / (2*dx)
+            # print('u_x=',u_x)
             u_xx = (u[i+1] - 2*u[i] + u[i-1]) / dx**2
+            # print('uxx=',u_x)
 
             term1 = ((beta * chi) / (1 + v_new[i])**(beta + 1)) * (v_x**2) * (u[i]**m)
             term2 = ((m * chi) / (1 + v_new[i])**beta) * (u[i]**(m-1)) * u_x * v_x
             term3 = (chi / (1 + v_new[i])**beta) * (u[i]**m) * (v_new[i] - u[i]**gamma)
-            logistic = u[i] - u[i]**(1+alpha)
+            logistic = a * u[i] - b * u[i]**(1+alpha)
 
-            u_new[i] = u[i] + dt * (u_xx - term1 + term2 + term3 + logistic)
+            u_new[i] = u[i] + dt * (u_xx + term1 - term2 - term3 + logistic)
             # u_new[i] = u[i] + dt * (u_xx + logistic)
 
         # Neumann boundary conditions for u
@@ -77,7 +92,6 @@ def solve_pde_system(L=1, Nx=50, T=10):
             # plt.plot(x, u, label=f't={current_time:.2f}')
             u_data.append(np.copy(u))
         current_time += dt
-        # print('n=',n)
         # print('u=',u)
         # print('v=',v)
 
@@ -87,7 +101,7 @@ def solve_pde_system(L=1, Nx=50, T=10):
         ax.set_title(f'Evolution of u over time (t={frame}s)')
         return line,
     
-    ani = animation.FuncAnimation(fig, update, frames=len(u_data), interval=500, blit=True)
+    ani = animation.FuncAnimation(fig, update, frames=len(u_data), interval=200, blit=True)
     plt.show()
 
     # plt.xlabel('x')
