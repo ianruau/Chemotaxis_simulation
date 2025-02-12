@@ -178,9 +178,9 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         u_data,
         cmap="viridis")  # Ensure correct shape
 
-    ax_3d.set_xlabel("Time (t)")
-    ax_3d.set_ylabel("Space (x)")
-    ax_3d.set_zlabel("u")
+    ax_3d.set_xlabel(r"Time $t$")
+    ax_3d.set_ylabel(r"Space $x$")
+    ax_3d.set_zlabel(r"$u(t,x)$")
     # ax_3d.set_title("3D Plot of u over Time and Space")
     ax_3d.set_title(
         rf"""
