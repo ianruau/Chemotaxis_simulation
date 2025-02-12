@@ -58,9 +58,9 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     # plt.figure()
 
     fig, ax = plt.subplots()
-    (line,) = ax.plot(x, u, label=f"t={current_time:.2f}")
-    ax.set_xlabel("x")
-    ax.set_ylabel("u")
+    (line,) = ax.plot(x, u, label=rf"$t$={current_time:.2f}")
+    ax.set_xlabel(r"$x$")
+    ax.set_ylabel(r"$u$")
     ax.set_title("Evolution of u over time")
     ax.set_ylim(0, 2)
     # ax.legend()
@@ -156,7 +156,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         return (line,)
 
     ani = animation.FuncAnimation(
-        fig, update, frames=len(time_data), interval=200, blit=True
+        fig, update, frames=len(time_data), interval=50, blit=True
     )
 
     # Save the animation as an MP4 file
@@ -290,9 +290,9 @@ def main():
     basename = f"a={config['a']}_b={config['b']}_alpha={config['alpha']}_m={config['m']}_beta={config['beta']}_chi={config['chi']}_mu={config['mu']}_nu={config['nu']}_gamma={config['gamma']}_meshsize={config['meshsize']}_time={config['time']}".replace(
         ".", "-"
     )
-    print(f"Output files will be saved with the basename:\n\t {basename}")
+    print(f"Output files will be saved with the basename:\n\t {basename}\n")
 
-    if questionary.confirm("\nDo you want to continue the simulation?").ask():
+    if questionary.confirm("Do you want to continue the simulation?").ask():
         print("Continuing simulation...")
         x, u, v = solve_pde_system(
             Nx=config["meshsize"], T=config["time"], FileBaseName=basename
