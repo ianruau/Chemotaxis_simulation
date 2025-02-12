@@ -6,6 +6,7 @@ import argparse
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
+import questionary
 
 config = {}  # Global dictionary for parameters
 
@@ -13,7 +14,7 @@ config = {}  # Global dictionary for parameters
 # 1. Write CLI interface
 
 
-def solve_pde_system(L=1, Nx=50, T=5):
+def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     Nt = int(2 * T * Nx * Nx / L**2) + 1
     dx = L / Nx
     dt = T / Nt
@@ -152,7 +153,7 @@ def solve_pde_system(L=1, Nx=50, T=5):
     writer = animation.FFMpegWriter(
         fps=5, metadata=dict(
             artist="Me"), bitrate=1800)
-    ani.save("simulation.mp4", writer=writer)
+    ani.save(f"{FileBaseName}.mp4", writer=writer)
 
     # plt.show()
 
@@ -173,15 +174,10 @@ def solve_pde_system(L=1, Nx=50, T=5):
     ax_3d.set_title("3D Plot of u over Time and Space")
 
     # Save the plot as PNG and JPEG
-    fig_3d.savefig("3d_plot.png")
-    fig_3d.savefig("3d_plot.jpeg")
+    fig_3d.savefig(f"{FileBaseName}.png")
+    fig_3d.savefig(f"{FileBaseName}.jpeg")
 
     plt.show()
-    # plt.xlabel('x')
-    # plt.ylabel('u')
-    # plt.title('Evolution of u over time')
-    # plt.legend()
-    # plt.show()
 
     return x, u, v
 
@@ -227,6 +223,18 @@ def parse_args():
     parser.add_argument(
         "--gamma", type=float, default=1, help="Parameter gamma (default: 1)"
     )
+    parser.add_argument(
+        "--meshsize",
+        type=float,
+        default=50,
+        help="Parameter for spatial mesh size (default: 50)",
+    )
+    parser.add_argument(
+        "--time",
+        type=float,
+        default=2.3,
+        help="Parameter for time to lapse (default: 2.3)",
+    )
 
     return parser.parse_args()
 
@@ -240,15 +248,34 @@ def main():
     # print("Parameters:")
 
     # Now access them via config['m'], config['beta'], etc.
+    print("Model Parameters:")
+    print("1. Logistic term: ")
+    print(f"\ta = {config['a']}, b = {config['b']}, alpha = {config['alpha']}")
+    print("2. Reaction term: ")
     print(
-        f"m = {config['m']}, beta = {config['beta']}, alpha = {config['alpha']}, chi = {config['chi']}"
-    )
+        f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
+    print("3. The v equation: ")
     print(
-        f"a = {config['a']}, b = {config['b']}, mu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}"
-    )
+        f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
     # Run the solver
 
-    x, u, v = solve_pde_system()
+    print("Simulation Parameters:")
+    print(f"\tMeshSize = {config['meshsize']}, time = {config['time']}")
+
+    # Using the above parameters to generate a file base name string
+    basename = f"a={config['a']}_b={config['b']}_alpha={config['alpha']}_m={config['m']}_beta={config['beta']}_chi={config['chi']}_mu={config['mu']}_nu={config['nu']}_gamma={config['gamma']}_meshsize={config['meshsize']}_time={config['time']}".replace(
+        ".", "-"
+    )
+    print(f"Output files will be saved with the basename:\n\t {basename}")
+
+    if questionary.confirm("Do you want to continue the simulation?").ask():
+        print("Continuing simulation...")
+        x, u, v = solve_pde_system(
+            Nx=config["meshsize"], T=config["time"], FileBaseName=basename
+        )
+    else:
+        print("Exiting simulation.")
+        exit()
 
 
 if __name__ == "__main__":
