@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import questionary
 from matplotlib import rc
+from scipy.linalg import solve_banded
 
 config = {}  # Global dictionary for parameters
 
@@ -40,20 +41,8 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     x = np.linspace(0, L, Nx + 1, dtype=np.float64)
 
     # Initial condition for u
-    u = (np.cos(2 * np.pi * x) + 1.5).astype(np.float64)
-    # v = (np.sin(np.pi * x) + 1.5).astype(np.float64)  # Initial condition for v
     # u = np.ones_like(x) * 0.5
-    # v = np.ones_like(x) * 2.0
-    # v = (
-    #     np.cos(
-    #         2 *
-    #         np.pi *
-    #         x) +
-    #     1.5).astype(
-    #         np.float64)  # Initial condition for u
-    v = nu / mu * u**gamma
-    # print('u=', u)
-    print("v=", v)
+    u = (np.cos(2 * np.pi * x) + 1.5).astype(np.float64)
 
     times_to_plot = np.arange(0, T + dt, 0.01)
     current_time = 0
@@ -76,22 +65,27 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     for n in range(Nt):
         # print('n=',n)
         u_new = np.copy(u).astype(np.float64)
-        v_new = np.copy(v).astype(np.float64)
-        # print('v_newnew=',v_new)
 
-        for i in range(1, Nx):  # Loop for v
-            # v_xx = (v[i + 1] - 2*v[i] + v[i-1]) / dx**2
-            # print('vxx=',v_xx)
-            # # v_new[i] = v_xx - v[i] + u[i]
-            # v_new[i] = v_xx + u[i]**gamma
-            v_new[i] = (v[i + 1] + v[i - 1] + nu * dx**2 * u[i] ** gamma) / (
-                2 + mu * dx**2
-            )
+        diagonal = np.ones(Nx + 1) * (2 / dx**2 + mu)
+        diagonal[0] -= 1 / dx**2
+        diagonal[-1] -= 1 / dx**2
+        offdiagonal = np.ones(Nx) * (-1 / dx**2)
+        A_inv = inverse_tridiagonal(diagonal, offdiagonal)
+        v = np.dot(A_inv, nu * u**gamma)
+        # print(v)
+
+        # for i in range(1, Nx):  # Loop for v
+        #     # v_xx = (v[i + 1] - 2*v[i] + v[i-1]) / dx**2
+        #     # print('vxx=',v_xx)
+        #     # # v[i] = v_xx - v[i] + u[i]
+        #     # v[i] = v_xx + u[i]**gamma
+        #     v[i] = (v[i + 1] + v[i - 1] + nu * dx**2 * u[i] ** gamma) / (
+        #         2 + mu * dx**2
+        #     )
 
         # Neumann boundary conditions for v
-        v_new[0] = v_new[1]
-        v_new[-1] = v_new[-2]
-        # print('v_new=',v_new)
+        v[0] = v[1]
+        v[-1] = v[-2]
 
         for i in range(1, Nx):  # Loop for u
             v_x = (v[i + 1] - v[i - 1]) / (2 * dx)
@@ -104,15 +98,15 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
             # print('uxx=',u_x)
 
             term1 = (
-                ((beta * chi) / (1 + v_new[i]) **
+                ((beta * chi) / (1 + v[i]) **
                  (beta + 1)) * (v_x**2) * (u[i] ** m)
             )
-            term2 = ((m * chi) / (1 + v_new[i]) **
+            term2 = ((m * chi) / (1 + v[i]) **
                      beta) * (u[i] ** (m - 1)) * u_x * v_x
             term3 = (
-                (chi / (1 + v_new[i]) ** beta)
+                (chi / (1 + v[i]) ** beta)
                 * (u[i] ** m)
-                * (v_new[i] - u[i] ** gamma)
+                * (v[i] - u[i] ** gamma)
             )
             logistic = a * u[i] - b * u[i] ** (1 + alpha)
 
@@ -124,7 +118,6 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         u_new[-1] = u_new[-2]
 
         u = u_new  # Update u
-        v = v_new  # Update v
 
         # Plot every 0.01 seconds
         # if np.isclose(current_time, times_to_plot, atol=dt).any():
@@ -135,6 +128,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         if np.any(np.abs(times_to_plot - current_time) < dt / 2):
             u_data.append(np.copy(u))
             time_data.append(current_time)
+
         current_time += dt
         # print('u=',u)
         # print('v=',v)
@@ -214,6 +208,24 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     )
 
     return x, u, v
+
+
+def inverse_tridiagonal(diagonal, offdiagonal):
+    """Computes A⁻¹ for a tridiagonal matrix A."""
+    n = len(diagonal)
+    A_inv = np.zeros((n, n))
+
+    for i in range(n):
+        e_i = np.zeros(n)
+        e_i[i] = 1  # Solve for each column of A⁻¹
+        A_inv[:, i] = solve_banded(
+            (1, 1),
+            [np.append([0], offdiagonal), diagonal,
+             np.append(offdiagonal, [0])],
+            e_i,
+        )
+
+    return A_inv
 
 
 def parse_args():
