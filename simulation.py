@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 
+import argparse
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,6 +15,9 @@ b = 2
 mu = 1
 nu = 1
 gamma = 1
+
+# TO LIST:
+# 1. Write CLI interface
 
 
 def solve_pde_system(L=1, Nx=50, T=5):
@@ -125,7 +129,12 @@ def solve_pde_system(L=1, Nx=50, T=5):
     ani = animation.FuncAnimation(
         fig, update, frames=len(time_data), interval=200, blit=True
     )
-    plt.show()
+
+    # Save the animation as an MP4 file
+    writer = animation.FFMpegWriter(fps=5, metadata=dict(artist='Me'), bitrate=1800)
+    ani.save("simulation.mp4", writer=writer)
+
+    # plt.show()
 
     # 3D Plot
     fig_3d = plt.figure()
@@ -137,6 +146,11 @@ def solve_pde_system(L=1, Nx=50, T=5):
     ax_3d.set_ylabel("Space (x)")
     ax_3d.set_zlabel("u")
     ax_3d.set_title("3D Plot of u over Time and Space")
+
+    # Save the plot as PNG and JPEG
+    fig_3d.savefig("3d_plot.png")
+    fig_3d.savefig("3d_plot.jpeg")
+
     plt.show()
     # plt.xlabel('x')
     # plt.ylabel('u')
@@ -147,5 +161,38 @@ def solve_pde_system(L=1, Nx=50, T=5):
     return x, u, v
 
 
-# Run the solver
-x, u, v = solve_pde_system()
+
+def main():
+    parser = argparse.ArgumentParser(description="A CLI tool for configuring parameters")
+
+    # Adding arguments with default values
+    parser.add_argument("--m", type=int, default=3, help="Parameter m (default: 3)")
+    parser.add_argument("--beta", type=float, default=1, help="Parameter beta (default: 1)")
+    parser.add_argument("--alpha", type=float, default=1, help="Parameter alpha (default: 1)")
+    parser.add_argument("--chi", type=float, default=-1, help="Parameter chi (default: -1)")
+    parser.add_argument("--a", type=float, default=1, help="Parameter a (default: 1)")
+    parser.add_argument("--b", type=float, default=2, help="Parameter b (default: 2)")
+    parser.add_argument("--mu", type=float, default=1, help="Parameter mu (default: 1)")
+    parser.add_argument("--nu", type=float, default=1, help="Parameter nu (default: 1)")
+    parser.add_argument("--gamma", type=float, default=1, help="Parameter gamma (default: 1)")
+
+    args = parser.parse_args()
+
+    # Display the parsed arguments
+    print("Parameters:")
+    print(f"m = {args.m}")
+    print(f"beta = {args.beta}")
+    print(f"alpha = {args.alpha}")
+    print(f"chi = {args.chi}")
+    print(f"a = {args.a}")
+    print(f"b = {args.b}")
+    print(f"mu = {args.mu}")
+    print(f"nu = {args.nu}")
+    print(f"gamma = {args.gamma}")
+
+    # Run the solver
+    x, u, v = solve_pde_system()
+
+
+if __name__ == "__main__":
+    main()
