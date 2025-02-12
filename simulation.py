@@ -34,7 +34,7 @@ def solve_pde_system(L=1, Nx=50, T=10):
         for i in range(1, Nx):
             v_xx = (v[i + 1] - 2*v[i] + v[i-1]) / dx**2
             # v_new[i] = v_xx - v[i] + u[i]
-            v_new[i] = v_xx + u[i]
+            v_new[i] = v_xx + u[i]**gamma
 
         # Neumann boundary conditions for v
         v_new[0] = v_new[1]
