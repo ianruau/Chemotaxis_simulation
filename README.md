@@ -25,6 +25,6 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 ```
 Alternatively (preferred), run the following command in nvim
 ```vim
-:!Format.sh %
+:!./Format.sh %
 
 ```
