@@ -67,11 +67,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     ax.set_title("Evolution of u over time")
     ax.set_ylim(0, 2)
     # Add the asymptotic solution
-    ax.axhline(
-        y=uStar,
-        color="r",
-        linestyle="--",
-        label=r"$u^*$")
+    ax.axhline(y=uStar, color="r", linestyle="--", label=r"$u^*$")
     # ax.legend()
 
     u_data = []
@@ -187,10 +183,21 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         u_data,
         cmap="viridis")  # Ensure correct shape
 
+    # Create a constant plane at height uStar
+    U_grid = np.full_like(T_grid, uStar)
+
     ax_3d.set_xlabel(r"Time $f$")
     ax_3d.set_ylabel(r"Space $x$")
     ax_3d.set_zlabel(r"$u(t,x)$")
     # ax_3d.set_title("3D Plot of u over Time and Space")
+    ax_3d.plot_surface(
+        T_grid,
+        X_grid,
+        U_grid,
+        alpha=0.5,
+        rstride=100,
+        cstride=100,
+        color="r")
     ax_3d.set_title(
         rf"""
         $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
