@@ -18,7 +18,9 @@ rc("text", usetex=True)
 
 
 def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
-    Nt = int(2 * T * Nx * Nx / L**2) + 1
+    Nt = (
+        int(4 * T * Nx * Nx / L**2) + 1
+    )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
     dx = L / Nx
     dt = T / Nt
 
@@ -36,25 +38,22 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     uStar = (a / b) ** (1 / alpha)
 
     x = np.linspace(0, L, Nx + 1, dtype=np.float64)
-    u = (
-        np.cos(
-            2 *
-            np.pi *
-            x) +
-        1.5).astype(
-            np.float64)  # Initial condition for u
+
+    # Initial condition for u
+    u = (np.cos(2 * np.pi * x) + 1.5).astype(np.float64)
     # v = (np.sin(np.pi * x) + 1.5).astype(np.float64)  # Initial condition for v
     # u = np.ones_like(x) * 0.5
     # v = np.ones_like(x) * 2.0
-    v = (
-        np.cos(
-            2 *
-            np.pi *
-            x) +
-        1.5).astype(
-            np.float64)  # Initial condition for u
+    # v = (
+    #     np.cos(
+    #         2 *
+    #         np.pi *
+    #         x) +
+    #     1.5).astype(
+    #         np.float64)  # Initial condition for u
+    v = nu / mu * u**gamma
     # print('u=', u)
-    # print('v=', v)
+    print("v=", v)
 
     times_to_plot = np.arange(0, T + dt, 0.01)
     current_time = 0
@@ -191,13 +190,8 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     ax_3d.set_zlabel(r"$u(t,x)$")
     # ax_3d.set_title("3D Plot of u over Time and Space")
     ax_3d.plot_surface(
-        T_grid,
-        X_grid,
-        U_grid,
-        alpha=0.5,
-        rstride=100,
-        cstride=100,
-        color="r")
+        T_grid, X_grid, U_grid, alpha=0.5, rstride=100, cstride=100, color="r"
+    )
     ax_3d.set_title(
         rf"""
         $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
