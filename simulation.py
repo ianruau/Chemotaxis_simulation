@@ -32,6 +32,9 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     nu = config["nu"]
     gamma = config["gamma"]
 
+    # Compute the asymptotic solution
+    uStar = (a / b) ** (1 / alpha)
+
     x = np.linspace(0, L, Nx + 1, dtype=np.float64)
     u = (
         np.cos(
@@ -63,6 +66,12 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     ax.set_ylabel(r"$u$")
     ax.set_title("Evolution of u over time")
     ax.set_ylim(0, 2)
+    # Add the asymptotic solution
+    ax.axhline(
+        y=uStar,
+        color="r",
+        linestyle="--",
+        label=r"$u^*$")
     # ax.legend()
 
     u_data = []
@@ -178,7 +187,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         u_data,
         cmap="viridis")  # Ensure correct shape
 
-    ax_3d.set_xlabel(r"Time $t$")
+    ax_3d.set_xlabel(r"Time $f$")
     ax_3d.set_ylabel(r"Space $x$")
     ax_3d.set_zlabel(r"$u(t,x)$")
     # ax_3d.set_title("3D Plot of u over Time and Space")
