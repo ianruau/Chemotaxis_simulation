@@ -3,6 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 m = 3
 beta = 1
@@ -15,18 +16,28 @@ def solve_pde_system(L=1, Nx=50, T=10):
     dx = L / Nx
     dt = T / Nt
     x = np.linspace(0, L, Nx + 1, dtype=np.float64)
-    # u = (np.sin(np.pi * x) + 1.5).astype(np.float64)  # Initial condition for u
+    u = (np.cos(2 * np.pi * x) + 1.5).astype(np.float64)  # Initial condition for u
     # v = (np.sin(np.pi * x) + 1.5).astype(np.float64)  # Initial condition for v
-    u = np.ones_like(x) * 0.5
+    # u = np.ones_like(x) * 0.5
     v = np.ones_like(x) * 1.0
     print('u=', u)
     print('v=', v)
 
     times_to_plot = np.arange(0, T, 1)
     current_time = 0
-    plt.figure()
+    # plt.figure()
 
-    # for n in range(3):
+    fig, ax = plt.subplots()
+    line, = ax.plot(x, u, label=f't={current_time:.2f}')
+    ax.set_xlabel('x')
+    ax.set_ylabel('u')
+    ax.set_title('Evolution of u over time')
+    ax.set_ylim(0, 2)
+    ax.legend()
+
+    u_data = []
+
+    # for n in range(60):
     for n in range(Nt):
         u_new = np.copy(u).astype(np.float64)
         v_new = np.copy(v).astype(np.float64)
@@ -63,17 +74,28 @@ def solve_pde_system(L=1, Nx=50, T=10):
 
         # Plot every 0.01 seconds
         if np.isclose(current_time, times_to_plot, atol=dt).any():
-            plt.plot(x, u, label=f't={current_time:.2f}')
+            # plt.plot(x, u, label=f't={current_time:.2f}')
+            u_data.append(np.copy(u))
         current_time += dt
         # print('n=',n)
         # print('u=',u)
         # print('v=',v)
 
-    plt.xlabel('x')
-    plt.ylabel('u')
-    plt.title('Evolution of u over time')
-    plt.legend()
+        
+    def update(frame):
+        line.set_ydata(u_data[frame])
+        ax.set_title(f'Evolution of u over time (t={frame}s)')
+        return line,
+    
+    ani = animation.FuncAnimation(fig, update, frames=len(u_data), interval=500, blit=True)
     plt.show()
+
+    # plt.xlabel('x')
+    # plt.ylabel('u')
+    # plt.title('Evolution of u over time')
+    # plt.legend()
+    # plt.show()
+
 
     return x, u, v
 
