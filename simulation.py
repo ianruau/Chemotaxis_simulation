@@ -63,7 +63,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     ax.set_ylabel("u")
     ax.set_title("Evolution of u over time")
     ax.set_ylim(0, 2)
-    ax.legend()
+    # ax.legend()
 
     u_data = []
     time_data = []
