@@ -4,6 +4,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+m = 3
+beta = 1
+alpha = 1
+chi = 1
+gamma = 1
 
 def solve_pde_system(L=1, Nx=50, T=10):
     Nt = int(2 * T * Nx * Nx / L**2) + 1
@@ -41,13 +46,13 @@ def solve_pde_system(L=1, Nx=50, T=10):
             u_x = (u[i+1] - u[i-1]) / (2*dx)
             u_xx = (u[i+1] - 2*u[i] + u[i-1]) / dx**2
 
-            term1 = (2 / (1 + v_new[i])**3) * (v_x**2) * (u[i]**3)
-            term2 = (3 / (1 + v_new[i])**2) * (u[i]**2) * u_x * v_x
-            term3 = (1 / (1 + v_new[i])**2) * (u[i]**3) * (v_new[i] - u[i])
-            reaction = u[i] - u[i]**2
+            term1 = ((beta * chi) / (1 + v_new[i])**(beta + 1)) * (v_x**2) * (u[i]**m)
+            term2 = ((m * chi) / (1 + v_new[i])**beta) * (u[i]**(m-1)) * u_x * v_x
+            term3 = (chi / (1 + v_new[i])**beta) * (u[i]**m) * (v_new[i] - u[i]**gamma)
+            logistic = u[i] - u[i]**(1+alpha)
 
-            u_new[i] = u[i] + dt * (u_xx - term1 + term2 + term3 + reaction)
-            # u_new[i] = u[i] + dt * (u_xx + reaction)
+            u_new[i] = u[i] + dt * (u_xx - term1 + term2 + term3 + logistic)
+            # u_new[i] = u[i] + dt * (u_xx + logistic)
 
         # Neumann boundary conditions for u
         u_new[0] = u_new[1]
