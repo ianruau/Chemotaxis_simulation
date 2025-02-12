@@ -7,9 +7,12 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import questionary
+from matplotlib import rc
 
 config = {}  # Global dictionary for parameters
 
+# Enable LaTeX rendering
+rc("text", usetex=True)
 # TO LIST:
 # 1. Write CLI interface
 
@@ -142,7 +145,14 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
 
     def update(frame):
         line.set_ydata(u_data[:, frame])
-        ax.set_title(f"Evolution of u over time (t={time_data[frame]:.2f}s)")
+        # ax.set_title(f"Evolution of u over time (t={time_data[frame]:.2f}s)")
+        ax.set_title(
+            rf"""
+            $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $b$ = {b};
+            $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; Meshsize = {Nx}, Time = {T}.
+            """,
+            fontsize=10,
+        )
         return (line,)
 
     ani = animation.FuncAnimation(
@@ -171,18 +181,27 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     ax_3d.set_xlabel("Time (t)")
     ax_3d.set_ylabel("Space (x)")
     ax_3d.set_zlabel("u")
-    ax_3d.set_title("3D Plot of u over Time and Space")
+    # ax_3d.set_title("3D Plot of u over Time and Space")
+    ax_3d.set_title(
+        rf"""
+        $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $b$ = {b};
+        $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; Meshsize = {Nx}, Time = {T}.
+        """,
+        fontsize=10,
+    )
 
     # Save the plot as PNG and JPEG
     fig_3d.savefig(f"{FileBaseName}.png")
     fig_3d.savefig(f"{FileBaseName}.jpeg")
 
-    print(f"""
+    print(
+        f"""
     Output files saved:
     - Video: {FileBaseName}.mp4
     - Image:  {FileBaseName}.png
     - Image: {FileBaseName}.jpeg
-    """)
+    """
+    )
 
     return x, u, v
 
