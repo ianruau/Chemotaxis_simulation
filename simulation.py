@@ -7,15 +7,7 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 
-m = 3
-beta = 1
-alpha = 1
-chi = -1
-a = 1
-b = 2
-mu = 1
-nu = 1
-gamma = 1
+config = {}  # Global dictionary for parameters
 
 # TO LIST:
 # 1. Write CLI interface
@@ -25,6 +17,17 @@ def solve_pde_system(L=1, Nx=50, T=5):
     Nt = int(2 * T * Nx * Nx / L**2) + 1
     dx = L / Nx
     dt = T / Nt
+
+    m = config["m"]
+    beta = config["beta"]
+    alpha = config["alpha"]
+    chi = config["chi"]
+    a = config["a"]
+    b = config["b"]
+    mu = config["mu"]
+    nu = config["nu"]
+    gamma = config["gamma"]
+
     x = np.linspace(0, L, Nx + 1, dtype=np.float64)
     u = (
         np.cos(
@@ -183,12 +186,10 @@ def solve_pde_system(L=1, Nx=50, T=5):
     return x, u, v
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser(
         description="A CLI tool for configuring parameters"
     )
-
-    # Adding arguments with default values
     parser.add_argument(
         "--m",
         type=int,
@@ -227,21 +228,26 @@ def main():
         "--gamma", type=float, default=1, help="Parameter gamma (default: 1)"
     )
 
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    # Display the parsed arguments
-    print("Parameters:")
-    print(f"m = {args.m}")
-    print(f"beta = {args.beta}")
-    print(f"alpha = {args.alpha}")
-    print(f"chi = {args.chi}")
-    print(f"a = {args.a}")
-    print(f"b = {args.b}")
-    print(f"mu = {args.mu}")
-    print(f"nu = {args.nu}")
-    print(f"gamma = {args.gamma}")
 
+def main():
+    global config
+    args = parse_args()
+    config = vars(args)
+
+    # # Display the parsed arguments
+    # print("Parameters:")
+
+    # Now access them via config['m'], config['beta'], etc.
+    print(
+        f"m = {config['m']}, beta = {config['beta']}, alpha = {config['alpha']}, chi = {config['chi']}"
+    )
+    print(
+        f"a = {config['a']}, b = {config['b']}, mu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}"
+    )
     # Run the solver
+
     x, u, v = solve_pde_system()
 
 

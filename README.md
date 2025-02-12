@@ -14,12 +14,17 @@ autopep8 --in-place --aggressive simulation.py
 
 Configure for nvim in case of init.vim:
 ```vim
-autocmd BufWritePre *.py execute ':!black % && isort % && autopep8 --in-place --aggressive %'
+autocmd BufWritePre *.py silent! execute ':!black % && isort % && autopep8 --in-place --aggressive %'
 ```
 or in case of init.lua
 ```lua
 vim.api.nvim_create_autocmd("BufWritePre", {
     pattern = "*.py",
-    command = "!black % && isort % && autopep8 --in-place --aggressive %",
+    command = "silent !black % && isort % && autopep8 --in-place --aggressive %",
 })
+```
+Alternatively (preferred), run the following command in nvim
+```vim
+:!Format.sh %
+
 ```
