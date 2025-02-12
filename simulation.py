@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 #
 
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+import numpy as np
 
 m = 3
 beta = 1
@@ -14,6 +14,7 @@ b = 2
 mu = 1
 nu = 1
 gamma = 1
+
 
 def solve_pde_system(L=1, Nx=50, T=5):
     Nt = int(2 * T * Nx * Nx / L**2) + 1
@@ -33,10 +34,10 @@ def solve_pde_system(L=1, Nx=50, T=5):
     # plt.figure()
 
     fig, ax = plt.subplots()
-    line, = ax.plot(x, u, label=f't={current_time:.2f}')
-    ax.set_xlabel('x')
-    ax.set_ylabel('u')
-    ax.set_title('Evolution of u over time')
+    (line,) = ax.plot(x, u, label=f"t={current_time:.2f}")
+    ax.set_xlabel("x")
+    ax.set_ylabel("u")
+    ax.set_title("Evolution of u over time")
     ax.set_ylim(0, 2)
     ax.legend()
 
@@ -50,32 +51,40 @@ def solve_pde_system(L=1, Nx=50, T=5):
         v_new = np.copy(v).astype(np.float64)
         # print('v_newnew=',v_new)
 
-        for i in range(1, Nx): # Loop for v
+        for i in range(1, Nx):  # Loop for v
             # v_xx = (v[i + 1] - 2*v[i] + v[i-1]) / dx**2
             # print('vxx=',v_xx)
             # # v_new[i] = v_xx - v[i] + u[i]
             # v_new[i] = v_xx + u[i]**gamma
-            v_new[i] = (v[i+1] + v[i-1] + nu * dx**2 * u[i]**gamma) / (2 + mu * dx**2)
+            v_new[i] = (v[i + 1] + v[i - 1] + nu * dx**2 * u[i] ** gamma) / (
+                2 + mu * dx**2
+            )
 
         # Neumann boundary conditions for v
         v_new[0] = v_new[1]
         v_new[-1] = v_new[-2]
         # print('v_new=',v_new)
 
-        for i in range(1, Nx): # Loop for u
-            v_x = (v[i+1] - v[i-1]) / (2*dx)
+        for i in range(1, Nx):  # Loop for u
+            v_x = (v[i + 1] - v[i - 1]) / (2 * dx)
             # print('vx=',v_x)
-            v_xx = (v[i+1] - 2*v[i] + v[i-1]) / dx**2
+            v_xx = (v[i + 1] - 2 * v[i] + v[i - 1]) / dx**2
             # print('vxx=',v_xx)
-            u_x = (u[i+1] - u[i-1]) / (2*dx)
+            u_x = (u[i + 1] - u[i - 1]) / (2 * dx)
             # print('u_x=',u_x)
-            u_xx = (u[i+1] - 2*u[i] + u[i-1]) / dx**2
+            u_xx = (u[i + 1] - 2 * u[i] + u[i - 1]) / dx**2
             # print('uxx=',u_x)
 
-            term1 = ((beta * chi) / (1 + v_new[i])**(beta + 1)) * (v_x**2) * (u[i]**m)
-            term2 = ((m * chi) / (1 + v_new[i])**beta) * (u[i]**(m-1)) * u_x * v_x
-            term3 = (chi / (1 + v_new[i])**beta) * (u[i]**m) * (v_new[i] - u[i]**gamma)
-            logistic = a * u[i] - b * u[i]**(1+alpha)
+            term1 = (
+                ((beta * chi) / (1 + v_new[i]) ** (beta + 1)) * (v_x**2) * (u[i] ** m)
+            )
+            term2 = ((m * chi) / (1 + v_new[i]) ** beta) * (u[i] ** (m - 1)) * u_x * v_x
+            term3 = (
+                (chi / (1 + v_new[i]) ** beta)
+                * (u[i] ** m)
+                * (v_new[i] - u[i] ** gamma)
+            )
+            logistic = a * u[i] - b * u[i] ** (1 + alpha)
 
             u_new[i] = u[i] + dt * (u_xx + term1 - term2 - term3 + logistic)
             # u_new[i] = u[i] + dt * (u_xx + logistic)
@@ -100,38 +109,40 @@ def solve_pde_system(L=1, Nx=50, T=5):
         # print('u=',u)
         # print('v=',v)
 
-        
     if not u_data or not time_data:
-        raise ValueError("No data was collected for plotting. Check time-stepping alignment.")
-    
+        raise ValueError(
+            "No data was collected for plotting. Check time-stepping alignment."
+        )
+
     u_data = np.array(u_data).T  # Convert list to numpy array and transpose
     time_data = np.array(time_data)  # Convert list to numpy array
-    
+
     def update(frame):
         line.set_ydata(u_data[:, frame])
-        ax.set_title(f'Evolution of u over time (t={time_data[frame]:.2f}s)')
-        return line,
-    
-    ani = animation.FuncAnimation(fig, update, frames=len(time_data), interval=200, blit=True)
+        ax.set_title(f"Evolution of u over time (t={time_data[frame]:.2f}s)")
+        return (line,)
+
+    ani = animation.FuncAnimation(
+        fig, update, frames=len(time_data), interval=200, blit=True
+    )
     plt.show()
-    
+
     # 3D Plot
     fig_3d = plt.figure()
-    ax_3d = fig_3d.add_subplot(111, projection='3d')
-    T_grid, X_grid = np.meshgrid(time_data, x, indexing='xy')  # Ensure consistent shape
-    ax_3d.plot_surface(T_grid, X_grid, u_data, cmap='viridis')  # Ensure correct shape
-    
-    ax_3d.set_xlabel('Time (t)')
-    ax_3d.set_ylabel('Space (x)')
-    ax_3d.set_zlabel('u')
-    ax_3d.set_title('3D Plot of u over Time and Space')
+    ax_3d = fig_3d.add_subplot(111, projection="3d")
+    T_grid, X_grid = np.meshgrid(time_data, x, indexing="xy")  # Ensure consistent shape
+    ax_3d.plot_surface(T_grid, X_grid, u_data, cmap="viridis")  # Ensure correct shape
+
+    ax_3d.set_xlabel("Time (t)")
+    ax_3d.set_ylabel("Space (x)")
+    ax_3d.set_zlabel("u")
+    ax_3d.set_title("3D Plot of u over Time and Space")
     plt.show()
     # plt.xlabel('x')
     # plt.ylabel('u')
     # plt.title('Evolution of u over time')
     # plt.legend()
     # plt.show()
-
 
     return x, u, v
 
