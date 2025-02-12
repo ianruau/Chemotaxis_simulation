@@ -148,8 +148,8 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         # ax.set_title(f"Evolution of u over time (t={time_data[frame]:.2f}s)")
         ax.set_title(
             rf"""
-            $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $b$ = {b};
-            $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; Meshsize = {Nx}, Time = {T}.
+            $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
+            $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T}.
             """,
             fontsize=10,
         )
@@ -184,8 +184,8 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     # ax_3d.set_title("3D Plot of u over Time and Space")
     ax_3d.set_title(
         rf"""
-        $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $b$ = {b};
-        $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; Meshsize = {Nx}, Time = {T}.
+        $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
+        $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T}.
         """,
         fontsize=10,
     )
