@@ -15,7 +15,7 @@ mu = 1
 nu = 1
 gamma = 1
 
-def solve_pde_system(L=1, Nx=50, T=1):
+def solve_pde_system(L=1, Nx=50, T=5):
     Nt = int(2 * T * Nx * Nx / L**2) + 1
     dx = L / Nx
     dt = T / Nt
@@ -28,7 +28,7 @@ def solve_pde_system(L=1, Nx=50, T=1):
     # print('u=', u)
     # print('v=', v)
 
-    times_to_plot = np.arange(0, T, 0.01)
+    times_to_plot = np.arange(0, T + dt, 0.01)
     current_time = 0
     # plt.figure()
 
@@ -88,22 +88,44 @@ def solve_pde_system(L=1, Nx=50, T=1):
         v = v_new  # Update v
 
         # Plot every 0.01 seconds
-        if np.isclose(current_time, times_to_plot, atol=dt).any():
-            # plt.plot(x, u, label=f't={current_time:.2f}')
+        # if np.isclose(current_time, times_to_plot, atol=dt).any():
+        #     # plt.plot(x, u, label=f't={current_time:.2f}')
+        #     u_data.append(np.copy(u))
+
+        # Check if current_time is close to any time in times_to_plot
+        if np.any(np.abs(times_to_plot - current_time) < dt / 2):
             u_data.append(np.copy(u))
+            time_data.append(current_time)
         current_time += dt
         # print('u=',u)
         # print('v=',v)
 
         
+    if not u_data or not time_data:
+        raise ValueError("No data was collected for plotting. Check time-stepping alignment.")
+    
+    u_data = np.array(u_data).T  # Convert list to numpy array and transpose
+    time_data = np.array(time_data)  # Convert list to numpy array
+    
     def update(frame):
-        line.set_ydata(u_data[frame])
-        ax.set_title(f'Evolution of u over time (t={frame}s)')
+        line.set_ydata(u_data[:, frame])
+        ax.set_title(f'Evolution of u over time (t={time_data[frame]:.2f}s)')
         return line,
     
-    ani = animation.FuncAnimation(fig, update, frames=len(u_data), interval=200, blit=True)
+    ani = animation.FuncAnimation(fig, update, frames=len(time_data), interval=200, blit=True)
     plt.show()
-
+    
+    # 3D Plot
+    fig_3d = plt.figure()
+    ax_3d = fig_3d.add_subplot(111, projection='3d')
+    T_grid, X_grid = np.meshgrid(time_data, x, indexing='xy')  # Ensure consistent shape
+    ax_3d.plot_surface(T_grid, X_grid, u_data, cmap='viridis')  # Ensure correct shape
+    
+    ax_3d.set_xlabel('Time (t)')
+    ax_3d.set_ylabel('Space (x)')
+    ax_3d.set_zlabel('u')
+    ax_3d.set_title('3D Plot of u over Time and Space')
+    plt.show()
     # plt.xlabel('x')
     # plt.ylabel('u')
     # plt.title('Evolution of u over time')
