@@ -38,13 +38,20 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     # Compute the asymptotic solution
     uStar = (a / b) ** (1 / alpha)
     vStar = nu / mu * (a / b) ** (gamma / alpha)
-    print(f"Asymptotic solutions: u* = {uStar} and v* = {vStar}")
+    print(f"Asymptotic solutions: u* = {uStar:.2f} and v* = {vStar:.2f}")
     ChiStar = (
         (1 + vStar) ** beta
         * (np.sqrt(a * alpha) + np.sqrt(mu)) ** 2
         / (nu * gamma * uStar ** (m + gamma - 1))
     )
-    print(f"A lower bound for Chi* is {ChiStar}")
+    print(f"A lower bound for Chi* is {ChiStar:.2f}")
+    betaTilde = 0
+    if beta >= 0.5:
+        betaTilde = min(1, 2 * beta - 1)
+    ChiDStar = np.sqrt(
+        b * 16 * (1 + betaTilde * vStar) * mu / (nu**2 * uStar ** (2 - alpha))
+    )
+    print(f"Chi** = {ChiDStar:.2f} and beta tilde = {betaTilde:.2f}")
 
     x = np.linspace(0, L, Nx + 1, dtype=np.float64)
 
