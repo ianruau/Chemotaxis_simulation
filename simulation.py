@@ -37,6 +37,14 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
 
     # Compute the asymptotic solution
     uStar = (a / b) ** (1 / alpha)
+    vStar = nu / mu * (a / b) ** (gamma / alpha)
+    print(f"Asymptotic solutions: u* = {uStar} and v* = {vStar}")
+    ChiStar = (
+        (1 + vStar) ** beta
+        * (np.sqrt(a * alpha) + np.sqrt(mu)) ** 2
+        / (nu * gamma * uStar ** (m + gamma - 1))
+    )
+    print(f"A lower bound for Chi* is {ChiStar}")
 
     x = np.linspace(0, L, Nx + 1, dtype=np.float64)
 
@@ -97,17 +105,12 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
             u_xx = (u[i + 1] - 2 * u[i] + u[i - 1]) / dx**2
             # print('uxx=',u_x)
 
-            term1 = (
-                ((beta * chi) / (1 + v[i]) **
-                 (beta + 1)) * (v_x**2) * (u[i] ** m)
-            )
-            term2 = ((m * chi) / (1 + v[i]) **
-                     beta) * (u[i] ** (m - 1)) * u_x * v_x
-            term3 = (
-                (chi / (1 + v[i]) ** beta)
-                * (u[i] ** m)
-                * (v[i] - u[i] ** gamma)
-            )
+            term1 = ((beta * chi) / (1 + v[i]) **
+                     (beta + 1)) * (v_x**2) * (u[i] ** m)
+            term2 = ((m * chi) / (1 + v[i]) ** beta) * \
+                (u[i] ** (m - 1)) * u_x * v_x
+            term3 = (chi / (1 + v[i]) ** beta) * \
+                (u[i] ** m) * (v[i] - u[i] ** gamma)
             logistic = a * u[i] - b * u[i] ** (1 + alpha)
 
             u_new[i] = u[i] + dt * (u_xx + term1 - term2 - term3 + logistic)
