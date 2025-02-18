@@ -53,7 +53,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     )
     print(f"Chi** = {ChiDStar:.2f} and beta tilde = {betaTilde:.2f}")
 
-    x = np.linspace(0, L, Nx + 1, dtype=np.float64)
+    x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
 
     # Initial condition for u
     # u = np.ones_like(x) * 0.5
@@ -81,10 +81,10 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         # print('n=',n)
         u_new = np.copy(u).astype(np.float64)
 
-        diagonal = np.ones(Nx + 1) * (2 / dx**2 + mu)
+        diagonal = np.ones(int(Nx) + 1) * (2 / dx**2 + mu)
         diagonal[0] -= 1 / dx**2
         diagonal[-1] -= 1 / dx**2
-        offdiagonal = np.ones(Nx) * (-1 / dx**2)
+        offdiagonal = np.ones(int(Nx)) * (-1 / dx**2)
         A_inv = inverse_tridiagonal(diagonal, offdiagonal)
         v = np.dot(A_inv, nu * u**gamma)
         # print(v)
