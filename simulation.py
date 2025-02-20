@@ -284,7 +284,7 @@ def parse_args():
     )
     parser.add_argument(
         "--meshsize",
-        type=float,
+        type=int,
         default=50,
         help="Parameter for spatial mesh size (default: 50)",
     )
