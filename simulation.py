@@ -2,6 +2,7 @@
 #
 
 import argparse
+import math
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -58,6 +59,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     # Initial condition for u
     # u = np.ones_like(x) * 0.5
     u = (np.cos(2 * np.pi * x) + 1.5).astype(np.float64)
+    print(f"Initial vector of u = {u}")
 
     times_to_plot = np.arange(0, T + dt, 0.01)
     current_time = 0
@@ -76,6 +78,8 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     u_data = []
     time_data = []
 
+    break_outer_loop = False
+
     # for n in range(1000):
     for n in range(Nt):
         # print('n=',n)
@@ -86,9 +90,24 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         diagonal[-1] -= 1 / dx**2
         offdiagonal = np.ones(int(Nx)) * (-1 / dx**2)
         A_inv = inverse_tridiagonal(diagonal, offdiagonal)
-        v = np.dot(A_inv, nu * u**gamma)
-        # print(v)
 
+        # Check the stability of the inverse
+        condition_number = np.linalg.cond(A_inv)
+        threshold = 1e10
+
+        if condition_number > threshold:
+            print(
+                "Warning: The matrix inverse may not be stable. Condition number:",
+                condition_number,
+            )
+        else:
+            print(
+                "The matrix inverse is stable. Condition number:",
+                condition_number)
+
+        v = np.dot(A_inv, nu * u**gamma)
+
+        # v = np.zeros(int(Nx) + 1)
         # for i in range(1, Nx):  # Loop for v
         #     # v_xx = (v[i + 1] - 2*v[i] + v[i-1]) / dx**2
         #     # print('vxx=',v_xx)
@@ -97,6 +116,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         #     v[i] = (v[i + 1] + v[i - 1] + nu * dx**2 * u[i] ** gamma) / (
         #         2 + mu * dx**2
         #     )
+        print(f"vector = {u**gamma}")
 
         # Neumann boundary conditions for v
         v[0] = v[1]
@@ -114,17 +134,37 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
 
             term1 = ((beta * chi) /
                      ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
+            print("term1=", term1)
             term2 = ((m * chi) / (1 + v[i]) ** beta) * \
                 (u[i] ** (m - 1)) * u_x * v_x
+            print("term2=", term2)
             term3 = (
                 (chi / ((1 + v[i]) ** beta))
                 * (u[i] ** m)
                 * (mu * v[i] - nu * u[i] ** gamma)
             )
+            print("term3=", term3)
             logistic = a * u[i] - b * u[i] ** (1 + alpha)
-
-            u_new[i] = u[i] + dt * (u_xx + term1 - term2 - term3 + logistic)
+            print("logistic=", logistic)
+            u_new[i] = max(u[i] + dt * (u_xx + term1 -
+                                        term2 - term3 + logistic), 0)
             # u_new[i] = u[i] + dt * (u_xx + logistic)
+            print(
+                f"u_new={u_new[i]} and v={v[i]}",
+            )
+
+            if (
+                math.isnan(term1)
+                or math.isnan(term2)
+                or math.isnan(term3)
+                or math.isnan(logistic)
+            ):
+                break_outer_loop = True
+                print("Nan detected, breaking the loop")
+                break
+
+        if break_outer_loop:
+            break
 
         # Neumann boundary conditions for u
         u_new[0] = u_new[1]
@@ -237,6 +277,10 @@ def inverse_tridiagonal(diagonal, offdiagonal):
              np.append(offdiagonal, [0])],
             e_i,
         )
+
+    # Print the inverse matrix to check the results
+    print("Inverse matrix A_inv:")
+    print(A_inv)
 
     return A_inv
 
