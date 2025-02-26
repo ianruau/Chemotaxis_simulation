@@ -58,7 +58,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
 
     # Initial condition for u
     # u = np.ones_like(x) * 0.5
-    u = (np.cos(2 * np.pi * x) + 1.5).astype(np.float64)
+    u = (1 + np.cos(np.pi * x) + np.cos(2 * np.pi * x)).astype(np.float64)
     print(f"Initial vector of u = {u}")
 
     times_to_plot = np.arange(0, T + dt, 0.01)
@@ -95,15 +95,15 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         condition_number = np.linalg.cond(A_inv)
         threshold = 1e10
 
-        if condition_number > threshold:
-            print(
-                "Warning: The matrix inverse may not be stable. Condition number:",
-                condition_number,
-            )
-        else:
-            print(
-                "The matrix inverse is stable. Condition number:",
-                condition_number)
+        # if condition_number > threshold:
+        #     print(
+        #         "Warning: The matrix inverse may not be stable. Condition number:",
+        #         condition_number,
+        #     )
+        # else:
+        #     print(
+        #         "The matrix inverse is stable. Condition number:",
+        #         condition_number)
 
         v = np.dot(A_inv, nu * u**gamma)
 
@@ -116,7 +116,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
         #     v[i] = (v[i + 1] + v[i - 1] + nu * dx**2 * u[i] ** gamma) / (
         #         2 + mu * dx**2
         #     )
-        print(f"vector = {u**gamma}")
+        # print(f"vector = {u**gamma}")
 
         # Neumann boundary conditions for v
         v[0] = v[1]
@@ -134,24 +134,24 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
 
             term1 = ((beta * chi) /
                      ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
-            print("term1=", term1)
+            # print("term1=", term1)
             term2 = ((m * chi) / (1 + v[i]) ** beta) * \
                 (u[i] ** (m - 1)) * u_x * v_x
-            print("term2=", term2)
+            # print("term2=", term2)
             term3 = (
                 (chi / ((1 + v[i]) ** beta))
                 * (u[i] ** m)
                 * (mu * v[i] - nu * u[i] ** gamma)
             )
-            print("term3=", term3)
+            # print("term3=", term3)
             logistic = a * u[i] - b * u[i] ** (1 + alpha)
-            print("logistic=", logistic)
+            # print("logistic=", logistic)
             u_new[i] = max(u[i] + dt * (u_xx + term1 -
                                         term2 - term3 + logistic), 0)
             # u_new[i] = u[i] + dt * (u_xx + logistic)
-            print(
-                f"u_new={u_new[i]} and v={v[i]}",
-            )
+            # print(
+            #     f"u_new={u_new[i]} and v={v[i]}",
+            # )
 
             if (
                 math.isnan(term1)
@@ -279,8 +279,8 @@ def inverse_tridiagonal(diagonal, offdiagonal):
         )
 
     # Print the inverse matrix to check the results
-    print("Inverse matrix A_inv:")
-    print(A_inv)
+    # print("Inverse matrix A_inv:")
+    # print(A_inv)
 
     return A_inv
 
