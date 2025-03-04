@@ -54,6 +54,27 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     )
     print(f"Chi** = {ChiDStar:.2f} and beta tilde = {betaTilde:.2f}")
 
+    # Computation of the eigenvalues lambda_n and sigma_n
+    sigma_positive = False
+    n = 0
+    while not sigma_positive:
+        n += 1
+        lambda_n = -((n * np.pi / L) ** 2)
+        sigma_n = (
+            lambda_n
+            + chi
+            * nu
+            * gamma
+            * ((uStar ** (m + gamma - 1)) / ((1 + vStar) ** beta))
+            * (1 - mu / (mu - lambda_n))
+            - a * alpha
+        )
+        if sigma_n > 0:
+            sigma_positive == False
+        print(f"sigma_{n}=", sigma_n)
+
+    print(f"For n={n} the value of sigma_{n}={sigma_n}")
+
     x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
 
     # Initial condition for u
@@ -132,11 +153,9 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
             u_xx = (u[i + 1] - 2 * u[i] + u[i - 1]) / dx**2
             # print('uxx=',u_x)
 
-            term1 = ((beta * chi) /
-                     ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
+            term1 = ((beta * chi) / ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
             # print("term1=", term1)
-            term2 = ((m * chi) / (1 + v[i]) ** beta) * \
-                (u[i] ** (m - 1)) * u_x * v_x
+            term2 = ((m * chi) / (1 + v[i]) ** beta) * (u[i] ** (m - 1)) * u_x * v_x
             # print("term2=", term2)
             term3 = (
                 (chi / ((1 + v[i]) ** beta))
@@ -146,8 +165,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
             # print("term3=", term3)
             logistic = a * u[i] - b * u[i] ** (1 + alpha)
             # print("logistic=", logistic)
-            u_new[i] = max(u[i] + dt * (u_xx + term1 -
-                                        term2 - term3 + logistic), 0)
+            u_new[i] = max(u[i] + dt * (u_xx + term1 - term2 - term3 + logistic), 0)
             # u_new[i] = u[i] + dt * (u_xx + logistic)
             # print(
             #     f"u_new={u_new[i]} and v={v[i]}",
@@ -211,9 +229,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     )
 
     # Save the animation as an MP4 file
-    writer = animation.FFMpegWriter(
-        fps=5, metadata=dict(
-            artist="Me"), bitrate=1800)
+    writer = animation.FFMpegWriter(fps=5, metadata=dict(artist="Me"), bitrate=1800)
     ani.save(f"{FileBaseName}.mp4", writer=writer)
 
     # plt.show()
@@ -221,13 +237,8 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     # 3D Plot
     fig_3d = plt.figure()
     ax_3d = fig_3d.add_subplot(111, projection="3d")
-    T_grid, X_grid = np.meshgrid(
-        time_data, x, indexing="xy")  # Ensure consistent shape
-    ax_3d.plot_surface(
-        T_grid,
-        X_grid,
-        u_data,
-        cmap="viridis")  # Ensure correct shape
+    T_grid, X_grid = np.meshgrid(time_data, x, indexing="xy")  # Ensure consistent shape
+    ax_3d.plot_surface(T_grid, X_grid, u_data, cmap="viridis")  # Ensure correct shape
 
     # Create a constant plane at height uStar
     U_grid = np.full_like(T_grid, uStar)
@@ -273,8 +284,7 @@ def inverse_tridiagonal(diagonal, offdiagonal):
         e_i[i] = 1  # Solve for each column of A⁻¹
         A_inv[:, i] = solve_banded(
             (1, 1),
-            [np.append([0], offdiagonal), diagonal,
-             np.append(offdiagonal, [0])],
+            [np.append([0], offdiagonal), diagonal, np.append(offdiagonal, [0])],
             e_i,
         )
 
@@ -289,11 +299,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="A CLI tool for configuring parameters"
     )
-    parser.add_argument(
-        "--m",
-        type=float,
-        default=3,
-        help="Parameter m (default: 3)")
+    parser.add_argument("--m", type=float, default=3, help="Parameter m (default: 3)")
     parser.add_argument(
         "--beta", type=float, default=1, help="Parameter beta (default: 1)"
     )
@@ -303,26 +309,10 @@ def parse_args():
     parser.add_argument(
         "--chi", type=float, default=-1, help="Parameter chi (default: -1)"
     )
-    parser.add_argument(
-        "--a",
-        type=float,
-        default=1,
-        help="Parameter a (default: 1)")
-    parser.add_argument(
-        "--b",
-        type=float,
-        default=2,
-        help="Parameter b (default: 2)")
-    parser.add_argument(
-        "--mu",
-        type=float,
-        default=1,
-        help="Parameter mu (default: 1)")
-    parser.add_argument(
-        "--nu",
-        type=float,
-        default=1,
-        help="Parameter nu (default: 1)")
+    parser.add_argument("--a", type=float, default=1, help="Parameter a (default: 1)")
+    parser.add_argument("--b", type=float, default=2, help="Parameter b (default: 2)")
+    parser.add_argument("--mu", type=float, default=1, help="Parameter mu (default: 1)")
+    parser.add_argument("--nu", type=float, default=1, help="Parameter nu (default: 1)")
     parser.add_argument(
         "--gamma", type=float, default=1, help="Parameter gamma (default: 1)"
     )
@@ -355,11 +345,9 @@ def main():
     print("1. Logistic term: ")
     print(f"\ta = {config['a']}, b = {config['b']}, alpha = {config['alpha']}")
     print("2. Reaction term: ")
-    print(
-        f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
+    print(f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
     print("3. The v equation: ")
-    print(
-        f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
+    print(f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
     # Run the solver
 
     print("Simulation Parameters:")
