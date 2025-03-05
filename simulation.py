@@ -56,8 +56,8 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
 
     # Computation of the eigenvalues lambda_n and sigma_n
     sigma_positive = False
-    n = 0
-    while not sigma_positive:
+    n = 1
+    while sigma_positive == False:
         n += 1
         lambda_n = -((n * np.pi / L) ** 2)
         sigma_n = (
@@ -70,8 +70,9 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
             - a * alpha
         )
         if sigma_n > 0:
-            sigma_positive == False
-        print(f"sigma_{n}=", sigma_n)
+            sigma_positive = True
+            print(f"sigma_{n}=", sigma_n)
+            print("sigma_positive=", sigma_positive)
 
     print(f"For n={n} the value of sigma_{n}={sigma_n}")
 
@@ -79,7 +80,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
 
     # Initial condition for u
     # u = np.ones_like(x) * 0.5
-    u = (1 + np.cos(np.pi * x) + np.cos(2 * np.pi * x)).astype(np.float64)
+    u = (1 + 0.5 * np.cos((2 * np.pi / L) * x)).astype(np.float64)
     print(f"Initial vector of u = {u}")
 
     times_to_plot = np.arange(0, T + dt, 0.01)
@@ -165,7 +166,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
             # print("term3=", term3)
             logistic = a * u[i] - b * u[i] ** (1 + alpha)
             # print("logistic=", logistic)
-            u_new[i] = max(u[i] + dt * (u_xx + term1 - term2 - term3 + logistic), 0)
+            u_new[i] = u[i] + dt * (u_xx + term1 - term2 - term3 + logistic)
             # u_new[i] = u[i] + dt * (u_xx + logistic)
             # print(
             #     f"u_new={u_new[i]} and v={v[i]}",
