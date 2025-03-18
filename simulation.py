@@ -57,9 +57,11 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     # Computation of the eigenvalues lambda_n and sigma_n
     sigma_positive = False
     n = 1
+    Lambdas = np.zeros(100)
     while sigma_positive == False:
         n += 1
         lambda_n = -((n * np.pi / L) ** 2)
+        Lambdas[n] = lambda_n
         sigma_n = (
             lambda_n
             + chi
@@ -75,6 +77,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
             print("sigma_positive=", sigma_positive)
 
     print(f"For n={n} the value of sigma_{n}={sigma_n}")
+    print(f"Lambdas=", Lambdas)
 
     x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
 
