@@ -54,36 +54,51 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
     )
     print(f"Chi** = {ChiDStar:.2f} and beta tilde = {betaTilde:.2f}")
 
-    # Computation of the eigenvalues lambda_n and sigma_n
-    sigma_positive = False
-    n = 1
-    Lambdas = np.zeros(100)
-    while sigma_positive == False:
-        n += 1
-        lambda_n = -((n * np.pi / L) ** 2)
-        Lambdas[n] = lambda_n
-        sigma_n = (
-            lambda_n
-            + chi
-            * nu
-            * gamma
-            * ((uStar ** (m + gamma - 1)) / ((1 + vStar) ** beta))
-            * (1 - mu / (mu - lambda_n))
-            - a * alpha
+    # Compute the value of Chi*
+    Lambdas = np.zeros(500)
+    Chi_vector = np.zeros(500)
+    for n in range(1, 500):
+        Lambdas[n] = -((n * np.pi / L) ** 2)
+        Chi_vector[n] = (
+            ((a * alpha - Lambdas[n]) / (nu * gamma))
+            * (((1 + vStar) ** beta) / ((uStar) ** (m + gamma - 1)))
+            * ((Lambdas[n] - mu) / Lambdas[n])
         )
-        if sigma_n > 0:
-            sigma_positive = True
-            print(f"sigma_{n}=", sigma_n)
-            print("sigma_positive=", sigma_positive)
+    # print("Chi_Vector=", Chi_vector)
+    Chi_vector[0] = max(Chi_vector)
+    # print("Chi_Vector=", Chi_vector)
+    ChiStar = min(Chi_vector)
+    print("Chi*=", min(Chi_vector))
 
-    print(f"For n={n} the value of sigma_{n}={sigma_n}")
-    print(f"Lambdas=", Lambdas)
+    # Computation of the eigenvalues lambda_n and sigma_n
+    if chi >= ChiStar:
+        sigma_positive = False
+        n = 0
+        while sigma_positive == False:
+            n += 1
+            lambda_n = -((n * np.pi / L) ** 2)
+            sigma_n = (
+                lambda_n
+                + chi
+                * nu
+                * gamma
+                * ((uStar ** (m + gamma - 1)) / ((1 + vStar) ** beta))
+                * (1 - mu / (mu - lambda_n))
+                - a * alpha
+            )
+            # print(f"sigma_{n}=", sigma_n)
+            if sigma_n > 0:
+                sigma_positive = True
+                print(f"sigma_{n}=", sigma_n)
+                print("sigma_positive=", sigma_positive)
+
+        print(f"For n={n+1} the value of sigma_{n+1}={sigma_n}")
 
     x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
 
     # Initial condition for u
     # u = np.ones_like(x) * 0.5
-    u = (1 + 0.5 * np.cos((2 * np.pi / L) * x)).astype(np.float64)
+    u = (1 + 0.01 * np.cos((1 * np.pi / L) * x)).astype(np.float64)
     print(f"Initial vector of u = {u}")
 
     times_to_plot = np.arange(0, T + dt, 0.01)
