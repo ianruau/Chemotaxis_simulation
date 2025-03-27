@@ -4,16 +4,15 @@
 import argparse
 import math
 
-import termplotlib as tpl
-from tqdm import tqdm  # Import tqdm for progress bar
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
-
-from tabulate import tabulate
 import questionary
+import termplotlib as tpl
 from matplotlib import rc
 from scipy.linalg import solve_banded
+from tabulate import tabulate
+from tqdm import tqdm  # Import tqdm for progress bar
 
 config = {}  # Global dictionary for parameters
 
@@ -23,7 +22,9 @@ rc("text", usetex=True)
 # 1. Write CLI interface
 
 
-def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"):
+def solve_pde_system(
+    L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"
+):
     Nt = (
         int(4 * T * Nx * Nx / L**2) + 1
     )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
@@ -72,7 +73,10 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
         )
     # print(*(f"Lambda_{i + 2}^* = {lam}\n" for i, lam in enumerate(Lambdas)))
     # print(*(f"Chi_{0,i + 2}^* = {chi}\n" for i, chi in enumerate(Chi_vector)))
-    data = [[f"Lambda_{i + 2}^*", f"{lam:.3f}", f"Chi_{0,i + 2}^*", f"{chi:.3f}"] for i, (lam, chi) in enumerate(zip(Lambdas, Chi_vector))]
+    data = [
+        [f"Lambda_{i + 2}^*", f"{lam:.3f}", f"Chi_{0,i + 2}^*", f"{chi:.3f}"]
+        for i, (lam, chi) in enumerate(zip(Lambdas, Chi_vector))
+    ]
     headers = ["Lambda", "Value", "Chi", "Value"]
     print(tabulate(data, headers=headers, tablefmt="grid"))
     ChiStar = min(Chi_vector)
@@ -114,7 +118,9 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
             EigenIndex = 1
             print("first (constant) eigenfunction is chosen.\n")
 
-    u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(np.float64)
+    u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(
+        np.float64
+    )
     print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
     fig = tpl.figure()
     fig.plot(range(len(u)), u, label="u_0", width=100, height=36)
@@ -140,7 +146,7 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     break_outer_loop = False
 
     # for n in range(1000):
-    print("\n# Simulations now ...")
+    print("\n# Simulations now ...\n")
     for n in tqdm(range(Nt), desc="Progress..."):
         # print('n=',n)
         u_new = np.copy(u).astype(np.float64)
@@ -192,9 +198,11 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
             u_xx = (u[i + 1] - 2 * u[i] + u[i - 1]) / dx**2
             # print('uxx=',u_x)
 
-            term1 = ((beta * chi) / ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
+            term1 = ((beta * chi) /
+                     ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
             # print("term1=", term1)
-            term2 = ((m * chi) / (1 + v[i]) ** beta) * (u[i] ** (m - 1)) * u_x * v_x
+            term2 = ((m * chi) / (1 + v[i]) ** beta) * \
+                (u[i] ** (m - 1)) * u_x * v_x
             # print("term2=", term2)
             term3 = (
                 (chi / ((1 + v[i]) ** beta))
@@ -268,17 +276,33 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     )
 
     # Save the animation as an MP4 file
-    print("# Saving video and image files.")
-    writer = animation.FFMpegWriter(fps=5, metadata=dict(artist="Me"), bitrate=1800)
-    ani.save(f"{FileBaseName}.mp4", writer=writer)
+    print("\n# Saving video and image files.\n")
+    writer = animation.FFMpegWriter(
+        fps=5, metadata=dict(artist="Me"), bitrate=1800
+    )
+    with tqdm(total=100, desc="Saving", unit="frame") as pbar:
+        def progress_callback(i, n):
+            pbar.total = n
+            pbar.update(i - pbar.n)
+
+        ani.save(
+            f"{FileBaseName}.mp4",
+            writer=writer,
+            progress_callback=progress_callback,
+        )
 
     # plt.show()
 
     # 3D Plot
     fig_3d = plt.figure()
     ax_3d = fig_3d.add_subplot(111, projection="3d")
-    T_grid, X_grid = np.meshgrid(time_data, x, indexing="xy")  # Ensure consistent shape
-    ax_3d.plot_surface(T_grid, X_grid, u_data, cmap="viridis")  # Ensure correct shape
+    T_grid, X_grid = np.meshgrid(
+        time_data, x, indexing="xy")  # Ensure consistent shape
+    ax_3d.plot_surface(
+        T_grid,
+        X_grid,
+        u_data,
+        cmap="viridis")  # Ensure correct shape
 
     # Create a constant plane at height uStar
     U_grid = np.full_like(T_grid, uStar)
@@ -325,7 +349,8 @@ def inverse_tridiagonal(diagonal, offdiagonal):
         e_i[i] = 1  # Solve for each column of A⁻¹
         A_inv[:, i] = solve_banded(
             (1, 1),
-            [np.append([0], offdiagonal), diagonal, np.append(offdiagonal, [0])],
+            [np.append([0], offdiagonal), diagonal,
+             np.append(offdiagonal, [0])],
             e_i,
         )
 
@@ -340,7 +365,11 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="A CLI tool for configuring parameters"
     )
-    parser.add_argument("--m", type=float, default=1, help="Parameter m (default: 1)")
+    parser.add_argument(
+        "--m",
+        type=float,
+        default=1,
+        help="Parameter m (default: 1)")
     parser.add_argument(
         "--beta", type=float, default=1, help="Parameter beta (default: 1)"
     )
@@ -350,10 +379,26 @@ def parse_args():
     parser.add_argument(
         "--chi", type=float, default=-1, help="Parameter chi (default: -1)"
     )
-    parser.add_argument("--a", type=float, default=1, help="Parameter a (default: 1)")
-    parser.add_argument("--b", type=float, default=1, help="Parameter b (default: 1)")
-    parser.add_argument("--mu", type=float, default=1, help="Parameter mu (default: 1)")
-    parser.add_argument("--nu", type=float, default=1, help="Parameter nu (default: 1)")
+    parser.add_argument(
+        "--a",
+        type=float,
+        default=1,
+        help="Parameter a (default: 1)")
+    parser.add_argument(
+        "--b",
+        type=float,
+        default=1,
+        help="Parameter b (default: 1)")
+    parser.add_argument(
+        "--mu",
+        type=float,
+        default=1,
+        help="Parameter mu (default: 1)")
+    parser.add_argument(
+        "--nu",
+        type=float,
+        default=1,
+        help="Parameter nu (default: 1)")
     parser.add_argument(
         "--gamma", type=float, default=1, help="Parameter gamma (default: 1)"
     )
@@ -370,10 +415,16 @@ def parse_args():
         help="Parameter for time to lapse (default: 2.3)",
     )
     parser.add_argument(
-        "--EigenIndex", type=int, default=0, help="Parameter eigen index (default: 0, letting system to choose)"
+        "--EigenIndex",
+        type=int,
+        default=0,
+        help="Parameter eigen index (default: 0, letting system to choose)",
     )
     parser.add_argument(
-        "--Epsilon", type=float, default=0.001, help="Parameter perturbation epsilon (default: 0.001)"
+        "--Epsilon",
+        type=float,
+        default=0.001,
+        help="Parameter perturbation epsilon (default: 0.001)",
     )
 
     return parser.parse_args()
@@ -392,11 +443,14 @@ def main():
     print("1. Logistic term: ")
     print(f"\ta = {config['a']}, b = {config['b']}, alpha = {config['alpha']}")
     print("2. Reaction term: ")
-    print(f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
+    print(
+        f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
     print("3. The v equation: ")
-    print(f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
+    print(
+        f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
     print("4. Initial condition: ")
-    print(f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
+    print(
+        f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
     # Run the solver
 
     print("Simulation Parameters:")
@@ -411,7 +465,11 @@ def main():
     if questionary.confirm("Do you want to continue the simulation?").ask():
         print("Continuing simulation...")
         x, u, v = solve_pde_system(
-            Nx=config["meshsize"], T=config["time"], Epsilon=config["Epsilon"], EigenIndex=config["EigenIndex"], FileBaseName=basename
+            Nx=config["meshsize"],
+            T=config["time"],
+            Epsilon=config["Epsilon"],
+            EigenIndex=config["EigenIndex"],
+            FileBaseName=basename,
         )
     else:
         print("Exiting simulation.")
