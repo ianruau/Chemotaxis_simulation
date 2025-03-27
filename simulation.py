@@ -6,6 +6,7 @@ import math
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import questionary
 import termplotlib as tpl
@@ -315,14 +316,21 @@ def solve_pde_system(
     ax_3d.set_xlabel(r"Time $t$")
     ax_3d.set_ylabel(r"Space $x$")
     ax_3d.set_zlabel(r"$u(t,x)$")
-    # ax_3d.set_title("3D Plot of u over Time and Space")
+    ax_3d.set_zlim(uStar, u_data.max())  # Set z-axis limits to match u_data
+    ax_3d.set_zticks(np.linspace(uStar, u_data.max(), 5))  # Set 5 evenly spaced ticks
+    ax_3d.zaxis.set_major_formatter(FormatStrFormatter("%.3f"))  # Format ticks to 3 decimal places
+
     ax_3d.plot_surface(
         T_grid, X_grid, U_grid, alpha=0.5, rstride=100, cstride=100, color="r"
     )
+
     ax_3d.set_title(SetupDes, fontsize=10, pad=-80)
 
     # Adjust layout to ensure the title fits
     fig_3d.subplots_adjust(top=0.80)  # Reserve more space at the top
+
+    # Adjust layout to avoid overlaps
+    plt.tight_layout()
 
     # Save the plot as PNG and JPEG
     fig_3d.savefig(f"{FileBaseName}.png")
