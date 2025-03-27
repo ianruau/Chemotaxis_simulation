@@ -257,9 +257,11 @@ def solve_pde_system(
             "No data was collected for plotting. Check time-stepping alignment."
         )
 
+    # Convert lists to numpy arrays
     u_data = np.array(u_data).T  # Convert list to numpy array and transpose
     time_data = np.array(time_data)  # Convert list to numpy array
 
+    # Setup description for the title
     SetupDes = rf"""
     $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha};
     $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
@@ -267,15 +269,25 @@ def solve_pde_system(
     $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
     """
 
-    def update(frame):
-        line.set_ydata(u_data[:, frame])
-        # ax.set_title(f"Evolution of u over time (t={time_data[frame]:.2f}s)")
-        ax.set_title(SetupDes, fontsize=10, pad=-40)
-        return (line,)
+    # Create figure and axis
+    fig, ax = plt.subplots(dpi=300)  # Increased dpi for higher resolution
 
     # Adjust layout to make space for the title
     fig.subplots_adjust(top=0.80)  # Increase the top margin to fit the title
 
+    # Plot initialization
+    line, = ax.plot(u_data[:, 0], label="u(t)")  # Initialize the line plot
+    ax.set_ylim(u_data.min() - 0.1, u_data.max() + 0.1)  # Set y-axis limits
+    ax.axhline(y=uStar, color="r", linestyle="--", label=r"$u^*$")  # Add uStar line
+    ax.legend(loc="upper right")  # Add legend
+
+    # Update function for animation
+    def update(frame):
+        line.set_ydata(u_data[:, frame])
+        ax.set_title(SetupDes, fontsize=10, pad=-40)
+        return (line,)
+
+    # Create animation
     ani = animation.FuncAnimation(
         fig, update, frames=len(time_data), interval=50, blit=True
     )
@@ -283,8 +295,8 @@ def solve_pde_system(
     # Save the animation as an MP4 file
     print("\n# Saving video and image files.\n")
     writer = animation.FFMpegWriter(
-        fps=5, metadata=dict(
-            artist="Me"), bitrate=1800)
+        fps=5, metadata=dict(artist="Me"), bitrate=1800
+    )
     with tqdm(total=100, desc="Saving", unit="frame") as pbar:
 
         def progress_callback(i, n):
@@ -296,7 +308,6 @@ def solve_pde_system(
             writer=writer,
             progress_callback=progress_callback,
         )
-
     # plt.show()
 
     # 3D Plot
