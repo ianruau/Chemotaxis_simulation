@@ -19,7 +19,7 @@ rc("text", usetex=True)
 # 1. Write CLI interface
 
 
-def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
+def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"):
     Nt = (
         int(4 * T * Nx * Nx / L**2) + 1
     )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
@@ -98,7 +98,7 @@ def solve_pde_system(L=1, Nx=50, T=5, FileBaseName="Simulation"):
 
     # Initial condition for u
     # u = np.ones_like(x) * 0.5
-    u = (1 + 0.01 * np.cos((1 * np.pi / L) * x)).astype(np.float64)
+    u = (uStar + Epsilon * np.cos(( (EigenIndex - 1) * np.pi / L) * x)).astype(np.float64)
     print(f"Initial vector of u = {u}")
 
     times_to_plot = np.arange(0, T + dt, 0.01)
