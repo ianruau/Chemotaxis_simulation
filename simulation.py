@@ -186,8 +186,10 @@ def solve_pde_system(
         # print(f"vector = {u**gamma}")
 
         # Neumann boundary conditions for v
-        v[0] = v[1]
-        v[-1] = v[-2]
+        # v[0] = v[1]
+        # v[-1] = v[-2]
+        v[0] = (4*v[1] - v[2])/3  # Left boundary
+        v[-1] = (4*v[-2] - v[-3])/3  # Right boundary
 
         for i in range(1, Nx):  # Loop for u
             v_x = (v[i + 1] - v[i - 1]) / (2 * dx)
@@ -233,8 +235,10 @@ def solve_pde_system(
             break
 
         # Neumann boundary conditions for u
-        u_new[0] = u_new[1]
-        u_new[-1] = u_new[-2]
+        # u_new[0] = u_new[1]
+        # u_new[-1] = u_new[-2]
+        u_new[0] = (4*u_new[1] - u_new[2])/3  # Left boundary
+        u_new[-1] = (4*u_new[-2] - u_new[-3])/3  # Right boundary
 
         u = u_new  # Update u
 
