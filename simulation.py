@@ -108,9 +108,9 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
             print("first eigenfunction is chosen.")
 
     u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(np.float64)
-    print(f"Initial vector of u = {u}")
+    print(f"Initial vector of u = {u}\n")
     fig = tpl.figure()
-    fig.plot(range(len(u)), u, label="u", width=60, height=20)
+    fig.plot(range(len(u)), u, label="u_0", width=100, height=36)
     fig.show()
 
     times_to_plot = np.arange(0, T + dt, 0.01)
