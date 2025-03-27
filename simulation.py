@@ -72,9 +72,10 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
 
     # Computation of the eigenvalues lambda_n and sigma_n
     if chi >= ChiStar:
-        sigma_positive = False
         n = 0
-        while sigma_positive == False:
+        positive_sigmas = []  # List to store positive sigma values
+        sigma_n = 1.0
+        while sigma_n > 0:
             n += 1
             lambda_n = -((n * np.pi / L) ** 2)
             sigma_n = (
@@ -86,19 +87,19 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
                 * (1 - mu / (mu - lambda_n))
                 - a * alpha
             )
-            # print(f"sigma_{n}=", sigma_n)
             if sigma_n > 0:
-                sigma_positive = True
+                positive_sigmas.append(sigma_n)  # Store positive sigma value
                 print(f"sigma_{n}=", sigma_n)
-                print("sigma_positive=", sigma_positive)
 
-        print(f"For n={n+1} the value of sigma_{n+1}={sigma_n}")
+        # Print out positive_sigmas
+        print("Positive sigmas:", *positive_sigmas)
+        # print(f"For n={n+1} the value of sigma_{n+1}={sigma_n}")
+        # print("Positive sigma values:", positive_sigmas)
 
     x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
 
     # Initial condition for u
-    # u = np.ones_like(x) * 0.5
-    u = (uStar + Epsilon * np.cos(( (EigenIndex - 1) * np.pi / L) * x)).astype(np.float64)
+    u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(np.float64)
     print(f"Initial vector of u = {u}")
 
     times_to_plot = np.arange(0, T + dt, 0.01)
@@ -318,7 +319,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="A CLI tool for configuring parameters"
     )
-    parser.add_argument("--m", type=float, default=3, help="Parameter m (default: 3)")
+    parser.add_argument("--m", type=float, default=1, help="Parameter m (default: 1)")
     parser.add_argument(
         "--beta", type=float, default=1, help="Parameter beta (default: 1)"
     )
@@ -347,6 +348,12 @@ def parse_args():
         default=2.3,
         help="Parameter for time to lapse (default: 2.3)",
     )
+    parser.add_argument(
+        "--EigenIndex", type=int, default=0, help="Parameter eigen index (default: 0, letting system to choose)"
+    )
+    parser.add_argument(
+        "--Epsilon", type=float, default=0.001, help="Parameter perturbation epsilon (default: 0.001)"
+    )
 
     return parser.parse_args()
 
@@ -367,13 +374,15 @@ def main():
     print(f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
     print("3. The v equation: ")
     print(f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
+    print("4. Initial condition: ")
+    print(f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
     # Run the solver
 
     print("Simulation Parameters:")
     print(f"\tMeshSize = {config['meshsize']}, time = {config['time']}")
 
     # Using the above parameters to generate a file base name string
-    basename = f"a={config['a']}_b={config['b']}_alpha={config['alpha']}_m={config['m']}_beta={config['beta']}_chi={config['chi']}_mu={config['mu']}_nu={config['nu']}_gamma={config['gamma']}_meshsize={config['meshsize']}_time={config['time']}".replace(
+    basename = f"a={config['a']}_b={config['b']}_alpha={config['alpha']}_m={config['m']}_beta={config['beta']}_chi={config['chi']}_mu={config['mu']}_nu={config['nu']}_gamma={config['gamma']}_meshsize={config['meshsize']}_time={config['time']}_Epsilon={config['Epsilon']}_EigenIndex={config['EigenIndex']}".replace(
         ".", "-"
     )
     print(f"Output files will be saved with the basename:\n\t {basename}\n")
@@ -381,7 +390,7 @@ def main():
     if questionary.confirm("Do you want to continue the simulation?").ask():
         print("Continuing simulation...")
         x, u, v = solve_pde_system(
-            Nx=config["meshsize"], T=config["time"], FileBaseName=basename
+            Nx=config["meshsize"], T=config["time"], Epsilon=config["Epsilon"], EigenIndex=config["EigenIndex"], FileBaseName=basename
         )
     else:
         print("Exiting simulation.")
