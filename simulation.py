@@ -375,6 +375,12 @@ def parse_args():
         description="A CLI tool for configuring parameters"
     )
     parser.add_argument(
+        "--confirm",
+        choices=['yes', 'no'],
+        default='yes',
+        help="Skip confirmation prompt if set to yes (default: no)"
+    )
+    parser.add_argument(
         "--m",
         type=float,
         default=1,
@@ -471,7 +477,7 @@ def main():
     )
     print(f"Output files will be saved with the basename:\n\t {basename}\n")
 
-    if questionary.confirm("Do you want to continue the simulation?").ask():
+    if config['confirm'] == 'no' or questionary.confirm("Do you want to continue the simulation?").ask():
         print("Continuing simulation...")
         x, u, v = solve_pde_system(
             Nx=config["meshsize"],
