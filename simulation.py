@@ -4,6 +4,7 @@
 import argparse
 import math
 
+import termplotlib as tpl
 from tqdm import tqdm  # Import tqdm for progress bar
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -89,14 +90,11 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
                 * (1 - mu / (mu - lambda_n))
                 - a * alpha
             )
-            print(f"sigma_{n}=", sigma_n)
+            print(f"sigma_{n+1}=", sigma_n)
             if sigma_n > 0:
                 positive_sigmas.append(sigma_n)  # Store positive sigma value
 
-        # Print out positive_sigmas
-        print("Positive sigmas:", *positive_sigmas)
-        # print(f"For n={n+1} the value of sigma_{n+1}={sigma_n}")
-        # print("Positive sigma values:", positive_sigmas)
+        # print(*(f"sigma_{i + 2} = {sigma}" for i, sigma in enumerate(positive_sigmas)))
 
     x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
 
@@ -104,11 +102,16 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     if EigenIndex == 0:
         if len(positive_sigmas) > 0:
             EigenIndex = 2
+            print("Second eigenfunction is chosen.")
         else:
             EigenIndex = 1
+            print("first eigenfunction is chosen.")
 
     u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(np.float64)
     print(f"Initial vector of u = {u}")
+    fig = tpl.figure()
+    fig.plot(range(len(u)), u, label="u", width=60, height=20)
+    fig.show()
 
     times_to_plot = np.arange(0, T + dt, 0.01)
     current_time = 0
@@ -271,7 +274,7 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     # Create a constant plane at height uStar
     U_grid = np.full_like(T_grid, uStar)
 
-    ax_3d.set_xlabel(r"Time $f$")
+    ax_3d.set_xlabel(r"Time $t$")
     ax_3d.set_ylabel(r"Space $x$")
     ax_3d.set_zlabel(r"$u(t,x)$")
     # ax_3d.set_title("3D Plot of u over Time and Space")
