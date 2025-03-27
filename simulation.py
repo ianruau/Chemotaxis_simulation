@@ -122,7 +122,8 @@ def solve_pde_system(
     u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(
         np.float64
     )
-    print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
+    # print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
+    print(f"Initial vector of u: \n{' '.join(f'{x:.3f}' for x in u)}\n")
     fig = tpl.figure()
     fig.plot(range(len(u)), u, label="u_0", width=100, height=36)
     fig.show()
