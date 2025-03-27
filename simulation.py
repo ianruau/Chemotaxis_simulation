@@ -10,6 +10,7 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 
+from tabulate import tabulate
 import questionary
 from matplotlib import rc
 from scipy.linalg import solve_banded
@@ -40,9 +41,10 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     gamma = config["gamma"]
 
     # Compute the asymptotic solution
+    print("\n# Computing the asymptotic solutions and related constants")
     uStar = (a / b) ** (1 / alpha)
     vStar = nu / mu * (a / b) ** (gamma / alpha)
-    print(f"Asymptotic solutions: u* = {uStar:.2f} and v* = {vStar:.2f}")
+    print(f"Asymptotic solutions: u^* = {uStar:.2f} and v^* = {vStar:.2f}")
     ChiStar = (
         (1 + vStar) ** beta
         * (np.sqrt(a * alpha) + np.sqrt(mu)) ** 2
@@ -58,22 +60,26 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     print(f"Chi** = {ChiDStar:.2f} and beta tilde = {betaTilde:.2f}")
 
     # Compute the value of Chi*
-    Lambdas = np.zeros(500)
-    Chi_vector = np.zeros(500)
-    for n in range(1, 500):
-        Lambdas[n] = -((n * np.pi / L) ** 2)
+    print("\n# Computing Chi*\n")
+    Lambdas = np.zeros(6)
+    Chi_vector = np.zeros(6)
+    for n in range(6):
+        Lambdas[n] = -(((n + 1) * np.pi / L) ** 2)
         Chi_vector[n] = (
             ((a * alpha - Lambdas[n]) / (nu * gamma))
             * (((1 + vStar) ** beta) / ((uStar) ** (m + gamma - 1)))
             * ((Lambdas[n] - mu) / Lambdas[n])
         )
-    # print("Chi_Vector=", Chi_vector)
-    Chi_vector[0] = max(Chi_vector)
-    # print("Chi_Vector=", Chi_vector)
+    # print(*(f"Lambda_{i + 2}^* = {lam}\n" for i, lam in enumerate(Lambdas)))
+    # print(*(f"Chi_{0,i + 2}^* = {chi}\n" for i, chi in enumerate(Chi_vector)))
+    data = [[f"Lambda_{i + 2}^*", f"{lam:.3f}", f"Chi_{0,i + 2}^*", f"{chi:.3f}"] for i, (lam, chi) in enumerate(zip(Lambdas, Chi_vector))]
+    headers = ["Lambda", "Value", "Chi", "Value"]
+    print(tabulate(data, headers=headers, tablefmt="grid"))
     ChiStar = min(Chi_vector)
-    print("Chi*=", min(Chi_vector))
+    print(f"\nChi* = {ChiStar:.3f} and the choice of chi = {chi:.3f}")
 
     # Computation of the eigenvalues lambda_n and sigma_n
+    print("\n# Computing singma_n\n")
     positive_sigmas = []  # List to store positive sigma values
     if chi >= ChiStar:
         n = 0
@@ -99,16 +105,17 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
 
     # Initial condition for u
+    print("\n# Initial value u_0\n")
     if EigenIndex == 0:
         if len(positive_sigmas) > 0:
             EigenIndex = 2
-            print("Second eigenfunction is chosen.")
+            print("Second (first nonconstant) eigenfunction is chosen.\n")
         else:
             EigenIndex = 1
-            print("first eigenfunction is chosen.")
+            print("first (constant) eigenfunction is chosen.\n")
 
     u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(np.float64)
-    print(f"Initial vector of u = {u}\n")
+    print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
     fig = tpl.figure()
     fig.plot(range(len(u)), u, label="u_0", width=100, height=36)
     fig.show()
@@ -133,7 +140,8 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     break_outer_loop = False
 
     # for n in range(1000):
-    for n in tqdm(range(Nt), desc="Processing iterations"):
+    print("\n# Simulations now ...")
+    for n in tqdm(range(Nt), desc="Progress..."):
         # print('n=',n)
         u_new = np.copy(u).astype(np.float64)
 
@@ -260,6 +268,7 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     )
 
     # Save the animation as an MP4 file
+    print("# Saving video and image files.")
     writer = animation.FFMpegWriter(fps=5, metadata=dict(artist="Me"), bitrate=1800)
     ani.save(f"{FileBaseName}.mp4", writer=writer)
 
@@ -284,7 +293,8 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     ax_3d.set_title(
         rf"""
         $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
-        $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T}.
+        $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
+        $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
         """,
         fontsize=10,
     )
