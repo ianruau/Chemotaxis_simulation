@@ -4,9 +4,11 @@
 import argparse
 import math
 
+from tqdm import tqdm  # Import tqdm for progress bar
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
+
 import questionary
 from matplotlib import rc
 from scipy.linalg import solve_banded
@@ -87,9 +89,9 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
                 * (1 - mu / (mu - lambda_n))
                 - a * alpha
             )
+            print(f"sigma_{n}=", sigma_n)
             if sigma_n > 0:
                 positive_sigmas.append(sigma_n)  # Store positive sigma value
-                print(f"sigma_{n}=", sigma_n)
 
         # Print out positive_sigmas
         print("Positive sigmas:", *positive_sigmas)
@@ -128,7 +130,7 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     break_outer_loop = False
 
     # for n in range(1000):
-    for n in range(Nt):
+    for n in tqdm(range(Nt), desc="Processing iterations"):
         # print('n=',n)
         u_new = np.copy(u).astype(np.float64)
 
@@ -336,7 +338,7 @@ def parse_args():
         "--chi", type=float, default=-1, help="Parameter chi (default: -1)"
     )
     parser.add_argument("--a", type=float, default=1, help="Parameter a (default: 1)")
-    parser.add_argument("--b", type=float, default=2, help="Parameter b (default: 2)")
+    parser.add_argument("--b", type=float, default=1, help="Parameter b (default: 1)")
     parser.add_argument("--mu", type=float, default=1, help="Parameter mu (default: 1)")
     parser.add_argument("--nu", type=float, default=1, help="Parameter nu (default: 1)")
     parser.add_argument(
