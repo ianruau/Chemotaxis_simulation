@@ -71,9 +71,9 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     print("Chi*=", min(Chi_vector))
 
     # Computation of the eigenvalues lambda_n and sigma_n
+    positive_sigmas = []  # List to store positive sigma values
     if chi >= ChiStar:
         n = 0
-        positive_sigmas = []  # List to store positive sigma values
         sigma_n = 1.0
         while sigma_n > 0:
             n += 1
@@ -99,6 +99,12 @@ def solve_pde_system(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName=
     x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
 
     # Initial condition for u
+    if EigenIndex == 0:
+        if len(positive_sigmas) > 0:
+            EigenIndex = 2
+        else:
+            EigenIndex = 1
+
     u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(np.float64)
     print(f"Initial vector of u = {u}")
 
