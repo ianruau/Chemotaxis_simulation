@@ -259,17 +259,21 @@ def solve_pde_system(
     u_data = np.array(u_data).T  # Convert list to numpy array and transpose
     time_data = np.array(time_data)  # Convert list to numpy array
 
+    SetupDes = rf"""
+    $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha};
+    $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
+    $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
+    $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
+    """
+
     def update(frame):
         line.set_ydata(u_data[:, frame])
         # ax.set_title(f"Evolution of u over time (t={time_data[frame]:.2f}s)")
-        ax.set_title(
-            rf"""
-            $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
-            $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T}.
-            """,
-            fontsize=10,
-        )
+        ax.set_title(SetupDes, fontsize=10, pad=-40)
         return (line,)
+
+    # Adjust layout to make space for the title
+    fig.subplots_adjust(top=0.80)  # Increase the top margin to fit the title
 
     ani = animation.FuncAnimation(
         fig, update, frames=len(time_data), interval=50, blit=True
@@ -278,9 +282,10 @@ def solve_pde_system(
     # Save the animation as an MP4 file
     print("\n# Saving video and image files.\n")
     writer = animation.FFMpegWriter(
-        fps=5, metadata=dict(artist="Me"), bitrate=1800
-    )
+        fps=5, metadata=dict(
+            artist="Me"), bitrate=1800)
     with tqdm(total=100, desc="Saving", unit="frame") as pbar:
+
         def progress_callback(i, n):
             pbar.total = n
             pbar.update(i - pbar.n)
@@ -294,7 +299,7 @@ def solve_pde_system(
     # plt.show()
 
     # 3D Plot
-    fig_3d = plt.figure()
+    fig_3d = plt.figure(dpi=300)
     ax_3d = fig_3d.add_subplot(111, projection="3d")
     T_grid, X_grid = np.meshgrid(
         time_data, x, indexing="xy")  # Ensure consistent shape
@@ -314,14 +319,10 @@ def solve_pde_system(
     ax_3d.plot_surface(
         T_grid, X_grid, U_grid, alpha=0.5, rstride=100, cstride=100, color="r"
     )
-    ax_3d.set_title(
-        rf"""
-        $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha}; $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
-        $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
-        $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
-        """,
-        fontsize=10,
-    )
+    ax_3d.set_title(SetupDes, fontsize=10, pad=-80)
+
+    # Adjust layout to ensure the title fits
+    fig_3d.subplots_adjust(top=0.80)  # Reserve more space at the top
 
     # Save the plot as PNG and JPEG
     fig_3d.savefig(f"{FileBaseName}.png")
