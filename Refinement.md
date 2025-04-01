@@ -462,3 +462,90 @@ Would you like me to explain any specific part in more detail or help implement 
 
 
 
+# More suggestions from ChatGPT
+```
+import numpy as np
+from scipy.integrate import solve_ivp
+import matplotlib.pyplot as plt
+
+# Parameters
+D = 1.0
+L = 1.0
+Nx = 50
+dx = L / (Nx - 1)
+x = np.linspace(0, L, Nx)
+
+# Initial condition
+u0 = np.sin(np.pi * x)
+
+# Define spatial derivative (Laplacian with Neumann BC, second-order)
+def laplacian(u):
+    u_xx = np.zeros_like(u)
+    u[0] = (4/3) * u[1] - (1/3) * u[2]   # 2nd-order Neumann BC
+    u[-1] = (4/3) * u[-2] - (1/3) * u[-3]
+    u_xx[1:-1] = (u[2:] - 2*u[1:-1] + u[:-2]) / dx**2
+    return u_xx
+
+# Right-hand side for ODE solver
+def rhs(t, u):
+    return D * laplacian(u)
+
+# Solve ODE system using SciPy's Runge-Kutta 45 (adaptive)
+sol = solve_ivp(rhs, [0, 0.5], u0, method='RK45', t_eval=[0.5])
+
+# Plot
+plt.plot(x, sol.y[:, -1], label='u(x, T)')
+plt.xlabel('x')
+plt.ylabel('u')
+plt.title('Heat Equation + Neumann BC via SciPy')
+plt.legend()
+plt.show()
+``` 
+The following is using RC4 itme and FD space
+
+```
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Parameters
+D = 1.0          # diffusion coefficient
+L = 1.0          # domain length
+Nx = 50          # number of spatial points
+dx = L / (Nx - 1)
+x = np.linspace(0, L, Nx)
+
+dt = 0.001       # time step
+T = 0.5          # final time
+Nt = int(T/dt)   # number of time steps
+
+# Initial condition
+u = np.sin(np.pi * x)  # you can choose any smooth function
+
+def laplacian(u):
+    u_xx = np.zeros_like(u)
+    # Neumann BC using ghost points
+    u[0] = u[1]  # du/dx(0) = 0 --> u[0] = u[1]
+    u[-1] = u[-2]  # du/dx(1) = 0 --> u[-1] = u[-2]
+    u_xx[1:-1] = (u[2:] - 2*u[1:-1] + u[:-2]) / dx**2
+    return u_xx
+
+# RK4 time integration
+def rk4_step(u):
+    k1 = D * laplacian(u)
+    k2 = D * laplacian(u + 0.5*dt*k1)
+    k3 = D * laplacian(u + 0.5*dt*k2)
+    k4 = D * laplacian(u + dt*k3)
+    return u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+
+# Time-stepping loop
+for n in range(Nt):
+    u = rk4_step(u)
+
+# Plot result
+plt.plot(x, u, label='u(x, T)')
+plt.xlabel('x')
+plt.ylabel('u')
+plt.legend()
+plt.title('Heat Equation with Neumann BC (RK4 time)')
+plt.show()
+```
