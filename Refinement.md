@@ -463,7 +463,8 @@ Would you like me to explain any specific part in more detail or help implement 
 
 
 # More suggestions from ChatGPT
-```
+
+```python
 import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
@@ -503,7 +504,7 @@ plt.show()
 ``` 
 The following is using RC4 itme and FD space
 
-```
+```python
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -550,7 +551,8 @@ plt.title('Heat Equation with Neumann BC (RK4 time)')
 plt.show()
 ```
 Sample codes for solving v
-```
+
+```python
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
