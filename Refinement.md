@@ -549,3 +549,47 @@ plt.legend()
 plt.title('Heat Equation with Neumann BC (RK4 time)')
 plt.show()
 ```
+Sample codes for solving v
+```
+import numpy as np
+import scipy.sparse as sp
+import scipy.sparse.linalg as spla
+import matplotlib.pyplot as plt
+
+# Grid
+Nx = 50
+L = 1.0
+dx = L / (Nx - 1)
+x = np.linspace(0, L, Nx)
+
+# Example u perturbation (from previous step)
+u = np.sin(np.pi * x) + 1
+
+# Construct Laplacian matrix with Neumann BC
+main_diag = -2 * np.ones(Nx)
+off_diag = np.ones(Nx - 1)
+
+# Build sparse matrix
+diagonals = [main_diag, off_diag, off_diag]
+A = sp.diags(diagonals, [0, -1, 1], format='csc') / dx**2
+
+# Neumann BC adjustments
+A[0, 0] = -1 / dx**2
+A[0, 1] = 1 / dx**2
+A[-1, -1] = -1 / dx**2
+A[-1, -2] = 1 / dx**2
+
+# Right-hand side
+b = -u  # notice the minus because equation is -v_xx + u = 0
+
+# Solve linear system
+v = spla.spsolve(A, b)
+
+# Plot
+plt.plot(x, v, label="v(x)")
+plt.xlabel("x")
+plt.ylabel("v")
+plt.legend()
+plt.title("Solution to -v_xx + u = 0 with Neumann BC")
+plt.show()
+```
