@@ -12,6 +12,8 @@ import questionary
 import termplotlib as tpl
 from matplotlib import rc
 from scipy.linalg import solve_banded
+from scipy.sparse.linalg import spsolve
+from scipy.sparse import diags
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
 
@@ -22,6 +24,55 @@ rc("text", usetex=True)
 # TO LIST:
 # 1. Write CLI interface
 
+
+def solve_v(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
+    mu = config["mu"]
+    nu = config["nu"]
+    gamma = config["gamma"]
+    dx = L /Nx
+
+
+    # Define the diagonals
+    main_diag = np.full(Nx + 1, -(2 + mu * dx**2))
+    upper_diag = np.ones(Nx)
+    lower_diag = np.ones(Nx)
+
+    # Special handling for Neumann BC
+    upper_diag[0] = 2
+    lower_diag[-1] = 2
+
+    # Create sparse matrix
+    diagonals = [main_diag, upper_diag, lower_diag]
+    offsets = [0, 1, -1]
+    A = diags(diagonals, offsets, format='csr')
+
+
+    # Define right-hand side
+    b = -(dx**2) * nu * vector_u**gamma
+
+    # Solve system
+    v = spsolve(A, b)
+
+    # Print matrix A in a readable format
+    if diagnostic:
+        print("\nMatrix A:")
+        print("-" * 50)
+        A_dense = A.toarray()
+        for i in range(Nx + 1):
+            row = [f"{x:8.3f}" for x in A_dense[i]]
+            print(f"Row {i:2d}: {' '.join(row)}")
+        print("-" * 50 + "\n")
+        # Print out v in the same format
+        # print("\nVector v:")
+        row = [f"{x:8.3f}" for x in vector_u]
+        print(f"vector_u {i:2d}: {' '.join(row)}")
+        row = [f"{x:8.3f}" for x in b]
+        print(f"b {i:2d}: {' '.join(row)}")
+        row = [f"{x:8.3f}" for x in v]
+        print(f"v {i:2d}: {' '.join(row)}")
+        print("-" * 50 + "\n")
+
+    return v
 
 def solve_pde_system(
     L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"
@@ -153,44 +204,23 @@ def solve_pde_system(
         # print('n=',n)
         u_new = np.copy(u).astype(np.float64)
 
-        diagonal = np.ones(int(Nx) + 1) * (2 / dx**2 + mu)
-        diagonal[0] -= 1 / dx**2
-        diagonal[-1] -= 1 / dx**2
-        offdiagonal = np.ones(int(Nx)) * (-1 / dx**2)
-        A_inv = inverse_tridiagonal(diagonal, offdiagonal)
+        # v = solve_v(L=L, Nx=Nx, vector_u=u_new, diagnostic=True)
+        v = solve_v(L=L, Nx=Nx, vector_u=u_new)
 
-        # Check the stability of the inverse
-        condition_number = np.linalg.cond(A_inv)
-        threshold = 1e10
 
-        # if condition_number > threshold:
-        #     print(
-        #         "Warning: The matrix inverse may not be stable. Condition number:",
-        #         condition_number,
-        #     )
-        # else:
-        #     print(
-        #         "The matrix inverse is stable. Condition number:",
-        #         condition_number)
+        # diagonal = np.ones(int(Nx) + 1) * (2 / dx**2 + mu)
+        # diagonal[0] -= 1 / dx**2
+        # diagonal[-1] -= 1 / dx**2
+        # offdiagonal = np.ones(int(Nx)) * (-1 / dx**2)
 
-        v = np.dot(A_inv, nu * u**gamma)
-
-        # v = np.zeros(int(Nx) + 1)
-        # for i in range(1, Nx):  # Loop for v
-        #     # v_xx = (v[i + 1] - 2*v[i] + v[i-1]) / dx**2
-        #     # print('vxx=',v_xx)
-        #     # # v[i] = v_xx - v[i] + u[i]
-        #     # v[i] = v_xx + u[i]**gamma
-        #     v[i] = (v[i + 1] + v[i - 1] + nu * dx**2 * u[i] ** gamma) / (
-        #         2 + mu * dx**2
-        #     )
-        # print(f"vector = {u**gamma}")
+        # A_inv = inverse_tridiagonal(diagonal, offdiagonal)
+        # v = np.dot(A_inv, nu * u**gamma)
 
         # Neumann boundary conditions for v
         # v[0] = v[1]
         # v[-1] = v[-2]
-        v[0] = (4*v[1] - v[2])/3  # Left boundary
-        v[-1] = (4*v[-2] - v[-3])/3  # Right boundary
+        # v[0] = (4 * v[1] - v[2])/3  # Left boundary
+        # v[-1] = (4 * v[-2] - v[-3])/3  # Right boundary
 
         for i in range(1, Nx):  # Loop for u
             v_x = (v[i + 1] - v[i - 1]) / (2 * dx)
@@ -395,6 +425,12 @@ def parse_args():
         choices=['yes', 'no'],
         default='yes',
         help="Skip confirmation prompt if set to yes (default: no)"
+    )
+    parser.add_argument(
+        "--generate_video",
+        choices=['yes', 'no'],
+        default='no',
+        help="Generate MP4 animation (default: yes)"
     )
     parser.add_argument(
         "--m",
