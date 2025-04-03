@@ -12,6 +12,7 @@ import questionary
 import termplotlib as tpl
 from matplotlib import rc
 from scipy.linalg import solve_banded
+from scipy.sparse.linalg import spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
 
@@ -22,17 +23,119 @@ rc("text", usetex=True)
 # TO LIST:
 # 1. Write CLI interface
 
+# Parameters
+L = 1.0           # Domain length
+N = 100           # Number of spatial points
+dx = L / (N - 1)  # Spatial step
+dt = 0.0001       # Time step (adjust for stability)
+T = 0.1           # Total simulation time
+steps = int(T / dt)
+x = np.linspace(0, L, N)
 
-m = 1
-beta = 2
-alpha = 1
-chi = 10
-a = 1
-b = 1
-mu = 1
-nu = 1
-gamma = 1
+# Constants for the PDE
+chi = 1.0
+m = 2.0
+beta = 1.0
+a = 1.0
+b = 1.0
+alpha = 1.0
 
+# Initial conditions
+u0 = np.exp(-(x - 0.5)**2 / 0.01)
+u = u0.copy()
+
+# Construct matrix A for v: v_xx - v = -u (Neumann BCs)
+diagonals = [-2 / dx**2 - 1, 1 / dx**2, 1 / dx**2]
+A = diags(diagonals, [0, -1, 1], shape=(N, N), format='csc')
+# Apply Neumann BCs (v_x=0 at boundaries)
+A[0, 0] = -1 / dx**2 - 1  # v_0 = v_1
+A[0, 1] = 1 / dx**2
+A[-1, -1] = -1 / dx**2 - 1  # v_N = v_{N-1}
+A[-1, -2] = 1 / dx**2
+
+# Function to compute derivatives with Neumann BCs
+def compute_derivatives(f):
+    f_x = np.zeros_like(f)
+    f_xx = np.zeros_like(f)
+    # Central differences for interior
+    f_x[1:-1] = (f[2:] - f[:-2]) / (2 * dx)
+    f_xx[1:-1] = (f[2:] - 2 * f[1:-1] + f[:-2]) / dx**2
+    # Neumann BCs (f_x=0 at boundaries)
+    f_x[0] = (f[1] - f[0]) / dx
+    f_x[-1] = (f[-1] - f[-2]) / dx
+    f_xx[0] = (f[1] - f[0]) / dx**2
+    f_xx[-1] = (f[-2] - f[-1]) / dx**2
+    return f_x, f_xx
+
+# Right-hand side function F(u, v)
+def F(u, v):
+    u_x, u_xx = compute_derivatives(u)
+    v_x, v_xx = compute_derivatives(v)
+    
+    term1 = u_xx  # Diffusion
+    
+    term2 = -chi * m * (u**(m-1) / (1 + v)**beta) * u_x * v_x  # Cross-term
+    
+    term3 = beta * chi * (u**m / (1 + v)**(beta + 1)) * (v_x)**2  # Nonlinear gradient
+    
+    term4 = -chi * (u**m / (1 + v)**beta) * v_xx  # Coupling to v_xx
+    
+    term5 = a * u - b * u**(1 + alpha)  # Reaction
+    
+    return term1 + term2 + term3 + term4 + term5
+
+# Time-stepping (RK4)
+for step in range(steps):
+    # RK4 Stage 1: k1 = F(u, v) at t_n
+    v = spsolve(A, -u)  # Solve for v using current u
+    k1 = F(u, v)
+    
+    # RK4 Stage 2: k2 = F(u + dt/2*k1, v_new) at t_n + dt/2
+    u_temp = u + 0.5 * dt * k1
+    v_temp = spsolve(A, -u_temp)  # Recompute v for intermediate u
+    k2 = F(u_temp, v_temp)
+    
+    # RK4 Stage 3: k3 = F(u + dt/2*k2, v_new) at t_n + dt/2
+    u_temp = u + 0.5 * dt * k2
+    v_temp = spsolve(A, -u_temp)
+    k3 = F(u_temp, v_temp)
+    
+    # RK4 Stage 4: k4 = F(u + dt*k3, v_new) at t_n + dt
+    u_temp = u + dt * k3
+    v_temp = spsolve(A, -u_temp)
+    k4 = F(u_temp, v_temp)
+    
+    # Update u
+    u += dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+    
+    # Enforce Neumann BCs (optional, but safe)
+    u[0] = u[1]
+    u[-1] = u[-2]
+
+
+def solve_v(L=1, Nx=50, vector_u):
+    dx = L /Nx # Space step
+
+    # Initialize a zero matrix
+    A = np.zeros((Nx, Nx))
+
+    # Define the main diagonal
+    np.fill_diagonal(A, -(2 + dx ** 2))
+
+    # Define the upper diagonal
+    np.fill_diagonal(A[:-1, 1:], 1)
+    A[0,1] = 2
+
+    # Define the lower diagonal
+    np.fill_diagonal(A[1:, :-1], 1)
+    A[-1,-2] = 2
+
+    # Define the right-hand side vector b
+    b = -(dx ** 2) * vector_u  # Example b
+
+    # Solve Ax = b
+    v = spsolve(A, b)
+    return v
 
 def RK_solve_pde_system(L=1, Nx=50, T=5):
     Nt = (
