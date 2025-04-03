@@ -358,7 +358,7 @@ def solve_pde_RK(
 
     print("\n# Simulations now ...\n")
     u_data = []
-    u_data.append(u)
+    u_data.append(np.copy(u))
     for n in tqdm(range(Nt), desc="Progress..."):
         # RK4 Stage 1: k1 = F(u, v) at t_n
         k1 = F(u, L, Nx)
@@ -383,7 +383,10 @@ def solve_pde_RK(
         # u[-1] = u[-2]
         u[0] = (4 * u[1] - u[2]) / 3  # Left boundary
         u[-1] = (4 * u[-2] - u[-3]) / 3  # Right boundary
-        u_data.append(u)
+        u_data.append(np.copy(u))
+
+        if n % (Nt//5) == 0:  # Print every 20% of simulation
+            print(f"Step {n}, u[middle] = {u[len(u)//2]:.6f}")
 
     # Convert lists to numpy arrays
     u_data = np.array(u_data).T  # Convert list to numpy array and transpose
