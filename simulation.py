@@ -227,7 +227,7 @@ def solve_pde_system(
 
     # Create animation if requested
     if config.get('generate_video', 'yes') == 'yes':
-        create_animation(x, u_data, time_data, uStar, SetupDes, FileBaseName)
+        create_animation(u_data, time_data, uStar, SetupDes, FileBaseName)
 
     # print(
     #     f"""
@@ -356,6 +356,11 @@ def solve_pde_RK(
     # print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
     print(f"Initial vector of u: \n{' '.join(f'{x:.3f}' for x in u)}\n")
 
+    # Add terminal plot of initial condition
+    fig = tpl.figure()
+    fig.plot(range(len(u)), u, label="u_0", width=100, height=36)
+    fig.show()
+
     print("\n# Simulations now ...\n")
     u_data = []
     u_data.append(np.copy(u))
@@ -385,16 +390,12 @@ def solve_pde_RK(
         u[-1] = (4 * u[-2] - u[-3]) / 3  # Right boundary
         u_data.append(np.copy(u))
 
-        if n % (Nt//5) == 0:  # Print every 20% of simulation
-            print(f"Step {n}, u[middle] = {u[len(u)//2]:.6f}")
+        # if n % (Nt//5) == 0:  # Print every 20% of simulation
+        #     print(f"Step {n}, u[middle] = {u[len(u)//2]:.6f}")
 
     # Convert lists to numpy arrays
     u_data = np.array(u_data).T  # Convert list to numpy array and transpose
     time_data = np.arange(Nt + 1) * dt
-    # time_data = np.array(time_data)  # Convert list to numpy array
-
-    print('u_data = ', u_data)
-    print('time_data=', time_data)
 
     # Setup description for the title
     SetupDes = rf"""
@@ -409,16 +410,7 @@ def solve_pde_RK(
 
     # Create animation if requested
     if config.get('generate_video', 'yes') == 'yes':
-        create_animation(x, u_data, time_data, uStar, SetupDes, FileBaseName)
-
-    # print(
-    #     f"""
-    # Output files saved:
-    # - Image: {FileBaseName}.png
-    # - Image: {FileBaseName}.jpeg
-    # {f'- Video: {FileBaseName}.mp4' if config.get('generate_video', 'yes') == 'yes' else ''}
-    # """
-    # )
+        create_animation(u_data, time_data, uStar, SetupDes, FileBaseName)
 
     return x, u
 
@@ -513,12 +505,18 @@ def create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName):
     # Save the plot as PNG and JPEG
     fig_3d.savefig(f"{FileBaseName}.png")
     fig_3d.savefig(f"{FileBaseName}.jpeg")
-    print(f"Static plots saved as: {FileBaseName}.png and {FileBaseName}.jpeg")
+    print(
+        f"""
+    Output files saved:
+    - Image: {FileBaseName}.png
+    - Image: {FileBaseName}.jpeg
+    """
+    )
 
 
-def create_animation(x, u_data, time_data, uStar, SetupDes, FileBaseName):
+def create_animation(u_data, time_data, uStar, SetupDes, FileBaseName):
     """Create and save animation"""
-    fig, ax = plt.subplots(dpi=300)
+    fig, ax = plt.subplots(dpi=300)  # Ensure ax is an AxesSubplot
     fig.subplots_adjust(top=0.80)
 
     line, = ax.plot(u_data[:, 0], label="u(t)")
@@ -532,23 +530,17 @@ def create_animation(x, u_data, time_data, uStar, SetupDes, FileBaseName):
         return (line,)
 
     ani = animation.FuncAnimation(
-        fig, update, frames=len(time_data), interval=50, blit=True
+        fig, update, frames=len(time_data), interval=50, blit=False
     )
 
     print("\n# Saving video file.\n")
     writer = animation.FFMpegWriter(
         fps=5, metadata=dict(artist="Me"), bitrate=1800
     )
-    with tqdm(total=100, desc="Saving", unit="frame") as pbar:
-        def progress_callback(i, n):
-            pbar.total = n
-            pbar.update(i - pbar.n)
+    with tqdm(total=len(time_data), desc="Saving", unit="frame") as pbar:
+        ani.save(f"{FileBaseName}.mp4", writer=writer)
+        pbar.update(len(time_data))
 
-        ani.save(
-            f"{FileBaseName}.mp4",
-            writer=writer,
-            progress_callback=progress_callback,
-        )
     print(f"Video saved as: {FileBaseName}.mp4")
 
 
