@@ -304,36 +304,81 @@ def solve_pde_system(
     $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
     """
 
-    # Create figure and axis
-    fig, ax = plt.subplots(dpi=300)  # Increased dpi for higher resolution
+    # Create static plots
+    create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName)
 
-    # Adjust layout to make space for the title
-    fig.subplots_adjust(top=0.80)  # Increase the top margin to fit the title
+    # Create animation if requested
+    if config.get('generate_video', 'yes') == 'yes':
+        create_animation(x, u_data, time_data, uStar, SetupDes, FileBaseName)
 
-    # Plot initialization
-    line, = ax.plot(u_data[:, 0], label="u(t)")  # Initialize the line plot
-    ax.set_ylim(u_data.min() - 0.1, u_data.max() + 0.1)  # Set y-axis limits
-    ax.axhline(y=uStar, color="r", linestyle="--", label=r"$u^*$")  # Add uStar line
-    ax.legend(loc="upper right")  # Add legend
+    # print(
+    #     f"""
+    # Output files saved:
+    # - Image: {FileBaseName}.png
+    # - Image: {FileBaseName}.jpeg
+    # {f'- Video: {FileBaseName}.mp4' if config.get('generate_video', 'yes') == 'yes' else ''}
+    # """
+    # )
 
-    # Update function for animation
+    return x, u, v
+
+
+def create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName):
+    """Create and save static plots (2D and 3D)"""
+    # 3D Plot
+    fig_3d = plt.figure(dpi=300)
+    ax_3d = fig_3d.add_subplot(111, projection="3d")
+    T_grid, X_grid = np.meshgrid(time_data, x, indexing="xy")
+    ax_3d.plot_surface(T_grid, X_grid, u_data, cmap="viridis")
+
+    # Create a constant plane at height uStar
+    U_grid = np.full_like(T_grid, uStar)
+
+    ax_3d.set_xlabel(r"Time $t$")
+    ax_3d.set_ylabel(r"Space $x$")
+    ax_3d.set_zlabel(r"$u(t,x)$")
+    ax_3d.set_zlim(uStar, u_data.max())
+    ax_3d.set_zticks(np.linspace(uStar, u_data.max(), 5))
+    ax_3d.zaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+
+    ax_3d.plot_surface(
+        T_grid, X_grid, U_grid, alpha=0.5, rstride=100, cstride=100, color="r"
+    )
+
+    ax_3d.set_title(SetupDes, fontsize=10, pad=-80)
+    fig_3d.subplots_adjust(top=0.80)
+    plt.tight_layout()
+
+    # Save the plot as PNG and JPEG
+    fig_3d.savefig(f"{FileBaseName}.png")
+    fig_3d.savefig(f"{FileBaseName}.jpeg")
+    print(f"Static plots saved as: {FileBaseName}.png and {FileBaseName}.jpeg")
+
+
+def create_animation(x, u_data, time_data, uStar, SetupDes, FileBaseName):
+    """Create and save animation"""
+    fig, ax = plt.subplots(dpi=300)
+    fig.subplots_adjust(top=0.80)
+
+    line, = ax.plot(u_data[:, 0], label="u(t)")
+    ax.set_ylim(u_data.min() - 0.1, u_data.max() + 0.1)
+    ax.axhline(y=uStar, color="r", linestyle="--", label=r"$u^*$")
+    ax.legend(loc="upper right")
+
     def update(frame):
         line.set_ydata(u_data[:, frame])
         ax.set_title(SetupDes, fontsize=10, pad=-40)
         return (line,)
 
-    # Create animation
     ani = animation.FuncAnimation(
         fig, update, frames=len(time_data), interval=50, blit=True
     )
 
-    # Save the animation as an MP4 file
-    print("\n# Saving video and image files.\n")
+    print("\n# Saving video file.\n")
     writer = animation.FFMpegWriter(
         fps=5, metadata=dict(artist="Me"), bitrate=1800
     )
     with tqdm(total=100, desc="Saving", unit="frame") as pbar:
-
         def progress_callback(i, n):
             pbar.total = n
             pbar.update(i - pbar.n)
@@ -343,55 +388,7 @@ def solve_pde_system(
             writer=writer,
             progress_callback=progress_callback,
         )
-    # plt.show()
-
-    # 3D Plot
-    fig_3d = plt.figure(dpi=300)
-    ax_3d = fig_3d.add_subplot(111, projection="3d")
-    T_grid, X_grid = np.meshgrid(
-        time_data, x, indexing="xy")  # Ensure consistent shape
-    ax_3d.plot_surface(
-        T_grid,
-        X_grid,
-        u_data,
-        cmap="viridis")  # Ensure correct shape
-
-    # Create a constant plane at height uStar
-    U_grid = np.full_like(T_grid, uStar)
-
-    ax_3d.set_xlabel(r"Time $t$")
-    ax_3d.set_ylabel(r"Space $x$")
-    ax_3d.set_zlabel(r"$u(t,x)$")
-    ax_3d.set_zlim(uStar, u_data.max())  # Set z-axis limits to match u_data
-    ax_3d.set_zticks(np.linspace(uStar, u_data.max(), 5))  # Set 5 evenly spaced ticks
-    ax_3d.zaxis.set_major_formatter(FormatStrFormatter("%.3f"))  # Format ticks to 3 decimal places
-
-    ax_3d.plot_surface(
-        T_grid, X_grid, U_grid, alpha=0.5, rstride=100, cstride=100, color="r"
-    )
-
-    ax_3d.set_title(SetupDes, fontsize=10, pad=-80)
-
-    # Adjust layout to ensure the title fits
-    fig_3d.subplots_adjust(top=0.80)  # Reserve more space at the top
-
-    # Adjust layout to avoid overlaps
-    plt.tight_layout()
-
-    # Save the plot as PNG and JPEG
-    fig_3d.savefig(f"{FileBaseName}.png")
-    fig_3d.savefig(f"{FileBaseName}.jpeg")
-
-    print(
-        f"""
-    Output files saved:
-    - Video: {FileBaseName}.mp4
-    - Image:  {FileBaseName}.png
-    - Image: {FileBaseName}.jpeg
-    """
-    )
-
-    return x, u, v
+    print(f"Video saved as: {FileBaseName}.mp4")
 
 
 def inverse_tridiagonal(diagonal, offdiagonal):
