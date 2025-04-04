@@ -8,3 +8,4 @@ a=1_b=2_alpha=1_m=3_beta=1_chi=-1_mu=1_nu=1_gamma=1_meshsize=50_time=0-4.jpeg
 
 test.log
 BatchExp/simulation_results.html
+BatchExp/upload.sh
