@@ -457,11 +457,11 @@ def F(u, L, Nx):
     # term5 = a * u - b * u ** (1 + alpha)  # Reaction
     term1 = u_xx
 
-    term2 = v + v_x
+    term2 = v_x
 
-    term3 = (np.pi**2 - 1 - 1 / (1 + np.pi**2)) * np.cos(np.pi * x)
+    term3 = (np.pi**2 - 1 / (1 + np.pi**2) - 1) * v
 
-    return term1 + term2 + term3 + term4 + term5
+    return term1 + term2 + term3
 
 
 # Function to compute derivatives with Neumann BCs
