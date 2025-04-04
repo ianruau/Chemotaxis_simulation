@@ -58,7 +58,8 @@ def solve_v(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
     A = diags(diagonals, offsets, format="csr")
 
     # Define right-hand side
-    b = -(dx**2) * nu * vector_u**gamma
+    # b = -(dx**2) * nu * vector_u**gamma
+    b = -(dx**2) * vector_u
 
     # Solve system
     v = spsolve(A, b)
@@ -485,40 +486,46 @@ def create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName):
     fig_3d = plt.figure(dpi=300)
     ax_3d = fig_3d.add_subplot(111, projection="3d")
     T_grid, X_grid = np.meshgrid(time_data, x, indexing="xy")
-    ax_3d.plot_surface(T_grid, X_grid, u_data, cmap="viridis", alpha=0.8)
+    ax_3d.plot_surface(T_grid, X_grid, u_data, cmap="plasma", alpha=0.8)
 
-    # Create a constant plane at height uStar
+    # Add second function: f(t,x) = e^{-t} * cos(pi*x)
+    f2_data = np.exp(-T_grid) * np.cos(np.pi * X_grid)
+    ax_3d.plot_surface(
+        T_grid, X_grid, f2_data, cmap="viridis", alpha=0.5
+    )  # Create a constant plane at height uStar
+
     U_grid = np.full_like(T_grid, uStar)
     Zero_grid = np.full_like(T_grid, 0)
 
     ax_3d.set_xlabel(r"Time $t$")
     ax_3d.set_ylabel(r"Space $x$")
     ax_3d.set_zlabel(r"$u(t,x)$")
-    ax_3d.set_zlim(-0.05, u_data.max())
+    # ax_3d.set_zlim(-0.05, u_data.max())
+    ax_3d.set_zlim(-1, u_data.max())
     # ax_3d.set_zlim(uStar, u_data.max())
     ax_3d.set_zticks(np.linspace(uStar, u_data.max(), 5))
     ax_3d.zaxis.set_major_formatter(FormatStrFormatter("%.3f"))
 
     # Plot reference planes with muted colors and increased transparency
-    ax_3d.plot_surface(
-        T_grid,
-        X_grid,
-        U_grid,
-        alpha=0.5,  # More transparent
-        rstride=100,
-        cstride=100,
-        color="r",  # Muted color
-    )
-
-    ax_3d.plot_surface(
-        T_grid,
-        X_grid,
-        Zero_grid,
-        alpha=0.2,  # More transparent
-        rstride=100,
-        cstride=100,
-        color="lightgray",  # Very light gray
-    )
+    # ax_3d.plot_surface(
+    #     T_grid,
+    #     X_grid,
+    #     U_grid,
+    #     alpha=0.5,  # More transparent
+    #     rstride=100,
+    #     cstride=100,
+    #     color="r",  # Muted color
+    # )
+    #
+    # ax_3d.plot_surface(
+    #     T_grid,
+    #     X_grid,
+    #     Zero_grid,
+    #     alpha=0.2,  # More transparent
+    #     rstride=100,
+    #     cstride=100,
+    #     color="lightgray",  # Very light gray
+    # )
 
     ax_3d.set_title(SetupDes, fontsize=10, pad=-80)
     fig_3d.subplots_adjust(top=0.80)
