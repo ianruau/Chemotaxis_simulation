@@ -6,14 +6,14 @@ import math
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import questionary
 import termplotlib as tpl
 from matplotlib import rc
+from matplotlib.ticker import FormatStrFormatter
 from scipy.linalg import solve_banded
-from scipy.sparse.linalg import spsolve
 from scipy.sparse import diags
+from scipy.sparse.linalg import spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
 
@@ -43,7 +43,7 @@ def solve_v(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
     # Create sparse matrix
     diagonals = [main_diag, upper_diag, lower_diag]
     offsets = [0, 1, -1]
-    A = diags(diagonals, offsets, format='csr')
+    A = diags(diagonals, offsets, format="csr")
 
     # Define right-hand side
     b = -(dx**2) * nu * vector_u**gamma
@@ -226,7 +226,7 @@ def solve_pde_system(
     create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName)
 
     # Create animation if requested
-    if config.get('generate_video', 'yes') == 'yes':
+    if config.get("generate_video", "yes") == "yes":
         create_animation(u_data, time_data, uStar, SetupDes, FileBaseName)
 
     # print(
@@ -390,7 +390,7 @@ def solve_pde_RK(
         u[-1] = (4 * u[-2] - u[-3]) / 3  # Right boundary
         u_data.append(np.copy(u))
 
-        if config.get('verbose', 'no') == 'yes' and n % (Nt // 5) == 0:
+        if config.get("verbose", "no") == "yes" and n % (Nt // 5) == 0:
             print(f"Step {n}, u[middle] = {u[len(u)//2]:.6f}")
 
     # Convert lists to numpy arrays
@@ -409,7 +409,7 @@ def solve_pde_RK(
     create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName)
 
     # Create animation if requested
-    if config.get('generate_video', 'yes') == 'yes':
+    if config.get("generate_video", "yes") == "yes":
         create_animation(u_data, time_data, uStar, SetupDes, FileBaseName)
 
     return x, u
@@ -435,13 +435,16 @@ def F(u, L, Nx):
 
     term1 = u_xx  # Diffusion
 
-    term2 = -chi * m * (u**(m - 1) / (1 + v)**beta) * u_x * v_x  # Cross-term
+    term2 = -chi * m * (u ** (m - 1) / (1 + v) ** beta) * \
+        u_x * v_x  # Cross-term
 
-    term3 = beta * chi * (u**m / (1 + v)**(beta + 1)) * (v_x)**2  # Nonlinear gradient
+    term3 = (
+        beta * chi * (u**m / (1 + v) ** (beta + 1)) * (v_x) ** 2
+    )  # Nonlinear gradient
 
-    term4 = -chi * (u**m / (1 + v)**beta) * v_xx  # Coupling to v_xx
+    term4 = -chi * (u**m / (1 + v) ** beta) * v_xx  # Coupling to v_xx
 
-    term5 = a * u - b * u**(1 + alpha)  # Reaction
+    term5 = a * u - b * u ** (1 + alpha)  # Reaction
 
     return term1 + term2 + term3 + term4 + term5
 
@@ -483,19 +486,23 @@ def create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName):
 
     # Plot reference planes with muted colors and increased transparency
     ax_3d.plot_surface(
-        T_grid, X_grid, U_grid,
+        T_grid,
+        X_grid,
+        U_grid,
         alpha=0.5,  # More transparent
         rstride=100,
         cstride=100,
-        color='r'  # Muted color
+        color="r",  # Muted color
     )
 
     ax_3d.plot_surface(
-        T_grid, X_grid, Zero_grid,
+        T_grid,
+        X_grid,
+        Zero_grid,
         alpha=0.2,  # More transparent
         rstride=100,
         cstride=100,
-        color='lightgray'  # Very light gray
+        color="lightgray",  # Very light gray
     )
 
     ax_3d.set_title(SetupDes, fontsize=10, pad=-80)
@@ -520,7 +527,7 @@ def create_animation(u_data, time_data, uStar, SetupDes, FileBaseName):
     fig, ax = plt.subplots(dpi=300)
     fig.subplots_adjust(top=0.80)
 
-    line, = ax.plot(u_data[:, 0], label="u(t)")
+    (line,) = ax.plot(u_data[:, 0], label="u(t)")
     ax.set_ylim(u_data.min() - 0.1, u_data.max() + 0.1)
     ax.axhline(y=uStar, color="r", linestyle="--", label=r"$u^*$")
     ax.legend(loc="upper right")
@@ -542,11 +549,15 @@ def create_animation(u_data, time_data, uStar, SetupDes, FileBaseName):
     writer = animation.FFMpegWriter(
         fps=30,  # Increased FPS for smoother playback
         metadata=dict(artist="Me"),
-        bitrate=1800
+        bitrate=1800,
     )
 
     with tqdm(total=len(frames), desc="Saving", unit="frame") as pbar:
-        ani.save(f"{FileBaseName}.mp4", writer=writer, progress_callback=lambda i, n: pbar.update(1))
+        ani.save(
+            f"{FileBaseName}.mp4",
+            writer=writer,
+            progress_callback=lambda i, n: pbar.update(1),
+        )
 
     plt.close()  # Clean up
     print(f"Video saved as: {FileBaseName}.mp4")
@@ -580,21 +591,21 @@ def parse_args():
     )
     parser.add_argument(
         "--confirm",
-        choices=['yes', 'no'],
-        default='yes',
-        help="Skip confirmation prompt if set to yes (default: no)"
+        choices=["yes", "no"],
+        default="yes",
+        help="Skip confirmation prompt if set to yes (default: no)",
     )
     parser.add_argument(
         "--generate_video",
-        choices=['yes', 'no'],
-        default='no',
-        help="Generate MP4 animation (default: no)"
+        choices=["yes", "no"],
+        default="no",
+        help="Generate MP4 animation (default: no)",
     )
     parser.add_argument(
         "--verbose",
-        choices=['yes', 'no'],
-        default='no',
-        help="Enable verbose output (default: no)"
+        choices=["yes", "no"],
+        default="no",
+        help="Enable verbose output (default: no)",
     )
     parser.add_argument(
         "--m",
@@ -693,7 +704,10 @@ def main():
     )
     print(f"Output files will be saved with the basename:\n\t {basename}\n")
 
-    if config['confirm'] == 'no' or questionary.confirm("Do you want to continue the simulation?").ask():
+    if (
+        config["confirm"] == "no"
+        or questionary.confirm("Do you want to continue the simulation?").ask()
+    ):
         print("Continuing simulation...")
         # x, u, v = solve_pde_system(
         x, u = solve_pde_RK(
