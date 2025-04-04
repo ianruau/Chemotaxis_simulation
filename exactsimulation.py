@@ -5,7 +5,7 @@ This program is to test the numerical methods used on a coupled
 parabolic-elliptic system of PDEs on [0,1] with Neumann boundary conditions whose exact
 solution is known.
 The system is
-u_t=u_xx+v+v_x+[(pi^2-1-1/(1+pi^2))cos(pi*x)-pi/(1+pi^2)sin(pi*x)],
+u_t=u_xx+v_x+[pi^2 -1/(1+pi^2)-1]v,
 0=v_xx-v+u
 BCs: u_x(t,0)=u_x(t,1)=0
      v_x(t,0)=v_x(t,1)=0
@@ -359,9 +359,10 @@ def solve_pde_RK(
             EigenIndex = 1
             print("first (constant) eigenfunction is chosen.\n")
 
-    u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(
-        np.float64
-    )
+    # u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(
+    #     np.float64
+    # )
+    u = np.cos(np.pi * x).astype(np.float64)
 
     # print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
     print(f"Initial vector of u: \n{' '.join(f'{x:.3f}' for x in u)}\n")
@@ -443,17 +444,22 @@ def F(u, L, Nx):
     u_x, u_xx = compute_derivatives(u, dx)
     v_x, v_xx = compute_derivatives(v, dx)
 
-    term1 = u_xx  # Diffusion
+    # term1 = u_xx  # Diffusion
+    #
+    # term2 = -chi * m * (u ** (m - 1) / (1 + v) ** beta) * u_x * v_x  # Cross-term
+    #
+    # term3 = (
+    #     beta * chi * (u**m / (1 + v) ** (beta + 1)) * (v_x) ** 2
+    # )  # Nonlinear gradient
+    #
+    # term4 = -chi * (u**m / (1 + v) ** beta) * v_xx  # Coupling to v_xx
+    #
+    # term5 = a * u - b * u ** (1 + alpha)  # Reaction
+    term1 = u_xx
 
-    term2 = -chi * m * (u ** (m - 1) / (1 + v) ** beta) * u_x * v_x  # Cross-term
+    term2 = v + v_x
 
-    term3 = (
-        beta * chi * (u**m / (1 + v) ** (beta + 1)) * (v_x) ** 2
-    )  # Nonlinear gradient
-
-    term4 = -chi * (u**m / (1 + v) ** beta) * v_xx  # Coupling to v_xx
-
-    term5 = a * u - b * u ** (1 + alpha)  # Reaction
+    term3 = (np.pi**2 - 1 - 1 / (1 + np.pi**2)) * np.cos(np.pi * x)
 
     return term1 + term2 + term3 + term4 + term5
 
