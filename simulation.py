@@ -390,8 +390,8 @@ def solve_pde_RK(
         u[-1] = (4 * u[-2] - u[-3]) / 3  # Right boundary
         u_data.append(np.copy(u))
 
-        # if n % (Nt//5) == 0:  # Print every 20% of simulation
-        #     print(f"Step {n}, u[middle] = {u[len(u)//2]:.6f}")
+        if config.get('verbose', 'no') == 'yes' and n % (Nt//5) == 0:
+            print(f"Step {n}, u[middle] = {u[len(u)//2]:.6f}")
 
     # Convert lists to numpy arrays
     u_data = np.array(u_data).T  # Convert list to numpy array and transpose
@@ -580,7 +580,13 @@ def parse_args():
         "--generate_video",
         choices=['yes', 'no'],
         default='no',
-        help="Generate MP4 animation (default: yes)"
+        help="Generate MP4 animation (default: no)"
+    )
+    parser.add_argument(
+        "--verbose",
+        choices=['yes', 'no'],
+        default='no',
+        help="Enable verbose output (default: no)"
     )
     parser.add_argument(
         "--m",
