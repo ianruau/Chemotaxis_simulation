@@ -211,8 +211,8 @@ def solve_pde_system(
     # Convert lists to numpy arrays
     u_data = np.array(u_data).T  # Convert list to numpy array and transpose
     time_data = np.array(time_data)  # Convert list to numpy array
-    print('u_data = ', u_data)
-    print('time_data=', time_data)
+    # print('u_data = ', u_data)
+    # print('time_data=', time_data)
 
     # Setup description for the title
     SetupDes = rf"""
@@ -390,7 +390,7 @@ def solve_pde_RK(
         u[-1] = (4 * u[-2] - u[-3]) / 3  # Right boundary
         u_data.append(np.copy(u))
 
-        if config.get('verbose', 'no') == 'yes' and n % (Nt//5) == 0:
+        if config.get('verbose', 'no') == 'yes' and n % (Nt // 5) == 0:
             print(f"Step {n}, u[middle] = {u[len(u)//2]:.6f}")
 
     # Convert lists to numpy arrays
@@ -516,7 +516,8 @@ def create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName):
 
 def create_animation(u_data, time_data, uStar, SetupDes, FileBaseName):
     """Create and save animation"""
-    fig, ax = plt.subplots(dpi=300)  # Ensure ax is an AxesSubplot
+    # Reduce DPI for faster rendering
+    fig, ax = plt.subplots(dpi=300)
     fig.subplots_adjust(top=0.80)
 
     line, = ax.plot(u_data[:, 0], label="u(t)")
@@ -529,18 +530,25 @@ def create_animation(u_data, time_data, uStar, SetupDes, FileBaseName):
         ax.set_title(SetupDes, fontsize=10, pad=-40)
         return (line,)
 
+    # Take every nth frame to reduce total frames
+    frame_stride = max(1, len(time_data) // 200)  # Aim for ~200 frames total
+    frames = range(0, len(time_data), frame_stride)
+
     ani = animation.FuncAnimation(
-        fig, update, frames=len(time_data), interval=50, blit=False
+        fig, update, frames=frames, interval=50, blit=True  # Enable blit for speed
     )
 
     print("\n# Saving video file.\n")
     writer = animation.FFMpegWriter(
-        fps=5, metadata=dict(artist="Me"), bitrate=1800
+        fps=30,  # Increased FPS for smoother playback
+        metadata=dict(artist="Me"),
+        bitrate=1800
     )
-    with tqdm(total=len(time_data), desc="Saving", unit="frame") as pbar:
-        ani.save(f"{FileBaseName}.mp4", writer=writer)
-        pbar.update(len(time_data))
 
+    with tqdm(total=len(frames), desc="Saving", unit="frame") as pbar:
+        ani.save(f"{FileBaseName}.mp4", writer=writer, progress_callback=lambda i, n: pbar.update(1))
+
+    plt.close()  # Clean up
     print(f"Video saved as: {FileBaseName}.mp4")
 
 
