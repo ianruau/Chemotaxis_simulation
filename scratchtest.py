@@ -16,7 +16,7 @@ x_values = np.linspace(0, L, Nx + 1)
 
 # Time parameters
 T = 1
-Nt = 1000000  # Temporal resolution
+Nt = 10000  # Temporal resolution
 dt = T / Nt
 t_values = np.linspace(0, T, Nt + 1)
 # print("tlinspace=", t_values)
