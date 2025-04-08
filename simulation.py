@@ -125,15 +125,17 @@ def rhs(L, Nx, u, v):
     u_xx = laplacian_NBC(L, Nx, u)
     u_x = first_derivative_NBC(L, Nx, u)
     v_x = first_derivative_NBC(L, Nx, v)
-    term1 = ((beta * chi) / ((1 + v) ** (beta + 1))) * (v_x**2) * (u**m)
-    # print("term1=", term1)
-    term2 = ((m * chi) / (1 + v) ** beta) * (u ** (m - 1)) * u_x * v_x
-    # print("term2=", term2)
-    term3 = (chi / ((1 + v) ** beta)) * (u**m) * (mu * v - nu * u**gamma)
-    # print("term3=", term3)
+    # term1 = ((beta * chi) / ((1 + v) ** (beta + 1))) * (v_x**2) * (u**m)
+    # # print("term1=", term1)
+    # term2 = ((m * chi) / (1 + v) ** beta) * (u ** (m - 1)) * u_x * v_x
+    # # print("term2=", term2)
+    # term3 = (chi / ((1 + v) ** beta)) * (u**m) * (mu * v - nu * u**gamma)
+    # # print("term3=", term3)
+    chemotaxis = -1 * first_derivative_NBC(L, Nx, u ** m * (chi /((1 + v)**beta)) * v_x)
     logistic = a * u - b * u ** (1 + alpha)
     # print("logistic=", logistic)
-    return u_xx + term1 - term2 - term3 + logistic
+    # return u_xx + term1 - term2 - term3 + logistic
+    return u_xx + chemotaxis + logistic
 
 
 def RK4(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"):
