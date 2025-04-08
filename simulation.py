@@ -25,6 +25,151 @@ rc("text", usetex=True)
 # 1. Write CLI interface
 
 
+def solve_v_1(L=1, Nx=50, vector_u=np.zeros(Nx), diagnostic=False):
+    mu = 1
+    nu = 1
+    gamma = 1
+    dx = L / Nx
+
+    # Define the diagonals
+    main_diag = np.full(Nx + 1, -(2 + mu * dx**2))
+    upper_diag = np.ones(Nx)
+    lower_diag = np.ones(Nx)
+
+    # Special handling for Neumann BC
+    upper_diag[0] = 2
+    lower_diag[-1] = 2
+
+    # Create sparse matrix
+    diagonals = [main_diag, upper_diag, lower_diag]
+    offsets = [0, 1, -1]
+    A = diags(diagonals, offsets, format="csr")
+
+    # Define right-hand side
+    b = -(dx**2) * nu * vector_u**gamma
+
+    # Solve system
+    v = spsolve(A, b)
+    return v
+
+
+def first_derivative_NBC(L, Nx, vector_f):
+    """
+    Create a sparse n x n square matrix where:
+    - Lower diagonal is -1
+    - Upper diagonal is 1
+    - First and last rows are all zeros
+    """
+
+    # Define the diagonals
+    upper_diag = np.ones(Nx)
+    lower_diag = -np.ones(Nx)
+
+    # Special handling for Neumann BC
+    upper_diag[0] = 0
+    lower_diag[-1] = 0
+    # Create diagonals
+    # diagonals = {
+    #     1: np.ones(Nx),  # Upper diagonal
+    #     -1: -np.ones(Nx),  # Lower diagonal
+    # }
+
+    # Create sparse matrix
+    diagonals = [upper_diag, lower_diag]
+    offsets = [1, -1]
+    A = diags(diagonals, offsets, format="csr")
+    # print(A.toarray())
+
+    dx = L / Nx
+    return A.dot(vector_f / (2 * dx))
+
+
+def laplacian_NBC(L, Nx, vector_f):
+    """
+    Create a sparse Nx x Nx square matrix where:
+    - Main diagonal is -2
+    - Lower diagonal is 1
+    - Upper diagonal is 1
+    """
+    # Define the diagonals
+    main_diag = np.full(Nx + 1, -2)
+    upper_diag = np.ones(Nx)
+    lower_diag = np.ones(Nx)
+
+    # Special handling for Neumann BC
+    upper_diag[0] = 2
+    lower_diag[-1] = 2
+
+    # Create sparse matrix
+    diagonals = [main_diag, upper_diag, lower_diag]
+    offsets = [0, 1, -1]
+    A = diags(diagonals, offsets, format="csr")
+
+    dx = L / Nx
+
+    return A.dot(vector_f / (dx**2))
+
+
+# Right-hand side function
+def rhs(L, Nx, u, v):
+    u_xx = laplacian_NBC(L, Nx, u)
+    v_x = first_derivative_NBC(L, Nx, v)
+    # Exact coefficient from analytical solution
+    coeff = pi**2 - 1 / (1 + pi**2) - lmbda  # Should be zero!
+    return u_xx + v_x + coeff * v
+
+
+def RK4():
+    # Initialize solutions
+    u_num = np.zeros((Nt + 1, Nx + 1))
+    # print("u_num=", u_num)
+    u_exact = np.zeros((Nt + 1, Nx + 1))
+    v_num = np.zeros((Nt + 1, Nx + 1))
+    v_exact = np.zeros((Nt + 1, Nx + 1))
+    v_exact_from_u = np.zeros((Nt + 1, Nx + 1))
+
+    # Exact solution
+    for n in range(Nt + 1):
+        u_exact[n, :] = np.exp(-lmbda * t_values[n]) * np.cos(pi * x_values)
+        v_exact[n, :] = (
+            np.exp(-lmbda * t_values[n]) * np.cos(pi * x_values) / (1 + pi**2)
+        )
+    # print("u_exact=", u_exact[1, :])
+    # print("u_exact=", u_exact)
+    # print("size of u exact=", np.shape(u_exact))
+
+    # Initial condition (must match exactly)
+    u_num[0, :] = np.cos(pi * x_values).copy()  # Ensure exact match at t=0
+
+    # Exact solution
+    for n in range(Nt + 1):
+        v_exact_from_u[n, :] = solve_v(L, Nx, u_exact[n, :], False)
+    # print("v_exact=", v_exact[1, :])
+
+    # Initial condition (must match exactly)
+    v_num[0, :] = solve_v(L, Nx, u_num[0, :], False)
+    # print("v_num=", v_num)
+
+    # Time integration
+    for n in tqdm(range(Nt), desc="Progress..."):
+        # rk4 steps
+        k1 = rhs(L, Nx, u_num[n, :], v_num[n, :])
+        v1 = solve_v(L, Nx, vector_u=u_num[n, :] + 0.5 * dt * k1)
+
+        k2 = rhs(L, Nx, u_num[n, :] + 0.5 * dt * k1, v1)
+        v2 = solve_v(L, Nx, vector_u=u_num[n, :] + 0.5 * dt * k2)
+
+        k3 = rhs(L, Nx, u_num[n, :] + 0.5 * dt * k2, v2)
+        v3 = solve_v(L, Nx, vector_u=u_num[n, :] + dt * k3)
+
+        k4 = rhs(L, Nx, u_num[n, :] + dt * k3, v3)
+
+        # Update
+        u_num[n + 1, :] = u_num[n, :] + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+        # print("u_numk1k2k3k4=", u_num)
+        v_num[n + 1, :] = solve_v(L, Nx, vector_u=u_num[n + 1, :])
+
+
 def solve_v(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
     mu = config["mu"]
     nu = config["nu"]
@@ -155,11 +300,9 @@ def solve_pde_system(
             u_xx = (u[i + 1] - 2 * u[i] + u[i - 1]) / dx**2
             # print('uxx=',u_x)
 
-            term1 = ((beta * chi) /
-                     ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
+            term1 = ((beta * chi) / ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
             # print("term1=", term1)
-            term2 = ((m * chi) / (1 + v[i]) ** beta) * \
-                (u[i] ** (m - 1)) * u_x * v_x
+            term2 = ((m * chi) / (1 + v[i]) ** beta) * (u[i] ** (m - 1)) * u_x * v_x
             # print("term2=", term2)
             term3 = (
                 (chi / ((1 + v[i]) ** beta))
@@ -435,8 +578,7 @@ def F(u, L, Nx):
 
     term1 = u_xx  # Diffusion
 
-    term2 = -chi * m * (u ** (m - 1) / (1 + v) ** beta) * \
-        u_x * v_x  # Cross-term
+    term2 = -chi * m * (u ** (m - 1) / (1 + v) ** beta) * u_x * v_x  # Cross-term
 
     term3 = (
         beta * chi * (u**m / (1 + v) ** (beta + 1)) * (v_x) ** 2
@@ -573,8 +715,7 @@ def inverse_tridiagonal(diagonal, offdiagonal):
         e_i[i] = 1  # Solve for each column of A⁻¹
         A_inv[:, i] = solve_banded(
             (1, 1),
-            [np.append([0], offdiagonal), diagonal,
-             np.append(offdiagonal, [0])],
+            [np.append([0], offdiagonal), diagonal, np.append(offdiagonal, [0])],
             e_i,
         )
 
@@ -607,11 +748,7 @@ def parse_args():
         default="no",
         help="Enable verbose output (default: no)",
     )
-    parser.add_argument(
-        "--m",
-        type=float,
-        default=1,
-        help="Parameter m (default: 1)")
+    parser.add_argument("--m", type=float, default=1, help="Parameter m (default: 1)")
     parser.add_argument(
         "--beta", type=float, default=1, help="Parameter beta (default: 1)"
     )
@@ -621,26 +758,10 @@ def parse_args():
     parser.add_argument(
         "--chi", type=float, default=-1, help="Parameter chi (default: -1)"
     )
-    parser.add_argument(
-        "--a",
-        type=float,
-        default=1,
-        help="Parameter a (default: 1)")
-    parser.add_argument(
-        "--b",
-        type=float,
-        default=1,
-        help="Parameter b (default: 1)")
-    parser.add_argument(
-        "--mu",
-        type=float,
-        default=1,
-        help="Parameter mu (default: 1)")
-    parser.add_argument(
-        "--nu",
-        type=float,
-        default=1,
-        help="Parameter nu (default: 1)")
+    parser.add_argument("--a", type=float, default=1, help="Parameter a (default: 1)")
+    parser.add_argument("--b", type=float, default=1, help="Parameter b (default: 1)")
+    parser.add_argument("--mu", type=float, default=1, help="Parameter mu (default: 1)")
+    parser.add_argument("--nu", type=float, default=1, help="Parameter nu (default: 1)")
     parser.add_argument(
         "--gamma", type=float, default=1, help="Parameter gamma (default: 1)"
     )
@@ -685,14 +806,11 @@ def main():
     print("1. Logistic term: ")
     print(f"\ta = {config['a']}, b = {config['b']}, alpha = {config['alpha']}")
     print("2. Reaction term: ")
-    print(
-        f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
+    print(f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
     print("3. The v equation: ")
-    print(
-        f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
+    print(f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
     print("4. Initial condition: ")
-    print(
-        f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
+    print(f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
     # Run the solver
 
     print("Simulation Parameters:")
