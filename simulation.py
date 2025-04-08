@@ -25,10 +25,10 @@ rc("text", usetex=True)
 # 1. Write CLI interface
 
 
-def solve_v_1(L=1, Nx=50, vector_u=np.zeros(Nx), diagnostic=False):
-    mu = 1
-    nu = 1
-    gamma = 1
+def solve_v_1(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
+    mu = config["mu"]
+    nu = config["nu"]
+    gamma = config["gamma"]
     dx = L / Nx
 
     # Define the diagonals
@@ -112,24 +112,40 @@ def laplacian_NBC(L, Nx, vector_f):
 
 # Right-hand side function
 def rhs(L, Nx, u, v):
+    m = config["m"]
+    beta = config["beta"]
+    alpha = config["alpha"]
+    chi = config["chi"]
+    a = config["a"]
+    b = config["b"]
+    mu = config["mu"]
+    nu = config["nu"]
+    gamma = config["gamma"]
+
     u_xx = laplacian_NBC(L, Nx, u)
     u_x = first_derivative_NBC(L, Nx, u)
     v_x = first_derivative_NBC(L, Nx, v)
-    term1 = ((beta * chi) / ((1 + v) ** (beta + 1))) * (v_x**2) * (u ** m)
+    term1 = ((beta * chi) / ((1 + v) ** (beta + 1))) * (v_x**2) * (u**m)
     # print("term1=", term1)
     term2 = ((m * chi) / (1 + v) ** beta) * (u ** (m - 1)) * u_x * v_x
     # print("term2=", term2)
-    term3 = ( (chi / ((1 + v) ** beta)) * (u ** m) * (mu * v - nu * u ** gamma))
+    term3 = (chi / ((1 + v) ** beta)) * (u**m) * (mu * v - nu * u**gamma)
     # print("term3=", term3)
     logistic = a * u - b * u ** (1 + alpha)
     # print("logistic=", logistic)
     return u_xx + term1 - term2 - term3 + logistic
 
 
-def RK4(L=1, T=1, Nx=50, v):
-    Nt = ( int(4 * T * Nx * Nx / L**2) + 1)  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
-    dx = L / Nx
+def RK4(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"):
+    Nt = (
+        int(4 * T * Nx * Nx / L**2) + 1
+    )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
+    # dx = L / Nx
     dt = T / Nt
+
+    # Initialize solutions
+    u_num = np.zeros((Nt + 1, Nx + 1))
+    v_num = np.zeros((Nt + 1, Nx + 1))
 
     m = config["m"]
     beta = config["beta"]
@@ -141,15 +157,22 @@ def RK4(L=1, T=1, Nx=50, v):
     nu = config["nu"]
     gamma = config["gamma"]
 
-    x_values = np.linspace(0, L, Nx + 1)
+    x_values = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
     positive_sigmas, uStar = Display_Parameters(L)
 
-    # Initialize solutions
-    u_num = np.zeros((Nt + 1, Nx + 1))
-    u_exact = np.zeros((Nt + 1, Nx + 1))
-    v_num = np.zeros((Nt + 1, Nx + 1))
-    v_exact = np.zeros((Nt + 1, Nx + 1))
-    v_exact_from_u = np.zeros((Nt + 1, Nx + 1))
+    # Initial condition for u
+    print("\n# Initial value u_0\n")
+    if EigenIndex == 0:
+        if len(positive_sigmas) > 0:
+            EigenIndex = 2
+            print("Second (first nonconstant) eigenfunction is chosen.\n")
+        else:
+            EigenIndex = 1
+            print("first (constant) eigenfunction is chosen.\n")
+
+    u_num[0, :] = (
+        uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x_values)
+    ).astype(np.float64)
 
     # # Exact solution
     # for n in range(Nt + 1):
@@ -162,13 +185,12 @@ def RK4(L=1, T=1, Nx=50, v):
     # print("size of u exact=", np.shape(u_exact))
 
     # Initial condition (must match exactly)
-    u_num[0, :] = 1 + 0.5 * np.cos((np.pi / L) * x_values).copy()
-        # (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype( np.float64)
+    # u_num[0, :] = 1 + 0.5 * np.cos((np.pi / L) * x_values).copy()
+    # (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype( np.float64)
 
     # Initial condition (must match exactly)
     v_num[0, :] = solve_v_1(L, Nx, u_num[0, :], False)
     # print("v_num=", v_num)
-
 
     # Time integration
     for n in tqdm(range(Nt), desc="Progress..."):
@@ -188,6 +210,28 @@ def RK4(L=1, T=1, Nx=50, v):
         u_num[n + 1, :] = u_num[n, :] + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
         # print("u_numk1k2k3k4=", u_num)
         v_num[n + 1, :] = solve_v(L, Nx, vector_u=u_num[n + 1, :])
+
+    # Convert lists to numpy arrays
+    u_num = np.array(u_num).T  # Convert list to numpy array and transpose
+    # time_data = np.arange(Nt + 1) * dt
+    t_values = np.linspace(0, T, Nt + 1)
+
+    # Setup description for the title
+    SetupDes = rf"""
+    $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha};
+    $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
+    $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
+    $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
+    """
+
+    # Create static plots
+    create_static_plots(x_values, u_num, t_values, uStar, SetupDes, FileBaseName)
+
+    # Create animation if requested
+    if config.get("generate_video", "yes") == "yes":
+        create_animation(u_num, t_values, uStar, SetupDes, FileBaseName)
+
+    return x_values, u_num
 
 
 def solve_v(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
@@ -456,7 +500,7 @@ def Display_Parameters(L):
     print(f"\nChi* = {ChiStar:.3f} and the choice of chi = {chi:.3f}")
 
     # Computation of the eigenvalues lambda_n and sigma_n
-    print("\n# Computing singma_n\n")
+    print("\n# Computing sigma_n\n")
     positive_sigmas = []  # List to store positive sigma values
     if chi >= ChiStar:
         n = 0
@@ -848,7 +892,7 @@ def main():
     ):
         print("Continuing simulation...")
         # x, u, v = solve_pde_system(
-        x, u = solve_pde_RK(
+        x, u = RK4(
             Nx=config["meshsize"],
             T=config["time"],
             Epsilon=config["Epsilon"],
