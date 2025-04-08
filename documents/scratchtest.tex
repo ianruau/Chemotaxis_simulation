@@ -66,10 +66,10 @@
 Let's consider
 \begin{align*}
   \begin{cases}
-    u_t = u_{xx} + v_x + v \left(\pi^2 -\frac{1}{1+\pi^2}-\lambda\right) & t>0,\: x\in (0,1) \\
-    0 = v_{xx} - v + u                                                   & t>0,\: x\in (0,1) \\
-    u_x(t,0) = u_x(t,1) = 0, \quad v_x(t,0) = v_x(t,1) = 0               & t>0               \\
-    u(0,x) = \cos(\pi x)                                                 & x \in (0,1).
+    u_t = u_{xx} - \frac{1}{1+\pi^2} u_x + v_x + v         & t>0,\: x\in (0,1) \\
+    0 = v_{xx} - v + u                                     & t>0,\: x\in (0,1) \\
+    u_x(t,0) = u_x(t,1) = 0, \quad v_x(t,0) = v_x(t,1) = 0 & t>0               \\
+    u(0,x) = \cos(\pi x)                                   & x \in (0,1).
   \end{cases}
 \end{align*}
 The exact solution should be
@@ -77,7 +77,7 @@ The exact solution should be
   u(t,x) & = e^{-\lambda t} \cos(\pi x),                  \\
   v(t,x) & = \frac{1}{1+\pi^2} e^{-\lambda t} \cos(\pi x),
 \end{align*}
-with $\lambda =   $
+with $\lambda = \pi^2 - \frac{1}{1+\pi^2}$.
 
 \bibliographystyle{plain}
 \bibliography{All}
