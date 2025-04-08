@@ -113,54 +113,74 @@ def laplacian_NBC(L, Nx, vector_f):
 # Right-hand side function
 def rhs(L, Nx, u, v):
     u_xx = laplacian_NBC(L, Nx, u)
+    u_x = first_derivative_NBC(L, Nx, u)
     v_x = first_derivative_NBC(L, Nx, v)
-    # Exact coefficient from analytical solution
-    coeff = pi**2 - 1 / (1 + pi**2) - lmbda  # Should be zero!
-    return u_xx + v_x + coeff * v
+    term1 = ((beta * chi) / ((1 + v) ** (beta + 1))) * (v_x**2) * (u ** m)
+    # print("term1=", term1)
+    term2 = ((m * chi) / (1 + v) ** beta) * (u ** (m - 1)) * u_x * v_x
+    # print("term2=", term2)
+    term3 = ( (chi / ((1 + v) ** beta)) * (u ** m) * (mu * v - nu * u ** gamma))
+    # print("term3=", term3)
+    logistic = a * u - b * u ** (1 + alpha)
+    # print("logistic=", logistic)
+    return u_xx + term1 - term2 - term3 + logistic
 
 
-def RK4():
+def RK4(L=1, T=1, Nx=50, v):
+    Nt = ( int(4 * T * Nx * Nx / L**2) + 1)  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
+    dx = L / Nx
+    dt = T / Nt
+
+    m = config["m"]
+    beta = config["beta"]
+    alpha = config["alpha"]
+    chi = config["chi"]
+    a = config["a"]
+    b = config["b"]
+    mu = config["mu"]
+    nu = config["nu"]
+    gamma = config["gamma"]
+
+    x_values = np.linspace(0, L, Nx + 1)
+    positive_sigmas, uStar = Display_Parameters(L)
+
     # Initialize solutions
     u_num = np.zeros((Nt + 1, Nx + 1))
-    # print("u_num=", u_num)
     u_exact = np.zeros((Nt + 1, Nx + 1))
     v_num = np.zeros((Nt + 1, Nx + 1))
     v_exact = np.zeros((Nt + 1, Nx + 1))
     v_exact_from_u = np.zeros((Nt + 1, Nx + 1))
 
-    # Exact solution
-    for n in range(Nt + 1):
-        u_exact[n, :] = np.exp(-lmbda * t_values[n]) * np.cos(pi * x_values)
-        v_exact[n, :] = (
-            np.exp(-lmbda * t_values[n]) * np.cos(pi * x_values) / (1 + pi**2)
-        )
+    # # Exact solution
+    # for n in range(Nt + 1):
+    #     u_exact[n, :] = np.exp(-lmbda * t_values[n]) * np.cos(pi * x_values)
+    #     v_exact[n, :] = (
+    #         np.exp(-lmbda * t_values[n]) * np.cos(pi * x_values) / (1 + pi**2)
+    #     )
     # print("u_exact=", u_exact[1, :])
     # print("u_exact=", u_exact)
     # print("size of u exact=", np.shape(u_exact))
 
     # Initial condition (must match exactly)
-    u_num[0, :] = np.cos(pi * x_values).copy()  # Ensure exact match at t=0
-
-    # Exact solution
-    for n in range(Nt + 1):
-        v_exact_from_u[n, :] = solve_v(L, Nx, u_exact[n, :], False)
-    # print("v_exact=", v_exact[1, :])
+    u_num[0, :] = 1 + 0.5 * np.cos((np.pi / L) * x_values).copy()
+        # (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype( np.float64)
 
     # Initial condition (must match exactly)
-    v_num[0, :] = solve_v(L, Nx, u_num[0, :], False)
+    v_num[0, :] = solve_v_1(L, Nx, u_num[0, :], False)
     # print("v_num=", v_num)
+
 
     # Time integration
     for n in tqdm(range(Nt), desc="Progress..."):
         # rk4 steps
         k1 = rhs(L, Nx, u_num[n, :], v_num[n, :])
-        v1 = solve_v(L, Nx, vector_u=u_num[n, :] + 0.5 * dt * k1)
+        v1 = solve_v_1(L, Nx, vector_u=u_num[n, :] + 0.5 * dt * k1)
 
         k2 = rhs(L, Nx, u_num[n, :] + 0.5 * dt * k1, v1)
-        v2 = solve_v(L, Nx, vector_u=u_num[n, :] + 0.5 * dt * k2)
+        v2 = solve_v_1(L, Nx, vector_u=u_num[n, :] + 0.5 * dt * k2)
 
         k3 = rhs(L, Nx, u_num[n, :] + 0.5 * dt * k2, v2)
-        v3 = solve_v(L, Nx, vector_u=u_num[n, :] + dt * k3)
+        v3 = solve_v_1(L, Nx, vector_u=u_num[n, :] + dt * k3)
 
         k4 = rhs(L, Nx, u_num[n, :] + dt * k3, v3)
 
