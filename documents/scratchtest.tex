@@ -1,0 +1,86 @@
+\documentclass[12pt]{article} %{{{
+\usepackage[text={6.2in,8.6in},centering]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathrsfs,mathtools}
+\usepackage{luacode}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage[english]{babel}
+\usepackage{url}
+\usepackage[colorlinks=true,
+            linkcolor=blue,
+            filecolor=magenta,
+            urlcolor=blue,
+            citecolor=magenta,
+            pdftitle={Reviewing report},
+            pdfpagemode=FullScreen,
+           ]{hyperref}
+\usepackage[strict=true,style=english]{csquotes}
+\setlength{\parskip}{0.5cm plus4mm minus3mm}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Norm}[1]{\left|\left|  #1   \right|\right|}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\lp}[2]{\textit{Line~#1 on page~#2:~}}
+
+
+% -------------------------------------------------
+% BibTex setup
+% -------------------------------------------------
+\usepackage{amsrefs}
+
+\renewcommand{\MR}[1]{~\href{https://mathscinet.ams.org/mathscinet-getitem?mr=MR#1}{MR#1}.}
+
+\BibSpec{article}{%
+    +{}  {\PrintAuthors}                {author}
+    +{,} { \textit}                     {title}
+    +{.} { }                            {part}
+    +{:} { \textit}                     {subtitle}
+    +{,} { \PrintContributions}         {contribution}
+    +{.} { \PrintPartials}              {partial}
+    +{,} { }                            {journal}
+    +{}  { \textbf}                     {volume}
+    +{}  { \PrintDatePV}                {date}
+    +{,} { \issuetext}                  {number}
+    +{,} { \eprintpages}                {pages}
+    +{,} { }                            {status}
+    +{,} { \url}                        {url}
+    +{,} { \PrintDOI}                   {doi}
+    +{,} { available at \eprint}        {eprint}
+    +{}  { \parenthesize}               {language}
+    +{}  { \PrintTranslation}           {translation}
+    +{;} { \PrintReprint}               {reprint}
+    +{.} { }                            {note}
+    +{.} {}                             {transition}
+    +{}  {\SentenceSpace \PrintReviews} {review}
+}
+
+
+% Define the definition environment
+\newtheorem{definition}{Definition}
+
+
+\begin{document}
+% \noindent
+
+
+Let's consider
+\begin{align*}
+  \begin{cases}
+    u_t = u_{xx} + v_x + v \left(\pi^2 -\frac{1}{1+\pi^2}-\lambda\right) & t>0,\: x\in (0,1) \\
+    0 = v_{xx} - v + u                                                   & t>0,\: x\in (0,1) \\
+    u_x(t,0) = u_x(t,1) = 0, \quad v_x(t,0) = v_x(t,1) = 0               & t>0               \\
+    u(0,x) = \cos(\pi x)                                                 & x \in (0,1).
+  \end{cases}
+\end{align*}
+The exact solution should be
+\begin{align*}
+  u(t,x) & = e^{-\lambda t} \cos(\pi x),                  \\
+  v(t,x) & = \frac{1}{1+\pi^2} e^{-\lambda t} \cos(\pi x),
+\end{align*}
+with $\lambda =   $
+
+\bibliographystyle{plain}
+\bibliography{All}
+
+\end{document}
+
