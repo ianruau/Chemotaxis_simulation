@@ -26,6 +26,24 @@ rc("text", usetex=True)
 
 
 def solve_v_1(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
+    """
+    Solves a linear system to compute the vector `v` based on the given parameters.
+
+    Parameters:
+    - L (int): Length of the domain (default is 1).
+    - Nx (int): Number of grid points (default is 50).
+    - vector_u (np.ndarray): Input vector `u` of size `Nx` (default is a zero vector).
+    - diagnostic (bool): Flag for enabling diagnostic output (default is False).
+
+    Returns:
+    - np.ndarray: Solution vector `v` of size `Nx + 1`.
+
+    Notes:
+    - The function constructs a sparse matrix `A` using finite difference discretization.
+    - Neumann boundary conditions are applied by modifying the first and last off-diagonal elements.
+    - The right-hand side vector `b` is computed based on the input vector `u` and parameters.
+    - The system `A * v = b` is solved using a sparse solver.
+    """
     mu = config["mu"]
     nu = config["nu"]
     gamma = config["gamma"]
@@ -46,7 +64,7 @@ def solve_v_1(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
     A = diags(diagonals, offsets, format="csr")
 
     # Define right-hand side
-    b = -(dx**2) * nu * vector_u**gamma
+    b = -(dx**2) * nu * (vector_u**gamma)
 
     # Solve system
     v = spsolve(A, b)
@@ -176,20 +194,6 @@ def RK4(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation")
         uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x_values)
     ).astype(np.float64)
 
-    # # Exact solution
-    # for n in range(Nt + 1):
-    #     u_exact[n, :] = np.exp(-lmbda * t_values[n]) * np.cos(pi * x_values)
-    #     v_exact[n, :] = (
-    #         np.exp(-lmbda * t_values[n]) * np.cos(pi * x_values) / (1 + pi**2)
-    #     )
-    # print("u_exact=", u_exact[1, :])
-    # print("u_exact=", u_exact)
-    # print("size of u exact=", np.shape(u_exact))
-
-    # Initial condition (must match exactly)
-    # u_num[0, :] = 1 + 0.5 * np.cos((np.pi / L) * x_values).copy()
-    # (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype( np.float64)
-
     # Initial condition (must match exactly)
     v_num[0, :] = solve_v_1(L, Nx, u_num[0, :], False)
     # print("v_num=", v_num)
@@ -233,7 +237,7 @@ def RK4(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation")
     if config.get("generate_video", "yes") == "yes":
         create_animation(u_num, t_values, uStar, SetupDes, FileBaseName)
 
-    return x_values, u_num
+    return x_values, u_num, v_num
 
 
 def solve_v(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
@@ -860,6 +864,19 @@ def parse_args():
 
 
 def main():
+    """
+    Main function to parse arguments, display simulation parameters, and run the simulation.
+
+    Global Variables:
+    - config: A dictionary containing parsed command-line arguments.
+
+    Steps:
+    1. Parse command-line arguments and store them in the global `config` variable.
+    2. Display the parsed model and simulation parameters.
+    3. Generate a base name for output files based on the parameters.
+    4. Prompt the user for confirmation to proceed with the simulation.
+    5. Run the simulation using the specified parameters or exit if declined.
+    """
     global config
     args = parse_args()
     config = vars(args)
