@@ -775,7 +775,26 @@ def create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName):
 
 
 def create_animation(u_data, time_data, uStar, SetupDes, FileBaseName):
-    """Create and save animation"""
+    """
+    Create and save an animation of the data over time.
+
+    Parameters:
+        u_data (ndarray): 2D array where each column represents the data at a specific time step.
+        time_data (ndarray): 1D array of time steps corresponding to the columns of `u_data`.
+        uStar (float): Reference value to be displayed as a horizontal line in the animation.
+        SetupDes (str): Description of the setup, used as the title of the animation.
+        FileBaseName (str): Base name for the output video file (without extension).
+
+    The function performs the following steps:
+        1. Sets up a matplotlib figure and axis for plotting.
+        2. Initializes the plot with the first column of `u_data`.
+        3. Defines an update function to update the plot for each frame.
+        4. Reduces the number of frames to improve rendering speed.
+        5. Creates an animation using `FuncAnimation`.
+        6. Saves the animation as an MP4 file using `FFMpegWriter`.
+        7. Displays a progress bar during the saving process.
+        8. Closes the plot to free resources after saving.
+    """
     # Reduce DPI for faster rendering
     fig, ax = plt.subplots(dpi=300)
     fig.subplots_adjust(top=0.80)
@@ -816,25 +835,25 @@ def create_animation(u_data, time_data, uStar, SetupDes, FileBaseName):
     print(f"Video saved as: {FileBaseName}.mp4")
 
 
-def inverse_tridiagonal(diagonal, offdiagonal):
-    """Computes A⁻¹ for a tridiagonal matrix A."""
-    n = len(diagonal)
-    A_inv = np.zeros((n, n))
-
-    for i in range(n):
-        e_i = np.zeros(n)
-        e_i[i] = 1  # Solve for each column of A⁻¹
-        A_inv[:, i] = solve_banded(
-            (1, 1),
-            [np.append([0], offdiagonal), diagonal, np.append(offdiagonal, [0])],
-            e_i,
-        )
-
-    # Print the inverse matrix to check the results
-    # print("Inverse matrix A_inv:")
-    # print(A_inv)
-
-    return A_inv
+# def inverse_tridiagonal(diagonal, offdiagonal):
+#     """Computes A⁻¹ for a tridiagonal matrix A."""
+#     n = len(diagonal)
+#     A_inv = np.zeros((n, n))
+#
+#     for i in range(n):
+#         e_i = np.zeros(n)
+#         e_i[i] = 1  # Solve for each column of A⁻¹
+#         A_inv[:, i] = solve_banded(
+#             (1, 1),
+#             [np.append([0], offdiagonal), diagonal, np.append(offdiagonal, [0])],
+#             e_i,
+#         )
+#
+#     # Print the inverse matrix to check the results
+#     # print("Inverse matrix A_inv:")
+#     # print(A_inv)
+#
+#     return A_inv
 
 
 def parse_args():
