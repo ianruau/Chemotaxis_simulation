@@ -71,13 +71,13 @@ def solve_v_1(L=1.0, Nx=50, vector_u=np.zeros(50), diagnostic=False):
     return v
 
 
-def first_derivative_NBC(L=1.0, Nx, vector_f):
+def first_derivative_NBC(L, Nx, vector_f):
     """
     Computes the first derivative of a vector `vector_f` using finite differences
     with Neumann boundary conditions (NBC).
 
     Parameters:
-    - L (float): Length of the domain (default is 1.0).
+    - L (float): Length of the domain.
     - Nx (int): Number of grid points.
     - vector_f (np.ndarray): Input vector for which the derivative is computed.
 
@@ -118,10 +118,16 @@ def first_derivative_NBC(L=1.0, Nx, vector_f):
 
 def laplacian_NBC(L, Nx, vector_f):
     """
-    Create a sparse Nx x Nx square matrix where:
-    - Main diagonal is -2
-    - Lower diagonal is 1
-    - Upper diagonal is 1
+    Create a sparse Nx x Nx square matrix representing the Laplacian operator
+    with Neumann Boundary Conditions (NBC) and apply it to a given vector.
+
+    Parameters:
+    L (float): The length of the domain.
+    Nx (int): The number of grid points.
+    vector_f (numpy.ndarray): The input vector to which the Laplacian operator is applied.
+
+    Returns:
+    numpy.ndarray: The result of applying the Laplacian operator to the input vector.
     """
     # Define the diagonals
     main_diag = np.full(Nx + 1, -2)
@@ -144,6 +150,27 @@ def laplacian_NBC(L, Nx, vector_f):
 
 # Right-hand side function
 def rhs(L, Nx, u, v):
+    """
+    Compute the right-hand side (RHS) of the partial differential equation
+    for the given variables and parameters.
+
+    Parameters:
+    L (float): The length of the domain.
+    Nx (int): The number of grid points.
+    u (numpy.ndarray): The primary variable (e.g., population density).
+    v (numpy.ndarray): The secondary variable (e.g., chemoattractant concentration).
+
+    Returns:
+    numpy.ndarray: The computed RHS of the equation.
+
+    Notes:
+    - The function uses several parameters from the global `config` dictionary:
+      - m, beta, alpha, chi, a, b, mu, nu, gamma.
+    - The terms in the equation include:
+      - Diffusion term (u_xx).
+      - Chemotaxis-related terms (term1, term2, term3).
+      - Logistic growth term (logistic).
+    """
     m = config["m"]
     beta = config["beta"]
     alpha = config["alpha"]
