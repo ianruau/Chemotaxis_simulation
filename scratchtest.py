@@ -144,9 +144,10 @@ v_num[0, :] = solve_v(L, Nx, u_num[0, :], False)
 def rhs(L, Nx, u, v):
     u_xx = laplacian_NBC(L, Nx, u)
     v_x = first_derivative_NBC(L, Nx, v)
+    u_x = first_derivative_NBC(L, Nx, u)
     # Exact coefficient from analytical solution
-    coeff = pi**2 - 1 / (1 + pi**2) - lmbda  # Should be zero!
-    return u_xx + v_x + coeff * v
+    # coeff = pi**2 - 1 / (1 + pi**2) - lmbda  # Should be zero!
+    return u_xx + v_x + v - (1 / (1 + pi**2)) * u_x
 
 
 # # Verification at t=0
