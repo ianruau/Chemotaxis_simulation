@@ -197,7 +197,8 @@ def rhs(L, Nx, u, v):
     # return u_xx + chemotaxis + logistic
 
 
-def RK4(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"):
+def RK4(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
+        FileBaseName="Simulation"):
     Nt = 10 * (
         int(4 * T * Nx * Nx / L**2) + 1
     )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
@@ -272,7 +273,13 @@ def RK4(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation")
     """
 
     # Create static plots
-    create_static_plots(x_values, u_num, t_values, uStar, SetupDes, FileBaseName)
+    create_static_plots(
+        x_values,
+        u_num,
+        t_values,
+        uStar,
+        SetupDes,
+        FileBaseName)
 
     # Create animation if requested
     if config.get("generate_video", "yes") == "yes":
@@ -411,9 +418,11 @@ def solve_pde_system(
             u_xx = (u[i + 1] - 2 * u[i] + u[i - 1]) / dx**2
             # print('uxx=',u_x)
 
-            term1 = ((beta * chi) / ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
+            term1 = ((beta * chi) /
+                     ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
             # print("term1=", term1)
-            term2 = ((m * chi) / (1 + v[i]) ** beta) * (u[i] ** (m - 1)) * u_x * v_x
+            term2 = ((m * chi) / (1 + v[i]) ** beta) * \
+                (u[i] ** (m - 1)) * u_x * v_x
             # print("term2=", term2)
             term3 = (
                 (chi / ((1 + v[i]) ** beta))
@@ -689,7 +698,8 @@ def F(u, L, Nx):
 
     term1 = u_xx  # Diffusion
 
-    term2 = -chi * m * (u ** (m - 1) / (1 + v) ** beta) * u_x * v_x  # Cross-term
+    term2 = -chi * m * (u ** (m - 1) / (1 + v) ** beta) * \
+        u_x * v_x  # Cross-term
 
     term3 = (
         beta * chi * (u**m / (1 + v) ** (beta + 1)) * (v_x) ** 2
@@ -917,7 +927,11 @@ def parse_args():
         default="no",
         help="Enable verbose output (default: no)",
     )
-    parser.add_argument("--m", type=float, default=1, help="Parameter m (default: 1)")
+    parser.add_argument(
+        "--m",
+        type=float,
+        default=1,
+        help="Parameter m (default: 1)")
     parser.add_argument(
         "--beta", type=float, default=1, help="Parameter beta (default: 1)"
     )
@@ -927,10 +941,26 @@ def parse_args():
     parser.add_argument(
         "--chi", type=float, default=-1, help="Parameter chi (default: -1)"
     )
-    parser.add_argument("--a", type=float, default=1, help="Parameter a (default: 1)")
-    parser.add_argument("--b", type=float, default=1, help="Parameter b (default: 1)")
-    parser.add_argument("--mu", type=float, default=1, help="Parameter mu (default: 1)")
-    parser.add_argument("--nu", type=float, default=1, help="Parameter nu (default: 1)")
+    parser.add_argument(
+        "--a",
+        type=float,
+        default=1,
+        help="Parameter a (default: 1)")
+    parser.add_argument(
+        "--b",
+        type=float,
+        default=1,
+        help="Parameter b (default: 1)")
+    parser.add_argument(
+        "--mu",
+        type=float,
+        default=1,
+        help="Parameter mu (default: 1)")
+    parser.add_argument(
+        "--nu",
+        type=float,
+        default=1,
+        help="Parameter nu (default: 1)")
     parser.add_argument(
         "--gamma", type=float, default=1, help="Parameter gamma (default: 1)"
     )
@@ -988,11 +1018,14 @@ def main():
     print("1. Logistic term: ")
     print(f"\ta = {config['a']}, b = {config['b']}, alpha = {config['alpha']}")
     print("2. Reaction term: ")
-    print(f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
+    print(
+        f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
     print("3. The v equation: ")
-    print(f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
+    print(
+        f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
     print("4. Initial condition: ")
-    print(f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
+    print(
+        f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
     # Run the solver
 
     print("Simulation Parameters:")
