@@ -718,7 +718,22 @@ def compute_derivatives(f, dx):
 
 
 def create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName):
-    """Create and save static plots (2D and 3D)"""
+    """
+    Create and save static 2D and 3D plots of the simulation data.
+
+    Parameters:
+    - x (array-like): Spatial grid points.
+    - u_data (2D array-like): Simulation data values for each (time, space) pair.
+    - time_data (array-like): Temporal grid points.
+    - uStar (float): Reference value for creating a constant plane in the 3D plot.
+    - SetupDes (str): Description of the setup, used as the title of the plot.
+    - FileBaseName (str): Base name for saving the output plot files.
+
+    The function generates:
+    - A 3D surface plot of `u_data` over time and space.
+    - A reference plane at `uStar` and another at zero for comparison.
+    - Saves the plot as PNG and JPEG files with the specified base name.
+    """
     # 3D Plot
     fig_3d = plt.figure(dpi=300)
     ax_3d = fig_3d.add_subplot(111, projection="3d")
