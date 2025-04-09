@@ -52,7 +52,7 @@ import questionary
 import termplotlib as tpl
 from matplotlib import rc
 from matplotlib.ticker import FormatStrFormatter
-from scipy.linalg import solve_banded
+# from scipy.linalg import solve_banded
 from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
 from tabulate import tabulate
@@ -238,13 +238,13 @@ def rhs(L, Nx, u, v):
     # return u_xx + chemotaxis + logistic
 
 
-def RK4(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
+def RK4(L=1.0, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
         FileBaseName="Simulation"):
     """
     Perform numerical simulation using the Runge-Kutta 4th order (RK4) method.
 
     Parameters:
-    L (float): Length of the spatial domain (default is 1).
+    L (float): Length of the spatial domain (default is 1.0).
     Nx (int): Number of spatial grid points.
     T (float): Total simulation time.
     Epsilon (float): Perturbation parameter for the initial condition.
