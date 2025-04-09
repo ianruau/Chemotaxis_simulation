@@ -199,6 +199,23 @@ def rhs(L, Nx, u, v):
 
 def RK4(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
         FileBaseName="Simulation"):
+    """
+    Perform numerical simulation using the Runge-Kutta 4th order (RK4) method.
+
+    Parameters:
+    L (float): Length of the spatial domain.
+    Nx (int): Number of spatial grid points.
+    T (float): Total simulation time.
+    Epsilon (float): Perturbation parameter for the initial condition.
+    EigenIndex (int): Index of the eigenfunction to use for the initial condition.
+    FileBaseName (str): Base name for output files.
+
+    Returns:
+    tuple: x_values (numpy array), u_num (numpy array), v_num (numpy array)
+        - x_values: Spatial grid points.
+        - u_num: Numerical solution for u over time.
+        - v_num: Numerical solution for v over time.
+    """
     Nt = 10 * (
         int(4 * T * Nx * Nx / L**2) + 1
     )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
