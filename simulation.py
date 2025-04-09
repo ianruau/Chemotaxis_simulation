@@ -1,5 +1,46 @@
 #!/usr/bin/env python3
-#
+"""
+Chemotaxis Simulation Tool
+
+This script simulates a chemotaxis system using numerical methods. It solves a system
+of partial differential equations (PDEs) that model the interaction between cells (u)
+and chemical signals (v).
+
+Usage:
+    python simulation.py [options]
+
+Parameters:
+    Model Parameters:
+    --m FLOAT         Parameter m for reaction term (default: 1)
+    --beta FLOAT      Parameter beta for reaction term (default: 1)
+    --alpha FLOAT     Parameter alpha for logistic term (default: 1)
+    --chi FLOAT       Parameter chi for chemotaxis (default: -1)
+    --a FLOAT         Parameter a for logistic growth (default: 1)
+    --b FLOAT         Parameter b for logistic growth (default: 1)
+    --mu FLOAT        Parameter mu for v equation (default: 1)
+    --nu FLOAT        Parameter nu for v equation (default: 1)
+    --gamma FLOAT     Parameter gamma for v equation (default: 1)
+
+    Simulation Parameters:
+    --meshsize INT    Number of spatial grid points (default: 50)
+    --time FLOAT      Total simulation time (default: 5)
+    --EigenIndex INT  Parameter eigen index (default: 0, letting system choose)
+    --Epsilon FLOAT   Parameter perturbation epsilon (default: 0.001)
+
+    Output Control:
+    --confirm        Skip confirmation prompt if set to yes (default: no)
+    --generate_video Generate MP4 animation (default: no)
+    --verbose        Enable verbose output (default: no)
+
+Example:
+    python simulation.py --m 2 --beta 1 --time 10 --meshsize 100 --confirm yes
+
+Output:
+    - Generates numerical solutions for u and v
+    - Creates static plots of the solutions
+    - Optionally creates animation of the evolution
+    - All output files use a basename containing parameter values
+"""
 
 import argparse
 import math
@@ -203,7 +244,7 @@ def RK4(L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
     Perform numerical simulation using the Runge-Kutta 4th order (RK4) method.
 
     Parameters:
-    L (float): Length of the spatial domain.
+    L (float): Length of the spatial domain (default is 1).
     Nx (int): Number of spatial grid points.
     T (float): Total simulation time.
     Epsilon (float): Perturbation parameter for the initial condition.
