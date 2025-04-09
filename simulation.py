@@ -838,6 +838,30 @@ def inverse_tridiagonal(diagonal, offdiagonal):
 
 
 def parse_args():
+    """
+    Parse command-line arguments for configuring simulation parameters.
+
+    Returns:
+    argparse.Namespace: Parsed arguments as an object with attributes corresponding to the parameters.
+
+    Command-line Arguments:
+    --confirm (str): Skip confirmation prompt if set to 'yes' (default: 'yes').
+    --generate_video (str): Generate MP4 animation if set to 'yes' (default: 'no').
+    --verbose (str): Enable verbose output if set to 'yes' (default: 'no').
+    --m (float): Parameter m (default: 1).
+    --beta (float): Parameter beta (default: 1).
+    --alpha (float): Parameter alpha (default: 1).
+    --chi (float): Parameter chi (default: -1).
+    --a (float): Parameter a (default: 1).
+    --b (float): Parameter b (default: 1).
+    --mu (float): Parameter mu (default: 1).
+    --nu (float): Parameter nu (default: 1).
+    --gamma (float): Parameter gamma (default: 1).
+    --meshsize (int): Parameter for spatial mesh size (default: 50).
+    --time (float): Parameter for time to lapse (default: 2.3).
+    --EigenIndex (int): Parameter eigen index (default: 0, letting system choose).
+    --Epsilon (float): Parameter perturbation epsilon (default: 0.001).
+    """
     parser = argparse.ArgumentParser(
         description="A CLI tool for configuring parameters"
     )
