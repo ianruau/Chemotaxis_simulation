@@ -25,12 +25,12 @@ rc("text", usetex=True)
 # 1. Write CLI interface
 
 
-def solve_v_1(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
+def solve_v_1(L=1.0, Nx=50, vector_u=np.zeros(50), diagnostic=False):
     """
     Solves a linear system to compute the vector `v` based on the given parameters.
 
     Parameters:
-    - L (int): Length of the domain (default is 1).
+    - L (float): Length of the domain (default is 1.0).
     - Nx (int): Number of grid points (default is 50).
     - vector_u (np.ndarray): Input vector `u` of size `Nx` (default is a zero vector).
     - diagnostic (bool): Flag for enabling diagnostic output (default is False).
@@ -71,12 +71,26 @@ def solve_v_1(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
     return v
 
 
-def first_derivative_NBC(L, Nx, vector_f):
+def first_derivative_NBC(L=1.0, Nx, vector_f):
     """
-    Create a sparse n x n square matrix where:
-    - Lower diagonal is -1
-    - Upper diagonal is 1
-    - First and last rows are all zeros
+    Computes the first derivative of a vector `vector_f` using finite differences
+    with Neumann boundary conditions (NBC).
+
+    Parameters:
+    - L (float): Length of the domain (default is 1.0).
+    - Nx (int): Number of grid points.
+    - vector_f (np.ndarray): Input vector for which the derivative is computed.
+
+    Returns:
+    - np.ndarray: The computed first derivative of `vector_f`.
+
+    Notes:
+    - The function constructs a sparse matrix `A` to approximate the derivative.
+    - The matrix `A` has:
+        - -1 on the lower diagonal.
+        - 1 on the upper diagonal.
+        - Zeros in the first and last rows to enforce Neumann boundary conditions.
+    - The derivative is scaled by the grid spacing `dx = L / Nx`.
     """
 
     # Define the diagonals
