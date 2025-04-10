@@ -59,7 +59,7 @@ from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
 from typing import Dict, Any
 from dataclasses import dataclass
-from typing import Final
+from typing import Final, List
 
 
 @dataclass(frozen=True)
@@ -116,14 +116,14 @@ class SimulationConfig:
     diagnostic: bool = False
 
     # Computed values
-    uStar: float = field(init=False)
-    vStar: float = field(init=False)
-    ChiStar: float = field(init=False)
-    ChiDStar: float = field(init=False)
-    betaTilde: float = field(init=False)
-    positive_sigmas: List[float] = field(init=False)
-    lambdas: List[float] = field(init=False)
-    chi_vector: List[float] = field(init=False)
+    uStar: float = field(init=False, default=None)
+    vStar: float = field(init=False, default=None)
+    ChiStar: float = field(init=False, default=None)
+    ChiDStar: float = field(init=False, default=None)
+    betaTilde: float = field(init=False, default=None)
+    positive_sigmas: List[float] = field(init=False, default_factory=list)
+    lambdas: List[float] = field(init=False, default_factory=list)
+    chi_vector: List[float] = field(init=False, default_factory=list)
 
     def __post_init__(self):
         # Using object.__setattr__ because the class is frozen
@@ -185,6 +185,20 @@ class SimulationConfig:
 
     def display_parameters(self) -> None:
         """Display all computed parameters in a formatted way."""
+
+        # Now access them via config['m'], config['beta'], etc.
+        print("Model Parameters:")
+        print("1. Logistic term: ")
+        print(f"\ta = {config['a']}, b = {config['b']}, alpha = {config['alpha']}")
+        print("2. Reaction term: ")
+        print(
+            f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
+        print("3. The v equation: ")
+        print(
+            f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
+        print("4. Initial condition: ")
+        print(
+            f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
         print("\n# Asymptotic solutions and related constants")
         print(f"Asymptotic solutions: u^* = {self.uStar:.2f} and v^* = {self.vStar:.2f}")
         print(f"A lower bound for Chi* is {self.ChiStar:.2f}")
@@ -787,36 +801,20 @@ def main():
     """
     Main function to parse arguments, display simulation parameters, and run the simulation.
 
-    Global Variables:
-    - config: A dictionary containing parsed command-line arguments.
-
     Steps:
-    1. Parse command-line arguments and store them in the global `config` variable.
-    2. Display the parsed model and simulation parameters.
-    3. Generate a base name for output files based on the parameters.
-    4. Prompt the user for confirmation to proceed with the simulation.
-    5. Run the simulation using the specified parameters or exit if declined.
+    1. Parse command-line arguments into a SimulationConfig object
+    2. Display the parsed model and simulation parameters
+    3. Generate a base name for output files based on the parameters
+    4. Prompt the user for confirmation to proceed with the simulation
+    5. Run the simulation using the specified parameters or exit if declined
     """
-    global config
-    args = parse_args()
-    config = vars(args)
+    # config = parse_args()  # Returns SimulationConfig directly
+    # Get immutable config
+    config: Final[SimulationConfig] = parse_args()
 
     # # Display the parsed arguments
-    # print("Parameters:")
+    config.display_parameters()
 
-    # Now access them via config['m'], config['beta'], etc.
-    print("Model Parameters:")
-    print("1. Logistic term: ")
-    print(f"\ta = {config['a']}, b = {config['b']}, alpha = {config['alpha']}")
-    print("2. Reaction term: ")
-    print(
-        f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
-    print("3. The v equation: ")
-    print(
-        f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
-    print("4. Initial condition: ")
-    print(
-        f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
     # Run the solver
 
     print("Simulation Parameters:")
@@ -834,13 +832,7 @@ def main():
     ):
         print("Continuing simulation...")
         # x, u, v = solve_pde_system(
-        x, u = RK4(
-            Nx=config["meshsize"],
-            T=config["time"],
-            Epsilon=config["Epsilon"],
-            EigenIndex=config["EigenIndex"],
-            FileBaseName=basename,
-        )
+        x, u, v = RK4(config=config, FileBaseName=basename)
     else:
         print("Exiting simulation.")
         exit()
