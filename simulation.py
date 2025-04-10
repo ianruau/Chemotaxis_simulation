@@ -57,16 +57,70 @@ from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
+from typing import Dict, Any
+from dataclasses import dataclass
+from typing import Final
 
-config = {}  # Global dictionary for parameters
+
+@dataclass(frozen=True)
+class SimulationConfig:
+    """
+    A data class to store simulation configuration parameters.
+
+    Attributes:
+    - m (float): A model parameter, ...
+    - beta (float): A model parameter, ...
+    - alpha (float): A model parameter, ...
+    - chi (float): A model parameter, ...
+    - a (float): A linear reaction coefficient in the simulation.
+    - b (float): A nonlinear reaction coefficient in the simulation.
+    - mu (float): A parameter for the simulation, often associated with physical properties.
+    - nu (float): A parameter for the simulation, often representing diffusivity or viscosity.
+    - gamma (float): A parameter for the simulation, often used as an exponent or scaling factor.
+    - L (float): The length of the spatial domain (default is 1.0).
+
+    Simulation Parameters:
+    - meshsize (int): The number of spatial grid points, determining the resolution of the simulation.
+    - time (float): The total simulation time.
+    - EigenIndex (int): An index used for eigenvalue-related computations.
+    - Epsilon (float): A small parameter used for numerical stability or perturbations.
+
+    Output Control:
+    - confirm (str): A flag or message to confirm simulation execution.
+    - generate_video (str): A flag or path to enable or specify video generation.
+    - verbose (str): A flag to enable verbose output for detailed logs.
+    - diagnostic (bool): A flag to enable or disable diagnostic output (default is False).
+    """
+    # Model parameters
+    m: float
+    beta: float
+    alpha: float
+    chi: float
+    a: float
+    b: float
+    mu: float
+    nu: float
+    gamma: float
+    L: float = 1.0  # Length of the domain
+
+    # Simulation parameters
+    meshsize: int
+    time: float
+    EigenIndex: int
+    Epsilon: float
+
+    # Output control
+    confirm: str
+    generate_video: str
+    verbose: str
+    diagnostic: bool = False
+
 
 # Enable LaTeX rendering
 rc("text", usetex=True)
-# TO LIST:
-# 1. Write CLI interface
 
 
-def solve_v_1(L=1.0, Nx=50, vector_u=np.zeros(50), mu=1.0, nu=1.0, gamma=1.0, diagnostic=False):
+def solve_v_1(vector_u=np.zeros(50), config: Dict[str, Any] = None):
     """
     Solves a linear system to compute the vector `v` based on the given parameters.
 
@@ -97,6 +151,12 @@ def solve_v_1(L=1.0, Nx=50, vector_u=np.zeros(50), mu=1.0, nu=1.0, gamma=1.0, di
     6. Solve the linear system `A * v = b` using a sparse solver.
     7. Return the solution vector `v`.
     """
+    L = config["L"]
+    Nx = config["meshsize"]
+    mu = config["mu"]
+    nu = config["nu"]
+    gamma = config["gamma"]
+    diagnostic = config["diagnostic"]
     dx = L / Nx
 
     # Define the diagonals
@@ -218,15 +278,12 @@ def laplacian_NBC(L, Nx, vector_f):
     return A.dot(vector_f / (dx**2))
 
 
-# Right-hand side function
-def rhs(L, Nx, u, v):
+def rhs(u, v, config: Dict[str, Any] = None):
     """
     Compute the right-hand side (RHS) of the partial differential equation
     for the given variables and parameters.
 
     Parameters:
-    L (float): The length of the domain.
-    Nx (int): The number of grid points.
     u (numpy.ndarray): The primary variable (e.g., population density).
     v (numpy.ndarray): The secondary variable (e.g., chemoattractant concentration).
 
@@ -241,6 +298,8 @@ def rhs(L, Nx, u, v):
       - Chemotaxis-related terms (term1, term2, term3).
       - Logistic growth term (logistic).
     """
+    L = config["L"]
+    Nx = config["meshsize"]
     m = config["m"]
     beta = config["beta"]
     alpha = config["alpha"]
@@ -264,20 +323,13 @@ def rhs(L, Nx, u, v):
     logistic = a * u - b * u ** (1 + alpha)
     # print("logistic=", logistic)
     return u_xx + term1 - term2 - term3 + logistic
-    # return u_xx + chemotaxis + logistic
 
 
-def RK4(L=1.0, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
-        FileBaseName="Simulation"):
+def RK4(config: Dict[str, Any] = None, FileBaseName="Simulation"):
     """
     Perform numerical simulation using the Runge-Kutta 4th order (RK4) method.
 
     Parameters:
-    L (float): Length of the spatial domain (default is 1.0).
-    Nx (int): Number of spatial grid points.
-    T (float): Total simulation time.
-    Epsilon (float): Perturbation parameter for the initial condition.
-    EigenIndex (int): Index of the eigenfunction to use for the initial condition.
     FileBaseName (str): Base name for output files.
 
     Returns:
@@ -286,16 +338,11 @@ def RK4(L=1.0, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
         - u_num: Numerical solution for u over time.
         - v_num: Numerical solution for v over time.
     """
-    Nt = 10 * (
-        int(4 * T * Nx * Nx / L**2) + 1
-    )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
-    # dx = L / Nx
-    dt = T / Nt
-
-    # Initialize solutions
-    u_num = np.zeros((Nt + 1, Nx + 1))
-    v_num = np.zeros((Nt + 1, Nx + 1))
-
+    L = config["L"]
+    Nx = config["meshsize"]
+    Epsilon = config["Epsilon"]
+    EigenIndex = config["EigenIndex"]
+    T = config["time"]
     m = config["m"]
     beta = config["beta"]
     alpha = config["alpha"]
@@ -306,6 +353,16 @@ def RK4(L=1.0, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
     nu = config["nu"]
     gamma = config["gamma"]
     diagnostic = config["diagnostic"]
+
+    Nt = 10 * (
+        int(4 * T * Nx * Nx / L**2) + 1
+    )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
+    # dx = L / Nx
+    dt = T / Nt
+
+    # Initialize solutions
+    u_num = np.zeros((Nt + 1, Nx + 1))
+    v_num = np.zeros((Nt + 1, Nx + 1))
 
     x_values = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
     positive_sigmas, uStar = Display_Parameters(L)
@@ -770,7 +827,7 @@ def Display_Parameters(L):
 
 
 # Right-hand side function F(u, v)
-def F(u, L, Nx):
+def F(u: np.ndarray, config: SimulationConfig) -> np.ndarray:
     """
     Computes the right-hand side of a partial differential equation (PDE) system.
 
@@ -796,6 +853,8 @@ def F(u, L, Nx):
     chi = config["chi"]
     a = config["a"]
     b = config["b"]
+    Nx = config["meshsize"]
+    L = config["L"]
     dx = L / Nx
     diagnostic = config["diagnostic"]
     mu = config["mu"]
@@ -970,28 +1029,7 @@ def create_animation(u_data, time_data, uStar, SetupDes, FileBaseName):
     print(f"Video saved as: {FileBaseName}.mp4")
 
 
-# def inverse_tridiagonal(diagonal, offdiagonal):
-#     """Computes A⁻¹ for a tridiagonal matrix A."""
-#     n = len(diagonal)
-#     A_inv = np.zeros((n, n))
-#
-#     for i in range(n):
-#         e_i = np.zeros(n)
-#         e_i[i] = 1  # Solve for each column of A⁻¹
-#         A_inv[:, i] = solve_banded(
-#             (1, 1),
-#             [np.append([0], offdiagonal), diagonal, np.append(offdiagonal, [0])],
-#             e_i,
-#         )
-#
-#     # Print the inverse matrix to check the results
-#     # print("Inverse matrix A_inv:")
-#     # print(A_inv)
-#
-#     return A_inv
-
-
-def parse_args():
+def parse_args() -> SimulationConfig:
     """
     Parse command-line arguments for configuring simulation parameters.
 
@@ -1099,7 +1137,8 @@ def parse_args():
         help="Parameter perturbation epsilon (default: 0.001)",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    return SimulationConfig(**vars(args))
 
 
 def main():
