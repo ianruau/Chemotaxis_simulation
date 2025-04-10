@@ -437,170 +437,170 @@ def RK4(config: Dict[str, Any] = None, FileBaseName="Simulation"):
 def solve_pde_system(
     L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"
 ):
-    Nt = (
-        int(4 * T * Nx * Nx / L**2) + 1
-    )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
-    dx = L / Nx
-    dt = T / Nt
-
-    m = config["m"]
-    beta = config["beta"]
-    alpha = config["alpha"]
-    chi = config["chi"]
-    a = config["a"]
-    b = config["b"]
-    mu = config["mu"]
-    nu = config["nu"]
-    gamma = config["gamma"]
-    diagnostic = config["diagnostic"]
-
-    x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
-    positive_sigmas, uStar = Display_Parameters(L)
-
-    x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
-
-    # Initial condition for u
-    print("\n# Initial value u_0\n")
-    if EigenIndex == 0:
-        if len(positive_sigmas) > 0:
-            EigenIndex = 2
-            print("Second (first nonconstant) eigenfunction is chosen.\n")
-        else:
-            EigenIndex = 1
-            print("first (constant) eigenfunction is chosen.\n")
-
-    u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(
-        np.float64
-    )
-    # print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
-    print(f"Initial vector of u: \n{' '.join(f'{x:.3f}' for x in u)}\n")
-    fig = tpl.figure()
-    fig.plot(range(len(u)), u, label="u_0", width=100, height=36)
-    fig.show()
-
-    times_to_plot = np.arange(0, T + dt, 0.01)
-    current_time = 0
-    # plt.figure()
-
-    fig, ax = plt.subplots()
-    (line,) = ax.plot(x, u, label=rf"$t$={current_time:.2f}")
-    ax.set_xlabel(r"$x$")
-    ax.set_ylabel(r"$u$")
-    ax.set_title("Evolution of u over time")
-    ax.set_ylim(0, 2)
-    # Add the asymptotic solution
-    ax.axhline(y=uStar, color="r", linestyle="--", label=r"$u^*$")
-    # ax.legend()
-
-    u_data = []
-    time_data = []
-
-    break_outer_loop = False
-
-    # for n in range(1000):
-    print("\n# Simulations now ...\n")
-    for n in tqdm(range(Nt), desc="Progress..."):
-        # print('n=',n)
-        u_new = np.copy(u).astype(np.float64)
-
-        # Solve v first
-        # v = solve_v(L=L, Nx=Nx, vector_u=u_new, diagnostic=True)
-        v = solve_v_1(L=L, Nx=Nx, vector_u=u_new, mu=mu, nu=nu, gamma=gamma, diagnostic=diagnostic)
-
-        for i in range(1, Nx):  # Loop for u
-            v_x = (v[i + 1] - v[i - 1]) / (2 * dx)
-            # print('vx=',v_x)
-            # v_xx = (v[i + 1] - 2 * v[i] + v[i - 1]) / dx**2
-            # print('vxx=',v_xx)
-            u_x = (u[i + 1] - u[i - 1]) / (2 * dx)
-            # print('u_x=',u_x)
-            u_xx = (u[i + 1] - 2 * u[i] + u[i - 1]) / dx**2
-            # print('uxx=',u_x)
-
-            term1 = ((beta * chi) /
-                     ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
-            # print("term1=", term1)
-            term2 = ((m * chi) / (1 + v[i]) ** beta) * \
-                (u[i] ** (m - 1)) * u_x * v_x
-            # print("term2=", term2)
-            term3 = (
-                (chi / ((1 + v[i]) ** beta))
-                * (u[i] ** m)
-                * (mu * v[i] - nu * u[i] ** gamma)
-            )
-            # print("term3=", term3)
-            logistic = a * u[i] - b * u[i] ** (1 + alpha)
-            # print("logistic=", logistic)
-            u_new[i] = u[i] + dt * (u_xx + term1 - term2 - term3 + logistic)
-            # u_new[i] = u[i] + dt * (u_xx + logistic)
-            # print(
-            #     f"u_new={u_new[i]} and v={v[i]}",
-            # )
-
-            if (
-                math.isnan(term1)
-                or math.isnan(term2)
-                or math.isnan(term3)
-                or math.isnan(logistic)
-            ):
-                break_outer_loop = True
-                print("Nan detected, breaking the loop")
-                break
-
-        if break_outer_loop:
-            break
-
-        # Neumann boundary conditions for u
-        # u_new[0] = u_new[1]
-        # u_new[-1] = u_new[-2]
-        u_new[0] = (4 * u_new[1] - u_new[2]) / 3  # Left boundary
-        u_new[-1] = (4 * u_new[-2] - u_new[-3]) / 3  # Right boundary
-
-        u = u_new  # Update u
-
-        # Check if current_time is close to any time in times_to_plot
-        if np.any(np.abs(times_to_plot - current_time) < dt / 2):
-            u_data.append(np.copy(u))
-            time_data.append(current_time)
-
-        current_time += dt
-
-    if not u_data or not time_data:
-        raise ValueError(
-            "No data was collected for plotting. Check time-stepping alignment."
-        )
-
-    # Convert lists to numpy arrays
-    u_data = np.array(u_data).T  # Convert list to numpy array and transpose
-    time_data = np.array(time_data)  # Convert list to numpy array
-    # print('u_data = ', u_data)
-    # print('time_data=', time_data)
-
-    # Setup description for the title
-    SetupDes = rf"""
-    $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha};
-    $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
-    $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
-    $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
-    """
-
-    # Create static plots
-    create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName)
-
-    # Create animation if requested
-    if config.get("generate_video", "yes") == "yes":
-        create_animation(u_data, time_data, uStar, SetupDes, FileBaseName)
-
-    # print(
-    #     f"""
-    # Output files saved:
-    # - Image: {FileBaseName}.png
-    # - Image: {FileBaseName}.jpeg
-    # {f'- Video: {FileBaseName}.mp4' if config.get('generate_video', 'yes') == 'yes' else ''}
-    # """
+    # Nt = (
+    #     int(4 * T * Nx * Nx / L**2) + 1
+    # )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
+    # dx = L / Nx
+    # dt = T / Nt
+    #
+    # m = config["m"]
+    # beta = config["beta"]
+    # alpha = config["alpha"]
+    # chi = config["chi"]
+    # a = config["a"]
+    # b = config["b"]
+    # mu = config["mu"]
+    # nu = config["nu"]
+    # gamma = config["gamma"]
+    # diagnostic = config["diagnostic"]
+    #
+    # x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
+    # positive_sigmas, uStar = Display_Parameters(L)
+    #
+    # x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
+    #
+    # # Initial condition for u
+    # print("\n# Initial value u_0\n")
+    # if EigenIndex == 0:
+    #     if len(positive_sigmas) > 0:
+    #         EigenIndex = 2
+    #         print("Second (first nonconstant) eigenfunction is chosen.\n")
+    #     else:
+    #         EigenIndex = 1
+    #         print("first (constant) eigenfunction is chosen.\n")
+    #
+    # u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(
+    #     np.float64
     # )
-
-    return x, u, v
+    # # print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
+    # print(f"Initial vector of u: \n{' '.join(f'{x:.3f}' for x in u)}\n")
+    # fig = tpl.figure()
+    # fig.plot(range(len(u)), u, label="u_0", width=100, height=36)
+    # fig.show()
+    #
+    # times_to_plot = np.arange(0, T + dt, 0.01)
+    # current_time = 0
+    # # plt.figure()
+    #
+    # fig, ax = plt.subplots()
+    # (line,) = ax.plot(x, u, label=rf"$t$={current_time:.2f}")
+    # ax.set_xlabel(r"$x$")
+    # ax.set_ylabel(r"$u$")
+    # ax.set_title("Evolution of u over time")
+    # ax.set_ylim(0, 2)
+    # # Add the asymptotic solution
+    # ax.axhline(y=uStar, color="r", linestyle="--", label=r"$u^*$")
+    # # ax.legend()
+    #
+    # u_data = []
+    # time_data = []
+    #
+    # break_outer_loop = False
+    #
+    # # for n in range(1000):
+    # print("\n# Simulations now ...\n")
+    # for n in tqdm(range(Nt), desc="Progress..."):
+    #     # print('n=',n)
+    #     u_new = np.copy(u).astype(np.float64)
+    #
+    #     # Solve v first
+    #     # v = solve_v(L=L, Nx=Nx, vector_u=u_new, diagnostic=True)
+    #     v = solve_v_1(L=L, Nx=Nx, vector_u=u_new, mu=mu, nu=nu, gamma=gamma, diagnostic=diagnostic)
+    #
+    #     for i in range(1, Nx):  # Loop for u
+    #         v_x = (v[i + 1] - v[i - 1]) / (2 * dx)
+    #         # print('vx=',v_x)
+    #         # v_xx = (v[i + 1] - 2 * v[i] + v[i - 1]) / dx**2
+    #         # print('vxx=',v_xx)
+    #         u_x = (u[i + 1] - u[i - 1]) / (2 * dx)
+    #         # print('u_x=',u_x)
+    #         u_xx = (u[i + 1] - 2 * u[i] + u[i - 1]) / dx**2
+    #         # print('uxx=',u_x)
+    #
+    #         term1 = ((beta * chi) /
+    #                  ((1 + v[i]) ** (beta + 1))) * (v_x**2) * (u[i] ** m)
+    #         # print("term1=", term1)
+    #         term2 = ((m * chi) / (1 + v[i]) ** beta) * \
+    #             (u[i] ** (m - 1)) * u_x * v_x
+    #         # print("term2=", term2)
+    #         term3 = (
+    #             (chi / ((1 + v[i]) ** beta))
+    #             * (u[i] ** m)
+    #             * (mu * v[i] - nu * u[i] ** gamma)
+    #         )
+    #         # print("term3=", term3)
+    #         logistic = a * u[i] - b * u[i] ** (1 + alpha)
+    #         # print("logistic=", logistic)
+    #         u_new[i] = u[i] + dt * (u_xx + term1 - term2 - term3 + logistic)
+    #         # u_new[i] = u[i] + dt * (u_xx + logistic)
+    #         # print(
+    #         #     f"u_new={u_new[i]} and v={v[i]}",
+    #         # )
+    #
+    #         if (
+    #             math.isnan(term1)
+    #             or math.isnan(term2)
+    #             or math.isnan(term3)
+    #             or math.isnan(logistic)
+    #         ):
+    #             break_outer_loop = True
+    #             print("Nan detected, breaking the loop")
+    #             break
+    #
+    #     if break_outer_loop:
+    #         break
+    #
+    #     # Neumann boundary conditions for u
+    #     # u_new[0] = u_new[1]
+    #     # u_new[-1] = u_new[-2]
+    #     u_new[0] = (4 * u_new[1] - u_new[2]) / 3  # Left boundary
+    #     u_new[-1] = (4 * u_new[-2] - u_new[-3]) / 3  # Right boundary
+    #
+    #     u = u_new  # Update u
+    #
+    #     # Check if current_time is close to any time in times_to_plot
+    #     if np.any(np.abs(times_to_plot - current_time) < dt / 2):
+    #         u_data.append(np.copy(u))
+    #         time_data.append(current_time)
+    #
+    #     current_time += dt
+    #
+    # if not u_data or not time_data:
+    #     raise ValueError(
+    #         "No data was collected for plotting. Check time-stepping alignment."
+    #     )
+    #
+    # # Convert lists to numpy arrays
+    # u_data = np.array(u_data).T  # Convert list to numpy array and transpose
+    # time_data = np.array(time_data)  # Convert list to numpy array
+    # # print('u_data = ', u_data)
+    # # print('time_data=', time_data)
+    #
+    # # Setup description for the title
+    # SetupDes = rf"""
+    # $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha};
+    # $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
+    # $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
+    # $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
+    # """
+    #
+    # # Create static plots
+    # create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName)
+    #
+    # # Create animation if requested
+    # if config.get("generate_video", "yes") == "yes":
+    #     create_animation(u_data, time_data, uStar, SetupDes, FileBaseName)
+    #
+    # # print(
+    # #     f"""
+    # # Output files saved:
+    # # - Image: {FileBaseName}.png
+    # # - Image: {FileBaseName}.jpeg
+    # # {f'- Video: {FileBaseName}.mp4' if config.get('generate_video', 'yes') == 'yes' else ''}
+    # # """
+    # # )
+    #
+    # return x, u, v
 
 
 def Display_Parameters(L):
