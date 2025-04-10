@@ -281,6 +281,25 @@ class SimulationConfig:
             for i, sigma in enumerate(self.positive_sigmas, 1):
                 print(f"sigma_{i}= {sigma}")
 
+        def plot_initial_condition(data, label):
+            """
+            Plots the initial condition of the given data.
+
+            Args:
+                data (array-like): The data to be plotted.
+                label (str): A label describing the data (e.g., 'u' or 'v').
+
+            This function prints a description of the initial condition and
+            generates a textual plot using the `tpl` library.
+            """
+            print(f"\n# Initial condition for {label}")
+            fig = tpl.figure()
+            fig.plot(range(len(data)), data, label=label, width=100, height=36)
+            fig.show()
+
+        plot_initial_condition(self.uinit, "u_0")
+        plot_initial_condition(self.vinit, "v_0")
+
 
 def solve_v(
     vector_u: np.ndarray,
