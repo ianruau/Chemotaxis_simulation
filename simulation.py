@@ -23,8 +23,8 @@ Parameters:
 
     Simulation Parameters:
     --meshsize INT    Number of spatial grid points (default: 50)
-    --time FLOAT      Total simulation time (default: 5)
-    --eigen_index INT  Parameter eigen index (default: 0, letting system choose)
+    --time FLOAT      Total simulation time (default: 2.5)
+    --eigen_index INT  Parameter eigen_index (default: 0, letting system choose)
     --epsilon FLOAT   Parameter perturbation epsilon (default: 0.001)
 
     Output Control:
@@ -37,7 +37,7 @@ Example:
 
 Output:
     - Generates numerical solutions for u and v
-    - Creates static plots of the solutions
+    - Creates .jpeg and .png files (identical) with static plots of the solutions
     - Optionally creates animation of the evolution
     - All output files use a basename containing parameter values
 """
@@ -69,15 +69,15 @@ class SimulationConfig:
     A data class to store simulation configuration parameters.
 
     Attributes:
-    - m (float): A model parameter, ...
-    - beta (float): A model parameter, ...
-    - alpha (float): A model parameter, ...
-    - chi (float): A model parameter, ...
-    - a (float): A linear reaction coefficient in the simulation.
-    - b (float): A nonlinear reaction coefficient in the simulation.
-    - mu (float): A parameter for the simulation, often associated with physical properties.
-    - nu (float): A parameter for the simulation, often representing diffusivity or viscosity.
-    - gamma (float): A parameter for the simulation, often used as an exponent or scaling factor.
+    - m (float): Exponent of u(t,x) in the chemotaxis term.
+    - beta (float): Exponent of the denominator (1+v) in the chemotaxis function Chi(v).
+    - alpha (float): Exponent of the nonlinear term in the logistic source.
+    - chi (float): Constant numerator of the chemotaxis function Chi(v).
+    - a (float): Linear reaction coefficient in the logistic source.
+    - b (float): Nonlinear reaction coefficient in the logistic source.
+    - mu (float): Coefficient of v in the elliptic PDE.
+    - nu (float): Coefficient of u^gamma in the elliptic PDE.
+    - gamma (float): Exponent of the source term u^gamma in the elliptic equation.
     - L (float): The length of the spatial domain (default is 1.0).
 
     Simulation Parameters:
@@ -87,10 +87,10 @@ class SimulationConfig:
     - epsilon (float): A small parameter used for numerical stability or perturbations.
 
     Output Control:
-    - confirm (str): A flag or message to confirm simulation execution.
-    - generate_video (str): A flag or path to enable or specify video generation.
+    - confirm (str): A flag to confirm simulation execution.
+    - generate_video (str): A flag to enable or disable video generation ()default is 'no').
     - verbose (str): A flag to enable verbose output for detailed logs.
-    - diagnostic (bool): A flag to enable or disable diagnostic output (default is False).
+    - diagnostic (bool): A flag to enable or disable numerical diagnostic output (default is False).
     """
 
     # Model parameters
@@ -107,7 +107,7 @@ class SimulationConfig:
 
     # Simulation parameters
     meshsize: int = 50
-    time: float = 2.3
+    time: float = 2.5
     eigen_index: int = 0
     epsilon: float = 0.001
 
@@ -872,7 +872,7 @@ def parse_args() -> SimulationConfig:
     --nu (float): Parameter nu (default: 1).
     --gamma (float): Parameter gamma (default: 1).
     --meshsize (int): Parameter for spatial mesh size (default: 50).
-    --time (float): Parameter for time to lapse (default: 2.3).
+    --time (float): Parameter for time to lapse (default: 2.5).
     --eigen_index (int): Parameter eigen index (default: 0, letting system choose).
     --epsilon (float): Parameter perturbation epsilon (default: 0.001).
     """
@@ -943,8 +943,8 @@ def parse_args() -> SimulationConfig:
     parser.add_argument(
         "--time",
         type=float,
-        default=2.3,
-        help="Parameter for time to lapse (default: 2.3)",
+        default=2.5,
+        help="Parameter for time to lapse (default: 2.5)",
     )
     parser.add_argument(
         "--eigen_index",
