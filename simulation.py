@@ -367,7 +367,7 @@ def laplacian_NBC(L, Nx, vector_f):
     return A.dot(vector_f / (dx**2))
 
 
-def rhs(u, v, config: Dict[str, Any] = None):
+def rhs(u, v, config: Dict[str, Any] = None) -> np.ndarray:
     """
     Compute the right-hand side (RHS) of the partial differential equation
     for the given variables and parameters.
@@ -767,60 +767,6 @@ def Display_Parameters():
                 positive_sigmas.append(sigma_n)  # Store positive sigma value
 
     return positive_sigmas, uStar
-
-
-def F(u: np.ndarray, config: SimulationConfig) -> np.ndarray:
-    """
-    Computes the right-hand side of a partial differential equation (PDE) system.
-
-    Parameters:
-    - u (np.ndarray): The solution vector `u` at the current time step.
-    - L (float): The length of the spatial domain.
-    - Nx (int): The number of spatial grid points.
-
-    Returns:
-    - np.ndarray: The computed right-hand side of the PDE system.
-
-    Notes:
-    - This function calculates various terms in the PDE system, including diffusion,
-      cross-term, nonlinear gradient, coupling, and reaction terms.
-    - It uses configuration parameters such as `m`, `beta`, `alpha`, `chi`, `a`, `b`,
-      `mu`, `nu`, and `gamma` from the global `config` dictionary.
-    - The function relies on helper functions `solve_v_1` and `compute_derivatives`
-      to compute intermediate values.
-    """
-    m = config["m"]
-    beta = config["beta"]
-    alpha = config["alpha"]
-    chi = config["chi"]
-    a = config["a"]
-    b = config["b"]
-    Nx = config["meshsize"]
-    L = config["L"]
-    dx = L / Nx
-    diagnostic = config["diagnostic"]
-    mu = config["mu"]
-    nu = config["nu"]
-    gamma = config["gamma"]
-
-    v = solve_v_1(L=L, Nx=Nx, vector_u=u, mu=mu, nu=nu, gamma=gamma, diagnostic=diagnostic)
-    u_x, u_xx = compute_derivatives(u, dx)
-    v_x, v_xx = compute_derivatives(v, dx)
-
-    term1 = u_xx  # Diffusion
-
-    term2 = -chi * m * (u ** (m - 1) / (1 + v) ** beta) * \
-        u_x * v_x  # Cross-term
-
-    term3 = (
-        beta * chi * (u**m / (1 + v) ** (beta + 1)) * (v_x) ** 2
-    )  # Nonlinear gradient
-
-    term4 = -chi * (u**m / (1 + v) ** beta) * v_xx  # Coupling to v_xx
-
-    term5 = a * u - b * u ** (1 + alpha)  # Reaction
-
-    return term1 + term2 + term3 + term4 + term5
 
 
 # Function to compute derivatives with Neumann BCs
