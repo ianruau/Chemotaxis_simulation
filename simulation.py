@@ -467,9 +467,9 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     uStar = config.uStar
 
     # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
-    # We multiply by 10 to make sure that the time step is small enough. This
+    # We multiply by 2 to make sure that the time step is small enough. This
     # factor should be adjusted based on the problem.
-    Nt = 10 * (
+    Nt = 2 * (
         int(4 * T * Nx * Nx / L**2) + 1
     )
     # dx = L / Nx
@@ -541,7 +541,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
         FileBaseName)
 
     # Create animation if requested
-    if config.get("generate_video", "yes") == "yes":
+    if config.generate_video == "yes":
         create_animation(u_num, t_values, uStar, SetupDes, FileBaseName)
 
     return x_values, u_num, v_num
