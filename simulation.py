@@ -118,6 +118,26 @@ def solve_v_1(L=1.0, Nx=50, vector_u=np.zeros(50), mu=1.0, nu=1.0, gamma=1.0, di
 
     # Solve system
     v = spsolve(A, b)
+
+    # Print matrix A in a readable format
+    if diagnostic:
+        print("\nMatrix A:")
+        print("-" * 50)
+        A_dense = A.toarray()
+        for i in range(Nx + 1):
+            row = [f"{x:8.3f}" for x in A_dense[i]]
+            print(f"Row {i:2d}: {' '.join(row)}")
+        print("-" * 50 + "\n")
+        # Print out v in the same format
+        # print("\nVector v:")
+        row = [f"{x:8.3f}" for x in vector_u]
+        print(f"vector_u {i:2d}: {' '.join(row)}")
+        row = [f"{x:8.3f}" for x in b]
+        print(f"b {i:2d}: {' '.join(row)}")
+        row = [f"{x:8.3f}" for x in v]
+        print(f"v {i:2d}: {' '.join(row)}")
+        print("-" * 50 + "\n")
+
     return v
 
 
@@ -357,52 +377,52 @@ def RK4(L=1.0, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
     return x_values, u_num, v_num
 
 
-def solve_v(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
-    mu = config["mu"]
-    nu = config["nu"]
-    gamma = config["gamma"]
-    dx = L / Nx
-
-    # Define the diagonals
-    main_diag = np.full(Nx + 1, -(2 + mu * dx**2))
-    upper_diag = np.ones(Nx)
-    lower_diag = np.ones(Nx)
-
-    # Special handling for Neumann BC
-    upper_diag[0] = 2
-    lower_diag[-1] = 2
-
-    # Create sparse matrix
-    diagonals = [main_diag, upper_diag, lower_diag]
-    offsets = [0, 1, -1]
-    A = diags(diagonals, offsets, format="csr")
-
-    # Define right-hand side
-    b = -(dx**2) * nu * vector_u**gamma
-
-    # Solve system
-    v = spsolve(A, b)
-
-    # Print matrix A in a readable format
-    if diagnostic:
-        print("\nMatrix A:")
-        print("-" * 50)
-        A_dense = A.toarray()
-        for i in range(Nx + 1):
-            row = [f"{x:8.3f}" for x in A_dense[i]]
-            print(f"Row {i:2d}: {' '.join(row)}")
-        print("-" * 50 + "\n")
-        # Print out v in the same format
-        # print("\nVector v:")
-        row = [f"{x:8.3f}" for x in vector_u]
-        print(f"vector_u {i:2d}: {' '.join(row)}")
-        row = [f"{x:8.3f}" for x in b]
-        print(f"b {i:2d}: {' '.join(row)}")
-        row = [f"{x:8.3f}" for x in v]
-        print(f"v {i:2d}: {' '.join(row)}")
-        print("-" * 50 + "\n")
-
-    return v
+# def solve_v(L=1, Nx=50, vector_u=np.zeros(50), diagnostic=False):
+#     mu = config["mu"]
+#     nu = config["nu"]
+#     gamma = config["gamma"]
+#     dx = L / Nx
+#
+#     # Define the diagonals
+#     main_diag = np.full(Nx + 1, -(2 + mu * dx**2))
+#     upper_diag = np.ones(Nx)
+#     lower_diag = np.ones(Nx)
+#
+#     # Special handling for Neumann BC
+#     upper_diag[0] = 2
+#     lower_diag[-1] = 2
+#
+#     # Create sparse matrix
+#     diagonals = [main_diag, upper_diag, lower_diag]
+#     offsets = [0, 1, -1]
+#     A = diags(diagonals, offsets, format="csr")
+#
+#     # Define right-hand side
+#     b = -(dx**2) * nu * vector_u**gamma
+#
+#     # Solve system
+#     v = spsolve(A, b)
+#
+#     # Print matrix A in a readable format
+#     if diagnostic:
+#         print("\nMatrix A:")
+#         print("-" * 50)
+#         A_dense = A.toarray()
+#         for i in range(Nx + 1):
+#             row = [f"{x:8.3f}" for x in A_dense[i]]
+#             print(f"Row {i:2d}: {' '.join(row)}")
+#         print("-" * 50 + "\n")
+#         # Print out v in the same format
+#         # print("\nVector v:")
+#         row = [f"{x:8.3f}" for x in vector_u]
+#         print(f"vector_u {i:2d}: {' '.join(row)}")
+#         row = [f"{x:8.3f}" for x in b]
+#         print(f"b {i:2d}: {' '.join(row)}")
+#         row = [f"{x:8.3f}" for x in v]
+#         print(f"v {i:2d}: {' '.join(row)}")
+#         print("-" * 50 + "\n")
+#
+#     return v
 
 
 def solve_pde_system(
@@ -423,6 +443,7 @@ def solve_pde_system(
     mu = config["mu"]
     nu = config["nu"]
     gamma = config["gamma"]
+    diagnostic = config["diagnostic"]
 
     x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
     positive_sigmas, uStar = Display_Parameters(L)
@@ -475,7 +496,7 @@ def solve_pde_system(
 
         # Solve v first
         # v = solve_v(L=L, Nx=Nx, vector_u=u_new, diagnostic=True)
-        v = solve_v(L=L, Nx=Nx, vector_u=u_new)
+        v = solve_v_1(L=L, Nx=Nx, vector_u=u_new, mu=mu, nu=nu, gamma=gamma, diagnostic=diagnostic)
 
         for i in range(1, Nx):  # Loop for u
             v_x = (v[i + 1] - v[i - 1]) / (2 * dx)
