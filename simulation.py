@@ -459,10 +459,15 @@ def RK4(config: Dict[str, Any] = None, FileBaseName="Simulation"):
     nu = config["nu"]
     gamma = config["gamma"]
     diagnostic = config["diagnostic"]
+    positive_sigmas = config["positive_sigmas"]
+    uStar = config["uStar"]
 
+    # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
+    # We multiply by 10 to make sure that the time step is small enough. This
+    # factor should be adjusted based on the problem.
     Nt = 10 * (
         int(4 * T * Nx * Nx / L**2) + 1
-    )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
+    )
     # dx = L / Nx
     dt = T / Nt
 
@@ -471,7 +476,6 @@ def RK4(config: Dict[str, Any] = None, FileBaseName="Simulation"):
     v_num = np.zeros((Nt + 1, Nx + 1))
 
     x_values = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
-    positive_sigmas, uStar = Display_Parameters(L)
 
     # Initial condition for u
     print("\n# Initial value u_0\n")
@@ -488,28 +492,27 @@ def RK4(config: Dict[str, Any] = None, FileBaseName="Simulation"):
     ).astype(np.float64)
 
     # Initial condition (must match exactly)
-    v_num[0, :] = solve_v(L, Nx, u_num[0, :], mu, nu, gamma, diagnostic)
+    v_num[0, :] = solve_v(u_num[0, :], config)
     # print("v_num=", v_num)
 
     # Time integration
     for n in tqdm(range(Nt), desc="Progress..."):
         # rk4 steps
-        k1 = rhs(L, Nx, u_num[n, :], v_num[n, :])
-        v1 = solve_v(L, Nx, u_num[n, :] + 0.5 * dt * k1, mu, nu, gamma, diagnostic)
+        k1 = rhs(u_num[n, :], v_num[n, :], config)
+        v1 = solve_v(u_num[n, :] + 0.5 * dt * k1, config)
 
-        k2 = rhs(L, Nx, u_num[n, :] + 0.5 * dt * k1, v1)
-        v2 = solve_v(L, Nx, u_num[n, :] + 0.5 * dt * k2, mu, nu, gamma, diagnostic)
+        k2 = rhs(u_num[n, :] + 0.5 * dt * k1, v1, config)
+        v2 = solve_v(u_num[n, :] + 0.5 * dt * k2, config)
 
-        k3 = rhs(L, Nx, u_num[n, :] + 0.5 * dt * k2, v2)
-        v3 = solve_v(L, Nx, u_num[n, :] + dt * k3, mu, nu, gamma, diagnostic)
+        k3 = rhs(u_num[n, :] + 0.5 * dt * k2, v2, config)
+        v3 = solve_v(u_num[n, :] + dt * k3, config)
 
-        k4 = rhs(L, Nx, u_num[n, :] + dt * k3, v3)
+        k4 = rhs(u_num[n, :] + dt * k3, v3, config)
 
         # Update
         u_num[n + 1, :] = u_num[n, :] + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
         # print("u_numk1k2k3k4=", u_num)
-        # v_num[n + 1, :] = solve_v(L, Nx, vector_u=u_num[n + 1, :])
-        v_num[n + 1, :] = solve_v(L, Nx, u_num[n + 1, :], mu, nu, gamma, diagnostic)
+        v_num[n + 1, :] = solve_v(u_num[n + 1, :], config)
 
     # Convert lists to numpy arrays
     u_num = np.array(u_num).T  # Convert list to numpy array and transpose
