@@ -58,7 +58,7 @@ from scipy.sparse.linalg import spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
 from typing import Dict, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Final, List
 
 
@@ -125,12 +125,10 @@ class SimulationConfig:
     lambdas: List[float] = field(init=False, default_factory=list)
     chi_vector: List[float] = field(init=False, default_factory=list)
 
-
     def __post_init__(self):
         # Using object.__setattr__ because the class is frozen
         object.__setattr__(self, 'uStar', (self.a / self.b) ** (1 / self.alpha))
-        object.__setattr__(self, 'vStar',
-            self.nu / self.mu * (self.a / self.b) ** (self.gamma / self.alpha))
+        object.__setattr__(self, 'vStar', self.nu / self.mu * (self.a / self.b) ** (self.gamma / self.alpha))
 
         # Compute ChiStar
         chistar = (
@@ -189,25 +187,24 @@ class SimulationConfig:
                     positive_sigmas.append(sigma_n)
         object.__setattr__(self, 'positive_sigmas', positive_sigmas)
 
-
     def display_parameters(self) -> None:
         """Display all computed parameters in a formatted way."""
 
         # Now access them via config['m'], config['beta'], etc.
         print("Model Parameters:")
         print("1. Logistic term: ")
-        print(f"\ta = {config['a']}, b = {config['b']}, alpha = {config['alpha']}")
+        print(f"\ta = {self.a}, b = {self.b}, alpha = {self.alpha}")
         print("2. Reaction term: ")
         print(
-            f"\tm = {config['m']}, beta = {config['beta']}, chi = {config['chi']}")
+            f"\tm = {self.m}, beta = {self.beta}, chi = {self.chi}")
         print("3. The v equation: ")
         print(
-            f"\tmu = {config['mu']}, nu = {config['nu']}, gamma = {config['gamma']}")
+            f"\tmu = {self.mu}, nu = {self.nu}, gamma = {self.gamma}")
         print("4. Initial condition: ")
         print(
-            f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
+            f"\tEpsilon = {self.Epsilon}, EigenIndex = {self.EigenIndex}")
         print("5. Simulation Parameters:")
-        print(f"\tMeshSize = {config['meshsize']}, time = {config['time']}")
+        print(f"\tMeshSize = {self.meshsize}, time = {self.time}")
 
         print("\n# Asymptotic solutions and related constants")
         print(f"Asymptotic solutions: u^* = {self.uStar:.2f} and v^* = {self.vStar:.2f}")
