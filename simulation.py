@@ -636,7 +636,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
 
     # Create animation if requested
     if config.generate_video == "yes":
-        create_animation(t_values, u_num, v_num, uStar, SetupDes, FileBaseName)
+        create_animation(t_values, u_num, v_num, uStar, vStar, SetupDes, FileBaseName)
 
     return x_values, u_num, v_num
 
@@ -781,6 +781,7 @@ def create_animation(
     u_data: np.ndarray,
     v_data: np.ndarray,
     uStar: float,
+    vStar: float,
     SetupDes: str,
     FileBaseName: str,
 ) -> None:
@@ -811,6 +812,7 @@ def create_animation(
 
     # Setup v plot
     ax2.set_ylim(v_data.min() - 0.1, v_data.max() + 0.1)
+    ax2.axhline(y=vStar, color="r", linestyle="--", label=r"$v^*$")
     ax2.legend(loc="upper right")
     ax2.set_title("Solution v(t,x)")
 
