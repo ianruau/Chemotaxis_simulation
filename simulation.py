@@ -125,6 +125,7 @@ class SimulationConfig:
     lambdas: List[float] = field(init=False, default_factory=list)
     chi_vector: List[float] = field(init=False, default_factory=list)
 
+
     def __post_init__(self):
         # Using object.__setattr__ because the class is frozen
         object.__setattr__(self, 'uStar', (self.a / self.b) ** (1 / self.alpha))
@@ -135,7 +136,7 @@ class SimulationConfig:
         chistar = (
             (1 + self.vStar) ** self.beta
             * (np.sqrt(self.a * self.alpha) + np.sqrt(self.mu)) ** 2
-            / (self.nu * self.gamma * self.uStar ** (self.m + self.gamma - 1))
+            / (self.nu * self.gamma * self.uStar ** (self.m + self.gamma - 1) + 1e-10)
         )
         object.__setattr__(self, 'ChiStar', chistar)
 
@@ -145,7 +146,7 @@ class SimulationConfig:
 
         chidstar = np.sqrt(
             self.b * 16 * (1 + betatilde * self.vStar) * self.mu
-            / (self.nu**2 * self.uStar ** (2 - self.alpha))
+            / (self.nu**2 * self.uStar ** (2 - self.alpha) + 1e-10)
         )
         object.__setattr__(self, 'ChiDStar', chidstar)
 
@@ -153,21 +154,26 @@ class SimulationConfig:
         lambdas = [-(((n + 1) * np.pi / self.L) ** 2) for n in range(6)]
         object.__setattr__(self, 'lambdas', lambdas)
 
-        chi_vector = [
-            ((self.a * self.alpha - lam) / (self.nu * self.gamma))
-            * (((1 + self.vStar) ** self.beta) / ((self.uStar) ** (self.m + self.gamma - 1)))
-            * ((lam - self.mu) / lam)
-            for lam in lambdas
-        ]
+        chi_vector = []
+        for lam in lambdas:
+            if lam == self.mu:
+                continue  # Avoid division by zero
+            chi_val = (
+                ((self.a * self.alpha - lam) / (self.nu * self.gamma + 1e-10))
+                * (((1 + self.vStar) ** self.beta) / ((self.uStar) ** (self.m + self.gamma - 1) + 1e-10))
+                * ((lam - self.mu) / (lam + 1e-10))
+            )
+            chi_vector.append(chi_val)
         object.__setattr__(self, 'chi_vector', chi_vector)
-        object.__setattr__(self, 'ChiStar', min(chi_vector))
+        object.__setattr__(self, 'ChiStar_min', min(chi_vector, default=0))
 
         # Compute positive sigmas
         positive_sigmas = []
         if self.chi >= self.ChiStar:
             n = 0
             sigma_n = 1.0
-            while sigma_n > 0:
+            max_iterations = 1000  # Prevent infinite loop
+            while sigma_n > 0 and n < max_iterations:
                 n += 1
                 lambda_n = -((n * np.pi / self.L) ** 2)
                 sigma_n = (
@@ -175,13 +181,14 @@ class SimulationConfig:
                     + self.chi
                     * self.nu
                     * self.gamma
-                    * ((self.uStar ** (self.m + self.gamma - 1)) / ((1 + self.vStar) ** self.beta))
-                    * (1 - self.mu / (self.mu - lambda_n))
+                    * ((self.uStar ** (self.m + self.gamma - 1)) / ((1 + self.vStar) ** self.beta + 1e-10))
+                    * (1 - self.mu / (self.mu - lambda_n + 1e-10))
                     - self.a * self.alpha
                 )
                 if sigma_n > 0:
                     positive_sigmas.append(sigma_n)
         object.__setattr__(self, 'positive_sigmas', positive_sigmas)
+
 
     def display_parameters(self) -> None:
         """Display all computed parameters in a formatted way."""
