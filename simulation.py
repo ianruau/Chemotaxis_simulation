@@ -205,14 +205,12 @@ class SimulationConfig:
                     positive_sigmas.append(sigma_n)
         object.__setattr__(self, "positive_sigmas", positive_sigmas)
 
-        # Initial condition for u and v
-        print("\n# Initial value u_0\n")
         if self.EigenIndex == 0:
             if len(positive_sigmas) > 0:
-                object.__setattr__(self, "EigenIdnex", 2)
+                object.__setattr__(self, "EigenIndex", 2)
                 print("Second (first nonconstant) eigenfunction is chosen.\n")
             else:
-                object.__setattr__(self, "EigenIdnex", 1)
+                object.__setattr__(self, "EigenIndex", 1)
                 print("first (constant) eigenfunction is chosen.\n")
 
         x_values = np.linspace(
@@ -636,7 +634,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
 
     # Create animation if requested
     if config.generate_video == "yes":
-        create_animation(u_num, t_values, uStar, SetupDes, FileBaseName)
+        create_animation(t_values, u_num, v_num, uStar, SetupDes, FileBaseName)
 
     return x_values, u_num, v_num
 
@@ -676,9 +674,7 @@ def create_static_plots(
     # First subplot for u(t,x)
     ax_3d_u = fig_3d.add_subplot(121, projection="3d")
     T_grid, X_grid = np.meshgrid(t_mesh, x_mesh, indexing="xy")
-    surf_u = ax_3d_u.plot_surface(
-        T_grid, X_grid, u_data, cmap="viridis", alpha=0.8
-    )
+    ax_3d_u.plot_surface(T_grid, X_grid, u_data, cmap="viridis", alpha=0.8)
 
     # Adjust the spacing between subplots
     # Reduce horizontal space between subplots, default 0.2
@@ -723,12 +719,7 @@ def create_static_plots(
     # Second subplot for v(t,x)
     ax_3d_v = fig_3d.add_subplot(122, projection="3d")
     surf_v = ax_3d_v.plot_surface(
-        T_grid,
-        X_grid,
-        v_data,
-        cmap="magma",
-        alpha=0.8
-    )
+        T_grid, X_grid, v_data, cmap="magma", alpha=0.8)
 
     # # Add colorbar for v
     # fig_3d.colorbar(surf_v, ax=ax_3d_v, label='v(t,x)')
@@ -749,8 +740,8 @@ def create_static_plots(
     # plt.tight_layout(rect=[0, 0, 1.10, 1])  # [left, bottom, right, top]
 
     # Save the plot as PNG and JPEG
-    fig_3d.savefig(f"{FileBaseName}.png", bbox_inches='tight')
-    fig_3d.savefig(f"{FileBaseName}.jpeg", bbox_inches='tight')
+    fig_3d.savefig(f"{FileBaseName}.png", bbox_inches="tight")
+    fig_3d.savefig(f"{FileBaseName}.jpeg", bbox_inches="tight")
     print(
         f"""
     Output files saved:
@@ -760,48 +751,60 @@ def create_static_plots(
     )
 
 
-def create_animation(u_data, time_data, uStar, SetupDes, FileBaseName):
+def create_animation(
+    time_data: np.ndarray,
+    u_data: np.ndarray,
+    v_data: np.ndarray,
+    uStar: float,
+    SetupDes: str,
+    FileBaseName: str,
+) -> None:
     """
-    Create and save an animation of the data over time.
+    Create and save an animation of u and v data over time, side by side.
 
     Parameters:
-        u_data (ndarray): 2D array where each column represents the data at a specific time step.
-        time_data (ndarray): 1D array of time steps corresponding to the columns of `u_data`.
-        uStar (float): Reference value to be displayed as a horizontal line in the animation.
-        SetupDes (str): Description of the setup, used as the title of the animation.
-        FileBaseName (str): Base name for the output video file (without extension).
-
-    The function performs the following steps:
-        1. Sets up a matplotlib figure and axis for plotting.
-        2. Initializes the plot with the first column of `u_data`.
-        3. Defines an update function to update the plot for each frame.
-        4. Reduces the number of frames to improve rendering speed.
-        5. Creates an animation using `FuncAnimation`.
-        6. Saves the animation as an MP4 file using `FFMpegWriter`.
-        7. Displays a progress bar during the saving process.
-        8. Closes the plot to free resources after saving.
+        time_data (ndarray): 1D array of time steps
+        u_data (ndarray): 2D array of u values over time
+        v_data (ndarray): 2D array of v values over time
+        uStar (float): Reference value for u
+        SetupDes (str): Description of the setup
+        FileBaseName (str): Base name for the output video file
     """
-    # Reduce DPI for faster rendering
-    fig, ax = plt.subplots(dpi=300)
+    # Create figure with two subplots side by side
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), dpi=300)
     fig.subplots_adjust(top=0.80)
 
-    (line,) = ax.plot(u_data[:, 0], label="u(t)")
-    ax.set_ylim(u_data.min() - 0.1, u_data.max() + 0.1)
-    ax.axhline(y=uStar, color="r", linestyle="--", label=r"$u^*$")
-    ax.legend(loc="upper right")
+    # Initialize plots
+    (line_u,) = ax1.plot(u_data[:, 0], label="u(t)")
+    (line_v,) = ax2.plot(v_data[:, 0], label="v(t)")
+
+    # Setup u plot
+    ax1.set_ylim(u_data.min() - 0.1, u_data.max() + 0.1)
+    ax1.axhline(y=uStar, color="r", linestyle="--", label=r"$u^*$")
+    ax1.legend(loc="upper right")
+    ax1.set_title("Solution u(t,x)")
+
+    # Setup v plot
+    ax2.set_ylim(v_data.min() - 0.1, v_data.max() + 0.1)
+    ax2.legend(loc="upper right")
+    ax2.set_title("Solution v(t,x)")
 
     def update(frame):
-        line.set_ydata(u_data[:, frame])
-        ax.set_title(SetupDes, fontsize=10, pad=-40)
-        return (line,)
+        line_u.set_ydata(u_data[:, frame])
+        line_v.set_ydata(v_data[:, frame])
+        fig.suptitle(SetupDes, fontsize=10, y=0.98)
+        return line_u, line_v
 
     # Take every nth frame to reduce total frames
     frame_stride = max(1, len(time_data) // 200)  # Aim for ~200 frames total
     frames = range(0, len(time_data), frame_stride)
 
     ani = animation.FuncAnimation(
-        fig, update, frames=frames, interval=50, blit=True  # Enable blit for speed
-    )
+        fig,
+        update,
+        frames=frames,
+        interval=50,
+        blit=True)
 
     print("\n# Saving video file.\n")
     writer = animation.FFMpegWriter(
