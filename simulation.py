@@ -66,7 +66,7 @@ rc("text", usetex=True)
 # 1. Write CLI interface
 
 
-def solve_v_1(L=1.0, Nx=50, vector_u=np.zeros(50), diagnostic=False):
+def solve_v_1(L=1.0, Nx=50, vector_u=np.zeros(50), mu=1.0, nu=1.0, gamma=1.0, diagnostic=False):
     """
     Solves a linear system to compute the vector `v` based on the given parameters.
 
@@ -74,6 +74,9 @@ def solve_v_1(L=1.0, Nx=50, vector_u=np.zeros(50), diagnostic=False):
     - L (float): Length of the domain (default is 1.0).
     - Nx (int): Number of grid points (default is 50).
     - vector_u (np.ndarray): Input vector `u` of size `Nx` (default is a zero vector).
+    - mu (float): Coefficient for the main diagonal modification (default is 1.0).
+    - nu (float): Coefficient for the right-hand side vector computation (default is 1.0).
+    - gamma (float): Exponent applied to the input vector `u` in the right-hand side computation (default is 1.0).
     - diagnostic (bool): Flag for enabling diagnostic output (default is False).
 
     Returns:
@@ -84,10 +87,16 @@ def solve_v_1(L=1.0, Nx=50, vector_u=np.zeros(50), diagnostic=False):
     - Neumann boundary conditions are applied by modifying the first and last off-diagonal elements.
     - The right-hand side vector `b` is computed based on the input vector `u` and parameters.
     - The system `A * v = b` is solved using a sparse solver.
+
+    Steps:
+    1. Compute the grid spacing `dx` based on the domain length `L` and number of grid points `Nx`.
+    2. Define the main, upper, and lower diagonals of the sparse matrix `A`.
+    3. Apply special handling for Neumann boundary conditions by modifying the first and last off-diagonal elements.
+    4. Construct the sparse matrix `A` using the diagonals and offsets.
+    5. Compute the right-hand side vector `b` based on the input vector `u` and parameters.
+    6. Solve the linear system `A * v = b` using a sparse solver.
+    7. Return the solution vector `v`.
     """
-    mu = config["mu"]
-    nu = config["nu"]
-    gamma = config["gamma"]
     dx = L / Nx
 
     # Define the diagonals
@@ -276,6 +285,7 @@ def RK4(L=1.0, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
     mu = config["mu"]
     nu = config["nu"]
     gamma = config["gamma"]
+    diagnostic = config["diagnostic"]
 
     x_values = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
     positive_sigmas, uStar = Display_Parameters(L)
@@ -295,27 +305,28 @@ def RK4(L=1.0, Nx=50, T=5, Epsilon=0.001, EigenIndex=2,
     ).astype(np.float64)
 
     # Initial condition (must match exactly)
-    v_num[0, :] = solve_v_1(L, Nx, u_num[0, :], False)
+    v_num[0, :] = solve_v_1(L, Nx, u_num[0, :], mu, nu, gamma, diagnostic)
     # print("v_num=", v_num)
 
     # Time integration
     for n in tqdm(range(Nt), desc="Progress..."):
         # rk4 steps
         k1 = rhs(L, Nx, u_num[n, :], v_num[n, :])
-        v1 = solve_v_1(L, Nx, vector_u=u_num[n, :] + 0.5 * dt * k1)
+        v1 = solve_v_1(L, Nx, u_num[n, :] + 0.5 * dt * k1, mu, nu, gamma, diagnostic)
 
         k2 = rhs(L, Nx, u_num[n, :] + 0.5 * dt * k1, v1)
-        v2 = solve_v_1(L, Nx, vector_u=u_num[n, :] + 0.5 * dt * k2)
+        v2 = solve_v_1(L, Nx, u_num[n, :] + 0.5 * dt * k2, mu, nu, gamma, diagnostic)
 
         k3 = rhs(L, Nx, u_num[n, :] + 0.5 * dt * k2, v2)
-        v3 = solve_v_1(L, Nx, vector_u=u_num[n, :] + dt * k3)
+        v3 = solve_v_1(L, Nx, u_num[n, :] + dt * k3, mu, nu, gamma, diagnostic)
 
         k4 = rhs(L, Nx, u_num[n, :] + dt * k3, v3)
 
         # Update
         u_num[n + 1, :] = u_num[n, :] + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
         # print("u_numk1k2k3k4=", u_num)
-        v_num[n + 1, :] = solve_v(L, Nx, vector_u=u_num[n + 1, :])
+        # v_num[n + 1, :] = solve_v(L, Nx, vector_u=u_num[n + 1, :])
+        v_num[n + 1, :] = solve_v_1(L, Nx, u_num[n + 1, :], mu, nu, gamma, diagnostic)
 
     # Convert lists to numpy arrays
     u_num = np.array(u_num).T  # Convert list to numpy array and transpose
