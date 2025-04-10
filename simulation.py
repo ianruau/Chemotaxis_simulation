@@ -670,107 +670,126 @@ def Display_Parameters(L):
     return positive_sigmas, uStar
 
 
-def solve_pde_RK(
-    L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"
-):
-    Nt = (
-        int(4 * T * Nx * Nx / L**2) + 1
-    )  # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
-    # dx = L / Nx
-    dt = T / Nt
-
-    m = config["m"]
-    beta = config["beta"]
-    alpha = config["alpha"]
-    chi = config["chi"]
-    a = config["a"]
-    b = config["b"]
-    mu = config["mu"]
-    nu = config["nu"]
-    gamma = config["gamma"]
-
-    x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
-    positive_sigmas, uStar = Display_Parameters(L)
-
-    # Initial condition for u
-    print("\n# Initial value u_0\n")
-    if EigenIndex == 0:
-        if len(positive_sigmas) > 0:
-            EigenIndex = 2
-            print("Second (first nonconstant) eigenfunction is chosen.\n")
-        else:
-            EigenIndex = 1
-            print("first (constant) eigenfunction is chosen.\n")
-
-    u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(
-        np.float64
-    )
-
-    # print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
-    print(f"Initial vector of u: \n{' '.join(f'{x:.3f}' for x in u)}\n")
-
-    # Add terminal plot of initial condition
-    fig = tpl.figure()
-    fig.plot(range(len(u)), u, label="u_0", width=100, height=36)
-    fig.show()
-
-    print("\n# Simulations now ...\n")
-    u_data = []
-    u_data.append(np.copy(u))
-    for n in tqdm(range(Nt), desc="Progress..."):
-        # RK4 Stage 1: k1 = F(u, v) at t_n
-        k1 = F(u, L, Nx)
-
-        # RK4 Stage 2: k2 = F(u + dt/2*k1, v_new) at t_n + dt/2
-        u_temp = u + 0.5 * dt * k1
-        k2 = F(u_temp, L, Nx)
-
-        # RK4 Stage 3: k3 = F(u + dt/2*k2, v_new) at t_n + dt/2
-        u_temp = u + 0.5 * dt * k2
-        k3 = F(u_temp, L, Nx)
-
-        # RK4 Stage 4: k4 = F(u + dt*k3, v_new) at t_n + dt
-        u_temp = u + dt * k3
-        k4 = F(u_temp, L, Nx)
-
-        # Update u
-        u += dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
-
-        # Enforce Neumann BCs (optional, but safe)
-        # u[0] = u[1]
-        # u[-1] = u[-2]
-        u[0] = (4 * u[1] - u[2]) / 3  # Left boundary
-        u[-1] = (4 * u[-2] - u[-3]) / 3  # Right boundary
-        u_data.append(np.copy(u))
-
-        if config.get("verbose", "no") == "yes" and n % (Nt // 5) == 0:
-            print(f"Step {n}, u[middle] = {u[len(u)//2]:.6f}")
-
-    # Convert lists to numpy arrays
-    u_data = np.array(u_data).T  # Convert list to numpy array and transpose
-    time_data = np.arange(Nt + 1) * dt
-
-    # Setup description for the title
-    SetupDes = rf"""
-    $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha};
-    $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
-    $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
-    $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
-    """
-
-    # Create static plots
-    create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName)
-
-    # Create animation if requested
-    if config.get("generate_video", "yes") == "yes":
-        create_animation(u_data, time_data, uStar, SetupDes, FileBaseName)
-
-    return x, u
+# def solve_pde_RK(
+#     L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"
+# ):
+#     # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
+#     Nt = (
+#         int(4 * T * Nx * Nx / L**2) + 1
+#     )
+#     # dx = L / Nx
+#     dt = T / Nt
+#
+#     m = config["m"]
+#     beta = config["beta"]
+#     alpha = config["alpha"]
+#     chi = config["chi"]
+#     a = config["a"]
+#     b = config["b"]
+#     mu = config["mu"]
+#     nu = config["nu"]
+#     gamma = config["gamma"]
+#
+#     x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
+#     positive_sigmas, uStar = Display_Parameters(L)
+#
+#     # Initial condition for u
+#     print("\n# Initial value u_0\n")
+#     if EigenIndex == 0:
+#         if len(positive_sigmas) > 0:
+#             EigenIndex = 2
+#             print("Second (first nonconstant) eigenfunction is chosen.\n")
+#         else:
+#             EigenIndex = 1
+#             print("first (constant) eigenfunction is chosen.\n")
+#
+#     u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(
+#         np.float64
+#     )
+#
+#     # print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
+#     print(f"Initial vector of u: \n{' '.join(f'{x:.3f}' for x in u)}\n")
+#
+#     # Add terminal plot of initial condition
+#     fig = tpl.figure()
+#     fig.plot(range(len(u)), u, label="u_0", width=100, height=36)
+#     fig.show()
+#
+#     print("\n# Simulations now ...\n")
+#     u_data = []
+#     u_data.append(np.copy(u))
+#     for n in tqdm(range(Nt), desc="Progress..."):
+#         # RK4 Stage 1: k1 = F(u, v) at t_n
+#         k1 = F(u, L, Nx)
+#
+#         # RK4 Stage 2: k2 = F(u + dt/2*k1, v_new) at t_n + dt/2
+#         u_temp = u + 0.5 * dt * k1
+#         k2 = F(u_temp, L, Nx)
+#
+#         # RK4 Stage 3: k3 = F(u + dt/2*k2, v_new) at t_n + dt/2
+#         u_temp = u + 0.5 * dt * k2
+#         k3 = F(u_temp, L, Nx)
+#
+#         # RK4 Stage 4: k4 = F(u + dt*k3, v_new) at t_n + dt
+#         u_temp = u + dt * k3
+#         k4 = F(u_temp, L, Nx)
+#
+#         # Update u
+#         u += dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+#
+#         # Enforce Neumann BCs (optional, but safe)
+#         # u[0] = u[1]
+#         # u[-1] = u[-2]
+#         u[0] = (4 * u[1] - u[2]) / 3  # Left boundary
+#         u[-1] = (4 * u[-2] - u[-3]) / 3  # Right boundary
+#         u_data.append(np.copy(u))
+#
+#         if config.get("verbose", "no") == "yes" and n % (Nt // 5) == 0:
+#             print(f"Step {n}, u[middle] = {u[len(u)//2]:.6f}")
+#
+#     # Convert lists to numpy arrays
+#     u_data = np.array(u_data).T  # Convert list to numpy array and transpose
+#     time_data = np.arange(Nt + 1) * dt
+#
+#     # Setup description for the title
+#     SetupDes = rf"""
+#     $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha};
+#     $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
+#     $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
+#     $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
+#     """
+#
+#     # Create static plots
+#     create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName)
+#
+#     # Create animation if requested
+#     if config.get("generate_video", "yes") == "yes":
+#         create_animation(u_data, time_data, uStar, SetupDes, FileBaseName)
+#
+#     return x, u
 
 
 # Right-hand side function F(u, v)
 def F(u, L, Nx):
+    """
+    Computes the right-hand side of a partial differential equation (PDE) system.
 
+    Parameters:
+    - u (np.ndarray): The solution vector `u` at the current time step.
+    - L (float): The length of the spatial domain.
+    - Nx (int): The number of spatial grid points.
+
+    Returns:
+    - np.ndarray: The computed right-hand side of the PDE system.
+
+    Notes:
+    - This function calculates various terms in the PDE system, including diffusion,
+      cross-term, nonlinear gradient, coupling, and reaction terms.
+    - It uses configuration parameters such as `m`, `beta`, `alpha`, `chi`, `a`, `b`,
+      `mu`, `nu`, and `gamma` from the global `config` dictionary.
+    - The function relies on helper functions `solve_v_1` and `compute_derivatives`
+      to compute intermediate values.
+    """
     m = config["m"]
     beta = config["beta"]
     alpha = config["alpha"]
@@ -778,11 +797,12 @@ def F(u, L, Nx):
     a = config["a"]
     b = config["b"]
     dx = L / Nx
-    # mu = config["mu"]
-    # nu = config["nu"]
-    # gamma = config["gamma"]
+    diagnostic = config["diagnostic"]
+    mu = config["mu"]
+    nu = config["nu"]
+    gamma = config["gamma"]
 
-    v = solve_v(L=L, Nx=Nx, vector_u=u)
+    v = solve_v_1(L=L, Nx=Nx, vector_u=u, mu=mu, nu=nu, gamma=gamma, diagnostic=diagnostic)
     u_x, u_xx = compute_derivatives(u, dx)
     v_x, v_xx = compute_derivatives(v, dx)
 
