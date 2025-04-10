@@ -59,6 +59,9 @@ from tqdm import tqdm  # Import tqdm for progress bar
 from dataclasses import dataclass, field
 from typing import Final, List
 
+# Matplotlib configurations
+rc("text", usetex=True)  # Enable LaTeX rendering
+
 
 @dataclass(frozen=True)
 class SimulationConfig:
@@ -250,10 +253,6 @@ class SimulationConfig:
                 print(f"sigma_{i}= {sigma}")
 
 
-# Enable LaTeX rendering
-rc("text", usetex=True)
-
-
 def solve_v(vector_u: np.ndarray, L: float, Nx: int, mu: float, nu: float, gamma: float, diagnostic: bool = False) -> np.ndarray:
     """
     Solves a linear system to compute the vector `v` based on the given parameters.
@@ -329,7 +328,7 @@ def solve_v(vector_u: np.ndarray, L: float, Nx: int, mu: float, nu: float, gamma
     return v
 
 
-def first_derivative_NBC(L, Nx, vector_f):
+def first_derivative_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
     """
     Computes the first derivative of a vector `vector_f` using finite differences
     with Neumann boundary conditions (NBC).
@@ -374,7 +373,7 @@ def first_derivative_NBC(L, Nx, vector_f):
     return A.dot(vector_f / (2 * dx))
 
 
-def laplacian_NBC(L, Nx, vector_f):
+def laplacian_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
     """
     Create a sparse Nx x Nx square matrix representing the Laplacian operator
     with Neumann Boundary Conditions (NBC) and apply it to a given vector.
@@ -386,6 +385,12 @@ def laplacian_NBC(L, Nx, vector_f):
 
     Returns:
     numpy.ndarray: The result of applying the Laplacian operator to the input vector.
+
+    Notes:
+    - The Laplacian operator is discretized using a finite difference method.
+    - Neumann Boundary Conditions are applied by modifying the first and last off-diagonal elements.
+    - The resulting sparse matrix is in Compressed Sparse Row (CSR) format for efficient computation.
+    - The input vector is scaled by the square of the grid spacing (dx^2) before applying the operator.
     """
     # Define the diagonals
     main_diag = np.full(Nx + 1, -2)
@@ -406,7 +411,7 @@ def laplacian_NBC(L, Nx, vector_f):
     return A.dot(vector_f / (dx**2))
 
 
-def rhs(u, v, config: SimulationConfig) -> np.ndarray:
+def rhs(u: np.ndarray, v: np.ndarray, config: SimulationConfig) -> np.ndarray:
     """
     Compute the right-hand side (RHS) of the partial differential equation
     for the given variables and parameters.
