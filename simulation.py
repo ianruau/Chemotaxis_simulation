@@ -92,28 +92,117 @@ class SimulationConfig:
     - diagnostic (bool): A flag to enable or disable diagnostic output (default is False).
     """
     # Model parameters
-    m: float
-    beta: float
-    alpha: float
-    chi: float
-    a: float
-    b: float
-    mu: float
-    nu: float
-    gamma: float
+    m: float = 1.0
+    beta: float = 1.0
+    alpha: float = 1.0
+    chi: float = 25.0
+    a: float = 1.0
+    b: float = 1.0
+    mu: float = 1.0
+    nu: float = 1.0
+    gamma: float = 1.0
     L: float = 1.0  # Length of the domain
 
     # Simulation parameters
-    meshsize: int
-    time: float
-    EigenIndex: int
-    Epsilon: float
+    meshsize: int = 50
+    time: float = 2.3
+    EigenIndex: int = 0
+    Epsilon: float = 0.001
 
     # Output control
-    confirm: str
-    generate_video: str
-    verbose: str
+    confirm: str = "no"
+    generate_video: str = "no"
+    verbose: str = "no"
     diagnostic: bool = False
+
+    # Computed values
+    uStar: float = field(init=False)
+    vStar: float = field(init=False)
+    ChiStar: float = field(init=False)
+    ChiDStar: float = field(init=False)
+    betaTilde: float = field(init=False)
+    positive_sigmas: List[float] = field(init=False)
+    lambdas: List[float] = field(init=False)
+    chi_vector: List[float] = field(init=False)
+
+    def __post_init__(self):
+        # Using object.__setattr__ because the class is frozen
+        object.__setattr__(self, 'uStar', (self.a / self.b) ** (1 / self.alpha))
+        object.__setattr__(self, 'vStar',
+            self.nu / self.mu * (self.a / self.b) ** (self.gamma / self.alpha))
+
+        # Compute ChiStar
+        chistar = (
+            (1 + self.vStar) ** self.beta
+            * (np.sqrt(self.a * self.alpha) + np.sqrt(self.mu)) ** 2
+            / (self.nu * self.gamma * self.uStar ** (self.m + self.gamma - 1))
+        )
+        object.__setattr__(self, 'ChiStar', chistar)
+
+        # Compute betaTilde and ChiDStar
+        betatilde = 0 if self.beta < 0.5 else min(1, 2 * self.beta - 1)
+        object.__setattr__(self, 'betaTilde', betatilde)
+
+        chidstar = np.sqrt(
+            self.b * 16 * (1 + betatilde * self.vStar) * self.mu
+            / (self.nu**2 * self.uStar ** (2 - self.alpha))
+        )
+        object.__setattr__(self, 'ChiDStar', chidstar)
+
+        # Compute Lambdas and Chi vector
+        lambdas = [-(((n + 1) * np.pi / self.L) ** 2) for n in range(6)]
+        object.__setattr__(self, 'lambdas', lambdas)
+
+        chi_vector = [
+            ((self.a * self.alpha - lam) / (self.nu * self.gamma))
+            * (((1 + self.vStar) ** self.beta) / ((self.uStar) ** (self.m + self.gamma - 1)))
+            * ((lam - self.mu) / lam)
+            for lam in lambdas
+        ]
+        object.__setattr__(self, 'chi_vector', chi_vector)
+        object.__setattr__(self, 'ChiStar', min(chi_vector))
+
+        # Compute positive sigmas
+        positive_sigmas = []
+        if self.chi >= self.ChiStar:
+            n = 0
+            sigma_n = 1.0
+            while sigma_n > 0:
+                n += 1
+                lambda_n = -((n * np.pi / self.L) ** 2)
+                sigma_n = (
+                    lambda_n
+                    + self.chi
+                    * self.nu
+                    * self.gamma
+                    * ((self.uStar ** (self.m + self.gamma - 1)) / ((1 + self.vStar) ** self.beta))
+                    * (1 - self.mu / (self.mu - lambda_n))
+                    - self.a * self.alpha
+                )
+                if sigma_n > 0:
+                    positive_sigmas.append(sigma_n)
+        object.__setattr__(self, 'positive_sigmas', positive_sigmas)
+
+    def display_parameters(self) -> None:
+        """Display all computed parameters in a formatted way."""
+        print("\n# Asymptotic solutions and related constants")
+        print(f"Asymptotic solutions: u^* = {self.uStar:.2f} and v^* = {self.vStar:.2f}")
+        print(f"A lower bound for Chi* is {self.ChiStar:.2f}")
+        print(f"Chi** = {self.ChiDStar:.2f} and beta tilde = {self.betaTilde:.2f}")
+
+        print("\n# Chi* values\n")
+        data = [
+            [f"Lambda_{i + 2}^*", f"{lam:.3f}", f"Chi_{0,i + 2}^*", f"{chi:.3f}"]
+            for i, (lam, chi) in enumerate(zip(self.lambdas, self.chi_vector))
+        ]
+        headers = ["Lambda", "Value", "Chi", "Value"]
+        print(tabulate(data, headers=headers, tablefmt="grid"))
+        print(f"\nChi* = {self.ChiStar:.3f} and the choice of chi = {self.chi:.3f}")
+
+        if self.positive_sigmas:
+            print("\n# Positive sigma values")
+            for i, sigma in enumerate(self.positive_sigmas, 1):
+                print(f"sigma_{i}= {sigma}")
 
 
 # Enable LaTeX rendering
@@ -603,7 +692,7 @@ def solve_pde_system(
     # return x, u, v
 
 
-def Display_Parameters(L):
+def Display_Parameters():
     m = config["m"]
     beta = config["beta"]
     alpha = config["alpha"]
@@ -613,6 +702,7 @@ def Display_Parameters(L):
     mu = config["mu"]
     nu = config["nu"]
     gamma = config["gamma"]
+    L = config["L"]
     # Compute the asymptotic solution
     print("\n# Computing the asymptotic solutions and related constants")
     uStar = (a / b) ** (1 / alpha)
@@ -679,106 +769,6 @@ def Display_Parameters(L):
     return positive_sigmas, uStar
 
 
-# def solve_pde_RK(
-#     L=1, Nx=50, T=5, Epsilon=0.001, EigenIndex=2, FileBaseName="Simulation"
-# ):
-#     # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
-#     Nt = (
-#         int(4 * T * Nx * Nx / L**2) + 1
-#     )
-#     # dx = L / Nx
-#     dt = T / Nt
-#
-#     m = config["m"]
-#     beta = config["beta"]
-#     alpha = config["alpha"]
-#     chi = config["chi"]
-#     a = config["a"]
-#     b = config["b"]
-#     mu = config["mu"]
-#     nu = config["nu"]
-#     gamma = config["gamma"]
-#
-#     x = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
-#     positive_sigmas, uStar = Display_Parameters(L)
-#
-#     # Initial condition for u
-#     print("\n# Initial value u_0\n")
-#     if EigenIndex == 0:
-#         if len(positive_sigmas) > 0:
-#             EigenIndex = 2
-#             print("Second (first nonconstant) eigenfunction is chosen.\n")
-#         else:
-#             EigenIndex = 1
-#             print("first (constant) eigenfunction is chosen.\n")
-#
-#     u = (uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x)).astype(
-#         np.float64
-#     )
-#
-#     # print(f"Initial vector of u: \n{' '.join(map(str, u))}\n")
-#     print(f"Initial vector of u: \n{' '.join(f'{x:.3f}' for x in u)}\n")
-#
-#     # Add terminal plot of initial condition
-#     fig = tpl.figure()
-#     fig.plot(range(len(u)), u, label="u_0", width=100, height=36)
-#     fig.show()
-#
-#     print("\n# Simulations now ...\n")
-#     u_data = []
-#     u_data.append(np.copy(u))
-#     for n in tqdm(range(Nt), desc="Progress..."):
-#         # RK4 Stage 1: k1 = F(u, v) at t_n
-#         k1 = F(u, L, Nx)
-#
-#         # RK4 Stage 2: k2 = F(u + dt/2*k1, v_new) at t_n + dt/2
-#         u_temp = u + 0.5 * dt * k1
-#         k2 = F(u_temp, L, Nx)
-#
-#         # RK4 Stage 3: k3 = F(u + dt/2*k2, v_new) at t_n + dt/2
-#         u_temp = u + 0.5 * dt * k2
-#         k3 = F(u_temp, L, Nx)
-#
-#         # RK4 Stage 4: k4 = F(u + dt*k3, v_new) at t_n + dt
-#         u_temp = u + dt * k3
-#         k4 = F(u_temp, L, Nx)
-#
-#         # Update u
-#         u += dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
-#
-#         # Enforce Neumann BCs (optional, but safe)
-#         # u[0] = u[1]
-#         # u[-1] = u[-2]
-#         u[0] = (4 * u[1] - u[2]) / 3  # Left boundary
-#         u[-1] = (4 * u[-2] - u[-3]) / 3  # Right boundary
-#         u_data.append(np.copy(u))
-#
-#         if config.get("verbose", "no") == "yes" and n % (Nt // 5) == 0:
-#             print(f"Step {n}, u[middle] = {u[len(u)//2]:.6f}")
-#
-#     # Convert lists to numpy arrays
-#     u_data = np.array(u_data).T  # Convert list to numpy array and transpose
-#     time_data = np.arange(Nt + 1) * dt
-#
-#     # Setup description for the title
-#     SetupDes = rf"""
-#     $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha};
-#     $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
-#     $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
-#     $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
-#     """
-#
-#     # Create static plots
-#     create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName)
-#
-#     # Create animation if requested
-#     if config.get("generate_video", "yes") == "yes":
-#         create_animation(u_data, time_data, uStar, SetupDes, FileBaseName)
-#
-#     return x, u
-
-
-# Right-hand side function F(u, v)
 def F(u: np.ndarray, config: SimulationConfig) -> np.ndarray:
     """
     Computes the right-hand side of a partial differential equation (PDE) system.
