@@ -209,7 +209,7 @@ class SimulationConfig:
 rc("text", usetex=True)
 
 
-def solve_v_1(vector_u=np.zeros(50), config: Dict[str, Any] = None):
+def solve_v(vector_u=np.zeros(50), config: Dict[str, Any] = None):
     """
     Solves a linear system to compute the vector `v` based on the given parameters.
 
@@ -471,20 +471,20 @@ def RK4(config: Dict[str, Any] = None, FileBaseName="Simulation"):
     ).astype(np.float64)
 
     # Initial condition (must match exactly)
-    v_num[0, :] = solve_v_1(L, Nx, u_num[0, :], mu, nu, gamma, diagnostic)
+    v_num[0, :] = solve_v(L, Nx, u_num[0, :], mu, nu, gamma, diagnostic)
     # print("v_num=", v_num)
 
     # Time integration
     for n in tqdm(range(Nt), desc="Progress..."):
         # rk4 steps
         k1 = rhs(L, Nx, u_num[n, :], v_num[n, :])
-        v1 = solve_v_1(L, Nx, u_num[n, :] + 0.5 * dt * k1, mu, nu, gamma, diagnostic)
+        v1 = solve_v(L, Nx, u_num[n, :] + 0.5 * dt * k1, mu, nu, gamma, diagnostic)
 
         k2 = rhs(L, Nx, u_num[n, :] + 0.5 * dt * k1, v1)
-        v2 = solve_v_1(L, Nx, u_num[n, :] + 0.5 * dt * k2, mu, nu, gamma, diagnostic)
+        v2 = solve_v(L, Nx, u_num[n, :] + 0.5 * dt * k2, mu, nu, gamma, diagnostic)
 
         k3 = rhs(L, Nx, u_num[n, :] + 0.5 * dt * k2, v2)
-        v3 = solve_v_1(L, Nx, u_num[n, :] + dt * k3, mu, nu, gamma, diagnostic)
+        v3 = solve_v(L, Nx, u_num[n, :] + dt * k3, mu, nu, gamma, diagnostic)
 
         k4 = rhs(L, Nx, u_num[n, :] + dt * k3, v3)
 
@@ -492,7 +492,7 @@ def RK4(config: Dict[str, Any] = None, FileBaseName="Simulation"):
         u_num[n + 1, :] = u_num[n, :] + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
         # print("u_numk1k2k3k4=", u_num)
         # v_num[n + 1, :] = solve_v(L, Nx, vector_u=u_num[n + 1, :])
-        v_num[n + 1, :] = solve_v_1(L, Nx, u_num[n + 1, :], mu, nu, gamma, diagnostic)
+        v_num[n + 1, :] = solve_v(L, Nx, u_num[n + 1, :], mu, nu, gamma, diagnostic)
 
     # Convert lists to numpy arrays
     u_num = np.array(u_num).T  # Convert list to numpy array and transpose
