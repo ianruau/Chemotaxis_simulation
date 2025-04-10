@@ -43,7 +43,6 @@ Output:
 """
 
 import argparse
-import math
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -57,7 +56,6 @@ from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
-from typing import Dict, Any
 from dataclasses import dataclass, field
 from typing import Final, List
 
@@ -124,6 +122,8 @@ class SimulationConfig:
     positive_sigmas: List[float] = field(init=False, default_factory=list)
     lambdas: List[float] = field(init=False, default_factory=list)
     chi_vector: List[float] = field(init=False, default_factory=list)
+    uinit: np.ndarray = field(init=False, default=None)
+    vinit: np.ndarray = field(init=False, default=None)
 
     def __post_init__(self):
         # Using object.__setattr__ because the class is frozen
@@ -187,6 +187,22 @@ class SimulationConfig:
                     positive_sigmas.append(sigma_n)
         object.__setattr__(self, 'positive_sigmas', positive_sigmas)
 
+        # Initial condition for u and v
+        print("\n# Initial value u_0\n")
+        if self.EigenIndex == 0:
+            if len(positive_sigmas) > 0:
+                self.EigenIndex = 2
+                print("Second (first nonconstant) eigenfunction is chosen.\n")
+            else:
+                self.EigenIndex = 1
+                print("first (constant) eigenfunction is chosen.\n")
+
+        x_values = np.linspace(0, self.L, int(self.meshsize) + 1, dtype=np.float64)
+        object.__setattr__(self, 'uinit', self.uStar + self.Epsilon * np.cos(((self.EigenIndex - 1) * np.pi / self.L) * x_values)).astype(np.float64)
+
+        # Initial condition (must match exactly)
+        object.__setattr__(self, 'vinit', solve_v(self.uinit, config))
+
     def display_parameters(self) -> None:
         """Display all computed parameters in a formatted way."""
 
@@ -230,7 +246,7 @@ class SimulationConfig:
 rc("text", usetex=True)
 
 
-def solve_v(vector_u, config: SimulationConfig) -> np.ndarray:
+def solve_v(vector_u: np.ndarray, config: SimulationConfig) -> np.ndarray:
     """
     Solves a linear system to compute the vector `v` based on the given parameters.
 
@@ -545,21 +561,6 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
         create_animation(u_num, t_values, uStar, SetupDes, FileBaseName)
 
     return x_values, u_num, v_num
-
-
-# Function to compute derivatives with Neumann BCs
-def compute_derivatives(f, dx):
-    f_x = np.zeros_like(f)
-    f_xx = np.zeros_like(f)
-    # Central differences for interior
-    f_x[1:-1] = (f[2:] - f[:-2]) / (2 * dx)
-    f_xx[1:-1] = (f[2:] - 2 * f[1:-1] + f[:-2]) / dx**2
-    # Neumann BCs (f_x=0 at boundaries)
-    f_x[0] = (f[1] - f[0]) / dx
-    f_x[-1] = (f[-1] - f[-2]) / dx
-    f_xx[0] = (f[1] - f[0]) / dx**2
-    f_xx[-1] = (f[-2] - f[-1]) / dx**2
-    return f_x, f_xx
 
 
 def create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName):
