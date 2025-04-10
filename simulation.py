@@ -199,6 +199,9 @@ class SimulationConfig:
         print("4. Initial condition: ")
         print(
             f"\tEpsilon = {config['Epsilon']}, EigenIndex = {config['EigenIndex']}")
+        print("5. Simulation Parameters:")
+        print(f"\tMeshSize = {config['meshsize']}, time = {config['time']}")
+
         print("\n# Asymptotic solutions and related constants")
         print(f"Asymptotic solutions: u^* = {self.uStar:.2f} and v^* = {self.vStar:.2f}")
         print(f"A lower bound for Chi* is {self.ChiStar:.2f}")
@@ -815,23 +818,18 @@ def main():
     # # Display the parsed arguments
     config.display_parameters()
 
-    # Run the solver
-
-    print("Simulation Parameters:")
-    print(f"\tMeshSize = {config['meshsize']}, time = {config['time']}")
-
     # Using the above parameters to generate a file base name string
     basename = f"a={config['a']}_b={config['b']}_alpha={config['alpha']}_m={config['m']}_beta={config['beta']}_chi={config['chi']}_mu={config['mu']}_nu={config['nu']}_gamma={config['gamma']}_meshsize={config['meshsize']}_time={config['time']}_Epsilon={config['Epsilon']}_EigenIndex={config['EigenIndex']}".replace(
         ".", "-"
     )
     print(f"Output files will be saved with the basename:\n\t {basename}\n")
 
+    # Run the solver
     if (
         config["confirm"] == "no"
         or questionary.confirm("Do you want to continue the simulation?").ask()
     ):
         print("Continuing simulation...")
-        # x, u, v = solve_pde_system(
         x, u, v = RK4(config=config, FileBaseName=basename)
     else:
         print("Exiting simulation.")
