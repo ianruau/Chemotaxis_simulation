@@ -36,7 +36,7 @@ def generate_html():
     """
 
     # Process different chi values
-    chi_values = [70, 150, 300, 490, 700]
+    chi_values = [10, 23, 24, 70, 150, 300, 490, 700]
 
     for chi in chi_values:
         html_content += f'<div class="section"><h2>Chi = {chi}</h2>'
