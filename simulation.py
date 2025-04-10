@@ -209,10 +209,10 @@ class SimulationConfig:
         print("\n# Initial value u_0\n")
         if self.EigenIndex == 0:
             if len(positive_sigmas) > 0:
-                self.EigenIndex = 2
+                object.__setattr__(self, "EigenIdnex", 2)
                 print("Second (first nonconstant) eigenfunction is chosen.\n")
             else:
-                self.EigenIndex = 1
+                object.__setattr__(self, "EigenIdnex", 1)
                 print("first (constant) eigenfunction is chosen.\n")
 
         x_values = np.linspace(
@@ -224,7 +224,7 @@ class SimulationConfig:
             self.uStar
             + self.Epsilon
             * np.cos(((self.EigenIndex - 1) * np.pi / self.L) * x_values),
-        ).astype(np.float64)
+        ),
 
         # Initial condition (must match exactly)
         object.__setattr__(
@@ -594,7 +594,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
 
     # Convert lists to numpy arrays
     u_num = np.array(u_num).T  # Convert list to numpy array and transpose
-    # time_data = np.arange(Nt + 1) * dt
+    v_num = np.array(v_num).T  # Convert list to numpy array and transpose
     t_values = np.linspace(0, T, Nt + 1)
 
     # Setup description for the title
@@ -607,9 +607,10 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
 
     # Create static plots
     create_static_plots(
+        t_values,
         x_values,
         u_num,
-        t_values,
+        v_num,
         uStar,
         SetupDes,
         FileBaseName)
@@ -650,61 +651,87 @@ def create_static_plots(
     Returns:
     - None: The function saves the plots to files and does not return any value.
     """
-    # 3D Plot
-    fig_3d = plt.figure(dpi=300)
-    ax_3d = fig_3d.add_subplot(111, projection="3d")
+    # Create two subplots side by side
+    fig_3d = plt.figure(figsize=(15, 6), dpi=300)
+
+    # First subplot for u(t,x)
+    ax_3d_u = fig_3d.add_subplot(121, projection="3d")
     T_grid, X_grid = np.meshgrid(t_mesh, x_mesh, indexing="xy")
-    ax_3d.plot_surface(
-        T_grid, X_grid, u_data, cmap="viridis", alpha=0.8, label="u(t,x)"
+    surf_u = ax_3d_u.plot_surface(
+        T_grid, X_grid, u_data, cmap="viridis", alpha=0.8
     )
-    ax_3d.plot_surface(
+
+    # Adjust the spacing between subplots
+    # Reduce horizontal space between subplots, default 0.2
+    plt.subplots_adjust(wspace=-0.7)
+
+    # # Add colorbar for u
+    # fig_3d.colorbar(surf_u, ax=ax_3d_u, label='u(t,x)')
+
+    # Plot reference planes for u
+    U_grid = np.full_like(T_grid, uStar)
+    Zero_grid = np.full_like(T_grid, 0)
+
+    ax_3d_u.plot_surface(
+        T_grid,
+        X_grid,
+        U_grid,
+        alpha=0.5,
+        rstride=100,
+        cstride=100,
+        color="r",
+    )
+
+    ax_3d_u.plot_surface(
+        T_grid,
+        X_grid,
+        Zero_grid,
+        alpha=0.2,
+        rstride=100,
+        cstride=100,
+        color="lightgray",
+    )
+
+    # Setup the u plot
+    ax_3d_u.set_xlabel(r"Time $t$")
+    ax_3d_u.set_ylabel(r"Space $x$")
+    # ax_3d_u.set_zlabel(r"$u(t,x)$")
+    ax_3d_u.set_zlim(-0.05, u_data.max())
+    ax_3d_u.set_zticks(np.linspace(0, u_data.max(), 5))
+    ax_3d_u.zaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+    ax_3d_u.set_title("Solution u(t,x)", pad=10)
+
+    # Second subplot for v(t,x)
+    ax_3d_v = fig_3d.add_subplot(122, projection="3d")
+    surf_v = ax_3d_v.plot_surface(
         T_grid,
         X_grid,
         v_data,
         cmap="magma",
-        alpha=0.6,
-        label="v(t,x)")
-
-    # Create a constant plane at height uStar
-    U_grid = np.full_like(T_grid, uStar)
-    Zero_grid = np.full_like(T_grid, 0)
-
-    ax_3d.set_xlabel(r"Time $t$")
-    ax_3d.set_ylabel(r"Space $x$")
-    ax_3d.set_zlabel(r"$u(t,x)$")
-    ax_3d.set_zlim(-0.05, u_data.max())
-    # ax_3d.set_zlim(uStar, u_data.max())
-    ax_3d.set_zticks(np.linspace(uStar, u_data.max(), 5))
-    ax_3d.zaxis.set_major_formatter(FormatStrFormatter("%.3f"))
-
-    # Plot reference planes with muted colors and increased transparency
-    ax_3d.plot_surface(
-        T_grid,
-        X_grid,
-        U_grid,
-        alpha=0.5,  # More transparent
-        rstride=100,
-        cstride=100,
-        color="r",  # Muted color
+        alpha=0.8
     )
 
-    ax_3d.plot_surface(
-        T_grid,
-        X_grid,
-        Zero_grid,
-        alpha=0.2,  # More transparent
-        rstride=100,
-        cstride=100,
-        color="lightgray",  # Very light gray
-    )
+    # # Add colorbar for v
+    # fig_3d.colorbar(surf_v, ax=ax_3d_v, label='v(t,x)')
 
-    ax_3d.set_title(SetupDes, fontsize=10, pad=-80)
-    fig_3d.subplots_adjust(top=0.80)
+    # Setup the v plot
+    ax_3d_v.set_xlabel(r"Time $t$")
+    ax_3d_v.set_ylabel(r"Space $x$")
+    # ax_3d_v.set_zlabel(r"$v(t,x)$")
+    ax_3d_v.set_zlim(-0.05, v_data.max())
+    ax_3d_v.set_zticks(np.linspace(0, v_data.max(), 5))
+    ax_3d_v.zaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+    ax_3d_v.set_title("Solution v(t,x)", pad=10)
+
+    # Add overall title
+    fig_3d.suptitle(SetupDes, fontsize=10)
     plt.tight_layout()
+    # Adjust layout with more right margin
+    # plt.tight_layout(rect=[0, 0, 1.10, 1])  # [left, bottom, right, top]
 
     # Save the plot as PNG and JPEG
-    fig_3d.savefig(f"{FileBaseName}.png")
-    fig_3d.savefig(f"{FileBaseName}.jpeg")
+    fig_3d.savefig(f"{FileBaseName}.png", bbox_inches='tight')
+    fig_3d.savefig(f"{FileBaseName}.jpeg", bbox_inches='tight')
     print(
         f"""
     Output files saved:
