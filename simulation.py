@@ -201,7 +201,15 @@ class SimulationConfig:
         object.__setattr__(self, 'uinit', self.uStar + self.Epsilon * np.cos(((self.EigenIndex - 1) * np.pi / self.L) * x_values)).astype(np.float64)
 
         # Initial condition (must match exactly)
-        object.__setattr__(self, 'vinit', solve_v(self.uinit, config))
+        object.__setattr__(self, 'vinit', solve_v(
+            vector_u=self.uinit,
+            L=self.L,
+            Nx=self.meshsize,
+            mu=self.mu,
+            nu=self.nu,
+            gamma=self.gamma,
+            diagnostic=self.diagnostic
+        ))
 
     def display_parameters(self) -> None:
         """Display all computed parameters in a formatted way."""
@@ -246,17 +254,17 @@ class SimulationConfig:
 rc("text", usetex=True)
 
 
-def solve_v(vector_u: np.ndarray, config: SimulationConfig) -> np.ndarray:
+def solve_v(vector_u: np.ndarray, L: float, Nx: int, mu: float, nu: float, gamma: float, diagnostic: bool = False) -> np.ndarray:
     """
     Solves a linear system to compute the vector `v` based on the given parameters.
 
     Parameters:
-    - L (float): Length of the domain (default is 1.0).
-    - Nx (int): Number of grid points (default is 50).
     - vector_u (np.ndarray): Input vector `u` of size `Nx` (default is a zero vector).
-    - mu (float): Coefficient for the main diagonal modification (default is 1.0).
-    - nu (float): Coefficient for the right-hand side vector computation (default is 1.0).
-    - gamma (float): Exponent applied to the input vector `u` in the right-hand side computation (default is 1.0).
+    - L (float): Length of the domain.
+    - Nx (int): Number of grid points.
+    - mu (float): Coefficient for the main diagonal modification.
+    - nu (float): Coefficient for the right-hand side vector computation.
+    - gamma (float): Exponent applied to the input vector `u` in the right-hand side computation.
     - diagnostic (bool): Flag for enabling diagnostic output (default is False).
 
     Returns:
@@ -277,12 +285,6 @@ def solve_v(vector_u: np.ndarray, config: SimulationConfig) -> np.ndarray:
     6. Solve the linear system `A * v = b` using a sparse solver.
     7. Return the solution vector `v`.
     """
-    L = config.L
-    Nx = config.meshsize
-    mu = config.mu
-    nu = config.nu
-    gamma = config.gamma
-    diagnostic = config.diagnostic
     dx = L / Nx
 
     # Define the diagonals
@@ -497,42 +499,58 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
 
     x_values = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
 
-    # Initial condition for u
-    print("\n# Initial value u_0\n")
-    if EigenIndex == 0:
-        if len(positive_sigmas) > 0:
-            EigenIndex = 2
-            print("Second (first nonconstant) eigenfunction is chosen.\n")
-        else:
-            EigenIndex = 1
-            print("first (constant) eigenfunction is chosen.\n")
-
-    u_num[0, :] = (
-        uStar + Epsilon * np.cos(((EigenIndex - 1) * np.pi / L) * x_values)
-    ).astype(np.float64)
-
-    # Initial condition (must match exactly)
-    v_num[0, :] = solve_v(u_num[0, :], config)
-    # print("v_num=", v_num)
+    u_num[0, :] = config.uinit
+    v_num[0, :] = config.vinit
 
     # Time integration
     for n in tqdm(range(Nt), desc="Progress..."):
         # rk4 steps
         k1 = rhs(u_num[n, :], v_num[n, :], config)
-        v1 = solve_v(u_num[n, :] + 0.5 * dt * k1, config)
+        v1 = solve_v(
+            vector_u=u_num[n, :] + 0.5 * dt * k1,
+            L=L,
+            Nx=Nx,
+            mu=mu,
+            nu=nu,
+            gamma=gamma,
+            diagnostic=diagnostic
+        )
 
         k2 = rhs(u_num[n, :] + 0.5 * dt * k1, v1, config)
-        v2 = solve_v(u_num[n, :] + 0.5 * dt * k2, config)
+        v2 = solve_v(
+            vector_u=u_num[n, :] + 0.5 * dt * k2,
+            L=L,
+            Nx=Nx,
+            mu=mu,
+            nu=nu,
+            gamma=gamma,
+            diagnostic=diagnostic
+        )
 
         k3 = rhs(u_num[n, :] + 0.5 * dt * k2, v2, config)
-        v3 = solve_v(u_num[n, :] + dt * k3, config)
+        v3 = solve_v(
+            vector_u=u_num[n, :] + dt * k3,
+            L=L,
+            Nx=Nx,
+            mu=mu,
+            nu=nu,
+            gamma=gamma,
+            diagnostic=diagnostic
+        )
 
         k4 = rhs(u_num[n, :] + dt * k3, v3, config)
 
         # Update
         u_num[n + 1, :] = u_num[n, :] + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
-        # print("u_numk1k2k3k4=", u_num)
-        v_num[n + 1, :] = solve_v(u_num[n + 1, :], config)
+        v_num[n + 1, :] = solve_v(
+            vector_u=u_num[n + 1, :],
+            L=L,
+            Nx=Nx,
+            mu=mu,
+            nu=nu,
+            gamma=gamma,
+            diagnostic=diagnostic
+        )
 
     # Convert lists to numpy arrays
     u_num = np.array(u_num).T  # Convert list to numpy array and transpose
