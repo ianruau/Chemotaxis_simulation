@@ -230,7 +230,7 @@ class SimulationConfig:
 rc("text", usetex=True)
 
 
-def solve_v(vector_u=np.zeros(50), config: Dict[str, Any] = None):
+def solve_v(vector_u, config: SimulationConfig) -> np.ndarray:
     """
     Solves a linear system to compute the vector `v` based on the given parameters.
 
@@ -261,12 +261,12 @@ def solve_v(vector_u=np.zeros(50), config: Dict[str, Any] = None):
     6. Solve the linear system `A * v = b` using a sparse solver.
     7. Return the solution vector `v`.
     """
-    L = config["L"]
-    Nx = config["meshsize"]
-    mu = config["mu"]
-    nu = config["nu"]
-    gamma = config["gamma"]
-    diagnostic = config["diagnostic"]
+    L = config.L
+    Nx = config.meshsize
+    mu = config.mu
+    nu = config.nu
+    gamma = config.gamma
+    diagnostic = config.diagnostic
     dx = L / Nx
 
     # Define the diagonals
@@ -388,7 +388,7 @@ def laplacian_NBC(L, Nx, vector_f):
     return A.dot(vector_f / (dx**2))
 
 
-def rhs(u, v, config: Dict[str, Any] = None) -> np.ndarray:
+def rhs(u, v, config: SimulationConfig) -> np.ndarray:
     """
     Compute the right-hand side (RHS) of the partial differential equation
     for the given variables and parameters.
@@ -408,17 +408,17 @@ def rhs(u, v, config: Dict[str, Any] = None) -> np.ndarray:
       - Chemotaxis-related terms (term1, term2, term3).
       - Logistic growth term (logistic).
     """
-    L = config["L"]
-    Nx = config["meshsize"]
-    m = config["m"]
-    beta = config["beta"]
-    alpha = config["alpha"]
-    chi = config["chi"]
-    a = config["a"]
-    b = config["b"]
-    mu = config["mu"]
-    nu = config["nu"]
-    gamma = config["gamma"]
+    L = config.L
+    Nx = config.meshsize
+    m = config.m
+    beta = config.beta
+    alpha = config.alpha
+    chi = config.chi
+    a = config.a
+    b = config.b
+    mu = config.mu
+    nu = config.nu
+    gamma = config.gamma
 
     u_xx = laplacian_NBC(L, Nx, u)
     u_x = first_derivative_NBC(L, Nx, u)
@@ -435,7 +435,7 @@ def rhs(u, v, config: Dict[str, Any] = None) -> np.ndarray:
     return u_xx + term1 - term2 - term3 + logistic
 
 
-def RK4(config: Dict[str, Any] = None, FileBaseName="Simulation"):
+def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     """
     Perform numerical simulation using the Runge-Kutta 4th order (RK4) method.
 
@@ -448,23 +448,23 @@ def RK4(config: Dict[str, Any] = None, FileBaseName="Simulation"):
         - u_num: Numerical solution for u over time.
         - v_num: Numerical solution for v over time.
     """
-    L = config["L"]
-    Nx = config["meshsize"]
-    Epsilon = config["Epsilon"]
-    EigenIndex = config["EigenIndex"]
-    T = config["time"]
-    m = config["m"]
-    beta = config["beta"]
-    alpha = config["alpha"]
-    chi = config["chi"]
-    a = config["a"]
-    b = config["b"]
-    mu = config["mu"]
-    nu = config["nu"]
-    gamma = config["gamma"]
-    diagnostic = config["diagnostic"]
-    positive_sigmas = config["positive_sigmas"]
-    uStar = config["uStar"]
+    L = config.L
+    Nx = config.meshsize
+    Epsilon = config.Epsilon
+    EigenIndex = config.EigenIndex
+    T = config.time
+    m = config.m
+    beta = config.beta
+    alpha = config.alpha
+    chi = config.chi
+    a = config.a
+    b = config.b
+    mu = config.mu
+    nu = config.nu
+    gamma = config.gamma
+    diagnostic = config.diagnostic
+    positive_sigmas = config.positive_sigmas
+    uStar = config.uStar
 
     # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
     # We multiply by 10 to make sure that the time step is small enough. This
@@ -826,14 +826,14 @@ def main():
     config.display_parameters()
 
     # Using the above parameters to generate a file base name string
-    basename = f"a={config['a']}_b={config['b']}_alpha={config['alpha']}_m={config['m']}_beta={config['beta']}_chi={config['chi']}_mu={config['mu']}_nu={config['nu']}_gamma={config['gamma']}_meshsize={config['meshsize']}_time={config['time']}_Epsilon={config['Epsilon']}_EigenIndex={config['EigenIndex']}".replace(
+    basename = f"a={config.a}_b={config.b}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_Epsilon={config.Epsilon}_EigenIndex={config.EigenIndex}".replace(
         ".", "-"
     )
     print(f"Output files will be saved with the basename:\n\t {basename}\n")
 
     # Run the solver
     if (
-        config["confirm"] == "no"
+        config.confirm == "yes"
         or questionary.confirm("Do you want to continue the simulation?").ask()
     ):
         print("Continuing simulation...")
