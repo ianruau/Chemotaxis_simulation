@@ -846,8 +846,8 @@ def parse_args() -> SimulationConfig:
     --gamma (float): Parameter gamma (default: 1).
     --meshsize (int): Parameter for spatial mesh size (default: 50).
     --time (float): Parameter for time to lapse (default: 2.3).
-    --EigenIndex (int): Parameter eigen index (default: 0, letting system choose).
-    --Epsilon (float): Parameter perturbation epsilon (default: 0.001).
+    --eigen_index (int): Parameter eigen index (default: 0, letting system choose).
+    --epsilon (float): Parameter perturbation epsilon (default: 0.001).
     """
     parser = argparse.ArgumentParser(
         description="A CLI tool for configuring parameters"
@@ -873,39 +873,39 @@ def parse_args() -> SimulationConfig:
     parser.add_argument(
         "--m",
         type=float,
-        default=1,
-        help="Parameter m (default: 1)")
+        default=1.0,
+        help="Parameter m (default: 1.0)")
     parser.add_argument(
-        "--beta", type=float, default=1, help="Parameter beta (default: 1)"
+        "--beta", type=float, default=1.0, help="Parameter beta (default: 1.0)"
     )
     parser.add_argument(
-        "--alpha", type=float, default=1, help="Parameter alpha (default: 1)"
+        "--alpha", type=float, default=1.0, help="Parameter alpha (default: 1.0)"
     )
     parser.add_argument(
-        "--chi", type=float, default=-1, help="Parameter chi (default: -1)"
+        "--chi", type=float, default=-1.0, help="Parameter chi (default: -1.0)"
     )
     parser.add_argument(
         "--a",
         type=float,
-        default=1,
-        help="Parameter a (default: 1)")
+        default=1.0,
+        help="Parameter a (default: 1.0)")
     parser.add_argument(
         "--b",
         type=float,
-        default=1,
-        help="Parameter b (default: 1)")
+        default=1.0,
+        help="Parameter b (default: 1.0)")
     parser.add_argument(
         "--mu",
         type=float,
-        default=1,
-        help="Parameter mu (default: 1)")
+        default=1.0,
+        help="Parameter mu (default: 1.0)")
     parser.add_argument(
         "--nu",
         type=float,
         default=1,
-        help="Parameter nu (default: 1)")
+        help="Parameter nu (default: 1.0)")
     parser.add_argument(
-        "--gamma", type=float, default=1, help="Parameter gamma (default: 1)"
+        "--gamma", type=float, default=1.0, help="Parameter gamma (default: 1.0)"
     )
     parser.add_argument(
         "--meshsize",
@@ -920,13 +920,13 @@ def parse_args() -> SimulationConfig:
         help="Parameter for time to lapse (default: 2.3)",
     )
     parser.add_argument(
-        "--EigenIndex",
+        "--eigen_index",
         type=int,
         default=0,
         help="Parameter eigen index (default: 0, letting system to choose)",
     )
     parser.add_argument(
-        "--Epsilon",
+        "--epsilon",
         type=float,
         default=0.001,
         help="Parameter perturbation epsilon (default: 0.001)",
