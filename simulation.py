@@ -24,8 +24,8 @@ Parameters:
     Simulation Parameters:
     --meshsize INT    Number of spatial grid points (default: 50)
     --time FLOAT      Total simulation time (default: 5)
-    --EigenIndex INT  Parameter eigen index (default: 0, letting system choose)
-    --Epsilon FLOAT   Parameter perturbation epsilon (default: 0.001)
+    --eigen_index INT  Parameter eigen index (default: 0, letting system choose)
+    --epsilon FLOAT   Parameter perturbation epsilon (default: 0.001)
 
     Output Control:
     --confirm        Skip confirmation prompt if set to yes (default: no)
@@ -83,8 +83,8 @@ class SimulationConfig:
     Simulation Parameters:
     - meshsize (int): The number of spatial grid points, determining the resolution of the simulation.
     - time (float): The total simulation time.
-    - EigenIndex (int): An index used for eigenvalue-related computations.
-    - Epsilon (float): A small parameter used for numerical stability or perturbations.
+    - eigen_index (int): An index used for eigenvalue-related computations.
+    - epsilon (float): A small parameter used for numerical stability or perturbations.
 
     Output Control:
     - confirm (str): A flag or message to confirm simulation execution.
@@ -108,8 +108,8 @@ class SimulationConfig:
     # Simulation parameters
     meshsize: int = 50
     time: float = 2.3
-    EigenIndex: int = 0
-    Epsilon: float = 0.001
+    eigen_index: int = 0
+    epsilon: float = 0.001
 
     # Output control
     confirm: str = "no"
@@ -205,12 +205,12 @@ class SimulationConfig:
                     positive_sigmas.append(sigma_n)
         object.__setattr__(self, "positive_sigmas", positive_sigmas)
 
-        if self.EigenIndex == 0:
+        if self.eigen_index == 0:
             if len(positive_sigmas) > 0:
-                object.__setattr__(self, "EigenIndex", 2)
+                object.__setattr__(self, "eigen_index", 2)
                 print("Second (first nonconstant) eigenfunction is chosen.\n")
             else:
-                object.__setattr__(self, "EigenIndex", 1)
+                object.__setattr__(self, "eigen_index", 1)
                 print("first (constant) eigenfunction is chosen.\n")
 
         x_values = np.linspace(
@@ -220,8 +220,8 @@ class SimulationConfig:
             self,
             "uinit",
             self.uStar
-            + self.Epsilon
-            * np.cos(((self.EigenIndex - 1) * np.pi / self.L) * x_values),
+            + self.epsilon
+            * np.cos(((self.eigen_index - 1) * np.pi / self.L) * x_values),
         ),
 
         # Initial condition (must match exactly)
@@ -251,7 +251,7 @@ class SimulationConfig:
         print("3. The v equation: ")
         print(f"\tmu = {self.mu}, nu = {self.nu}, gamma = {self.gamma}")
         print("4. Initial condition: ")
-        print(f"\tEpsilon = {self.Epsilon}, EigenIndex = {self.EigenIndex}")
+        print(f"\tepsilon = {self.epsilon}, eigen_index = {self.eigen_index}")
         print("5. Simulation Parameters:")
         print(f"\tMeshSize = {self.meshsize}, time = {self.time}")
 
@@ -528,8 +528,8 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     """
     L = config.L
     Nx = config.meshsize
-    Epsilon = config.Epsilon
-    EigenIndex = config.EigenIndex
+    epsilon = config.epsilon
+    eigen_index = config.eigen_index
     T = config.time
     m = config.m
     beta = config.beta
@@ -542,6 +542,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     gamma = config.gamma
     diagnostic = config.diagnostic
     uStar = config.uStar
+    vStar = config.vStar
 
     # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
     # We multiply by 2 to make sure that the time step is small enough. This
@@ -619,7 +620,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha};
     $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
     $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
-    $u^*$ = {uStar}, $\epsilon$ = {Epsilon}, $n$ = {EigenIndex}.
+    $u^*$ = {uStar}, $\epsilon$ = {epsilon}, $n$ = {eigen_index}.
     """
 
     # Create static plots
@@ -629,6 +630,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
         u_num,
         v_num,
         uStar,
+        vStar,
         SetupDes,
         FileBaseName)
 
@@ -645,6 +647,7 @@ def create_static_plots(
     u_data: np.ndarray,
     v_data: np.ndarray,
     uStar: float,
+    vStar: float,
     SetupDes: str,
     FileBaseName: str,
 ) -> None:
@@ -683,7 +686,7 @@ def create_static_plots(
     # # Add colorbar for u
     # fig_3d.colorbar(surf_u, ax=ax_3d_u, label='u(t,x)')
 
-    # Plot reference planes for u
+    # Plot reference planes for u at the levels uStar and the tx-plane
     U_grid = np.full_like(T_grid, uStar)
     Zero_grid = np.full_like(T_grid, 0)
 
@@ -719,11 +722,33 @@ def create_static_plots(
     # Second subplot for v(t,x)
     ax_3d_v = fig_3d.add_subplot(122, projection="3d")
     surf_v = ax_3d_v.plot_surface(
-        T_grid, X_grid, v_data, cmap="magma", alpha=0.8)
+        T_grid, X_grid, v_data, cmap="viridis", alpha=0.8)
 
     # # Add colorbar for v
     # fig_3d.colorbar(surf_v, ax=ax_3d_v, label='v(t,x)')
 
+    # Plot reference planes for v at the levels vStar and the tx-plane
+    V_grid = np.full_like(T_grid, vStar)
+
+    ax_3d_v.plot_surface(
+        T_grid,
+        X_grid,
+        V_grid,
+        alpha=0.5,
+        rstride=100,
+        cstride=100,
+        color="r",
+    )
+
+    ax_3d_v.plot_surface(
+        T_grid,
+        X_grid,
+        Zero_grid,
+        alpha=0.2,
+        rstride=100,
+        cstride=100,
+        color="lightgray",
+    )
     # Setup the v plot
     ax_3d_v.set_xlabel(r"Time $t$")
     ax_3d_v.set_ylabel(r"Space $x$")
@@ -955,7 +980,7 @@ def main():
     config.display_parameters()
 
     # Using the above parameters to generate a file base name string
-    basename = f"a={config.a}_b={config.b}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_Epsilon={config.Epsilon}_EigenIndex={config.EigenIndex}".replace(
+    basename = f"a={config.a}_b={config.b}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_epsilon={config.epsilon}_eigen_index={config.eigen_index}".replace(
         ".", "-"
     )
     print(f"Output files will be saved with the basename:\n\t {basename}\n")
