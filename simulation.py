@@ -185,7 +185,7 @@ class SimulationConfig:
         if self.chi >= self.ChiStar:
             n = 0
             sigma_n = 1.0
-            max_iterations = 1000  # Prevent infinite loop
+            max_iterations = 100  # Prevent infinite loop
             while sigma_n > 0 and n < max_iterations:
                 n += 1
                 lambda_n = -((n * np.pi / self.L) ** 2)
@@ -524,7 +524,6 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     nu = config.nu
     gamma = config.gamma
     diagnostic = config.diagnostic
-    positive_sigmas = config.positive_sigmas
     uStar = config.uStar
 
     # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
@@ -622,28 +621,49 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     return x_values, u_num, v_num
 
 
-def create_static_plots(x, u_data, time_data, uStar, SetupDes, FileBaseName):
+def create_static_plots(
+    t_mesh: np.ndarray,
+    x_mesh: np.ndarray,
+    u_data: np.ndarray,
+    v_data: np.ndarray,
+    uStar: float,
+    SetupDes: str,
+    FileBaseName: str,
+) -> None:
     """
     Create and save static 2D and 3D plots of the simulation data.
 
     Parameters:
-    - x (array-like): Spatial grid points.
-    - u_data (2D array-like): Simulation data values for each (time, space) pair.
-    - time_data (array-like): Temporal grid points.
+    - t_mesh (np.ndarray): Temporal grid points for the simulation.
+    - x_mesh (np.ndarray): Spatial grid points for the simulation.
+    - u_data (np.ndarray): 2D array of simulation data values for each (time, space) pair.
+    - v_data (np.ndarray): 2D array of additional simulation data values for each (time, space) pair.
     - uStar (float): Reference value for creating a constant plane in the 3D plot.
     - SetupDes (str): Description of the setup, used as the title of the plot.
     - FileBaseName (str): Base name for saving the output plot files.
 
     The function generates:
-    - A 3D surface plot of `u_data` over time and space.
+    - A 3D surface plot of `u_data` and `v_data` over time and space.
     - A reference plane at `uStar` and another at zero for comparison.
     - Saves the plot as PNG and JPEG files with the specified base name.
+
+    Returns:
+    - None: The function saves the plots to files and does not return any value.
     """
     # 3D Plot
     fig_3d = plt.figure(dpi=300)
     ax_3d = fig_3d.add_subplot(111, projection="3d")
-    T_grid, X_grid = np.meshgrid(time_data, x, indexing="xy")
-    ax_3d.plot_surface(T_grid, X_grid, u_data, cmap="viridis", alpha=0.8)
+    T_grid, X_grid = np.meshgrid(t_mesh, x_mesh, indexing="xy")
+    ax_3d.plot_surface(
+        T_grid, X_grid, u_data, cmap="viridis", alpha=0.8, label="u(t,x)"
+    )
+    ax_3d.plot_surface(
+        T_grid,
+        X_grid,
+        v_data,
+        cmap="magma",
+        alpha=0.6,
+        label="v(t,x)")
 
     # Create a constant plane at height uStar
     U_grid = np.full_like(T_grid, uStar)
