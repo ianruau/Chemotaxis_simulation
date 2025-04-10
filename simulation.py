@@ -43,6 +43,8 @@ Output:
 """
 
 import argparse
+from dataclasses import dataclass, field
+from typing import Final, List
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -56,8 +58,6 @@ from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
-from dataclasses import dataclass, field
-from typing import Final, List
 
 # Matplotlib configurations
 rc("text", usetex=True)  # Enable LaTeX rendering
@@ -92,6 +92,7 @@ class SimulationConfig:
     - verbose (str): A flag to enable verbose output for detailed logs.
     - diagnostic (bool): A flag to enable or disable diagnostic output (default is False).
     """
+
     # Model parameters
     m: float = 1.0
     beta: float = 1.0
@@ -130,8 +131,13 @@ class SimulationConfig:
 
     def __post_init__(self):
         # Using object.__setattr__ because the class is frozen
-        object.__setattr__(self, 'uStar', (self.a / self.b) ** (1 / self.alpha))
-        object.__setattr__(self, 'vStar', self.nu / self.mu * (self.a / self.b) ** (self.gamma / self.alpha))
+        object.__setattr__(self, "uStar", (self.a / self.b)
+                           ** (1 / self.alpha))
+        object.__setattr__(
+            self,
+            "vStar",
+            self.nu / self.mu * (self.a / self.b) ** (self.gamma / self.alpha),
+        )
 
         # Compute ChiStar
         chistar = (
@@ -139,21 +145,24 @@ class SimulationConfig:
             * (np.sqrt(self.a * self.alpha) + np.sqrt(self.mu)) ** 2
             / (self.nu * self.gamma * self.uStar ** (self.m + self.gamma - 1) + 1e-10)
         )
-        object.__setattr__(self, 'ChiStar', chistar)
+        object.__setattr__(self, "ChiStar", chistar)
 
         # Compute betaTilde and ChiDStar
         betatilde = 0 if self.beta < 0.5 else min(1, 2 * self.beta - 1)
-        object.__setattr__(self, 'betaTilde', betatilde)
+        object.__setattr__(self, "betaTilde", betatilde)
 
         chidstar = np.sqrt(
-            self.b * 16 * (1 + betatilde * self.vStar) * self.mu
+            self.b
+            * 16
+            * (1 + betatilde * self.vStar)
+            * self.mu
             / (self.nu**2 * self.uStar ** (2 - self.alpha) + 1e-10)
         )
-        object.__setattr__(self, 'ChiDStar', chidstar)
+        object.__setattr__(self, "ChiDStar", chidstar)
 
         # Compute Lambdas and Chi vector
         lambdas = [-(((n + 1) * np.pi / self.L) ** 2) for n in range(6)]
-        object.__setattr__(self, 'lambdas', lambdas)
+        object.__setattr__(self, "lambdas", lambdas)
 
         chi_vector = []
         for lam in lambdas:
@@ -161,12 +170,15 @@ class SimulationConfig:
                 continue  # Avoid division by zero
             chi_val = (
                 ((self.a * self.alpha - lam) / (self.nu * self.gamma + 1e-10))
-                * (((1 + self.vStar) ** self.beta) / ((self.uStar) ** (self.m + self.gamma - 1) + 1e-10))
+                * (
+                    ((1 + self.vStar) ** self.beta)
+                    / ((self.uStar) ** (self.m + self.gamma - 1) + 1e-10)
+                )
                 * ((lam - self.mu) / (lam + 1e-10))
             )
             chi_vector.append(chi_val)
-        object.__setattr__(self, 'chi_vector', chi_vector)
-        object.__setattr__(self, 'ChiStar_min', min(chi_vector, default=0))
+        object.__setattr__(self, "chi_vector", chi_vector)
+        object.__setattr__(self, "ChiStar_min", min(chi_vector, default=0))
 
         # Compute positive sigmas
         positive_sigmas = []
@@ -182,13 +194,16 @@ class SimulationConfig:
                     + self.chi
                     * self.nu
                     * self.gamma
-                    * ((self.uStar ** (self.m + self.gamma - 1)) / ((1 + self.vStar) ** self.beta + 1e-10))
+                    * (
+                        (self.uStar ** (self.m + self.gamma - 1))
+                        / ((1 + self.vStar) ** self.beta + 1e-10)
+                    )
                     * (1 - self.mu / (self.mu - lambda_n + 1e-10))
                     - self.a * self.alpha
                 )
                 if sigma_n > 0:
                     positive_sigmas.append(sigma_n)
-        object.__setattr__(self, 'positive_sigmas', positive_sigmas)
+        object.__setattr__(self, "positive_sigmas", positive_sigmas)
 
         # Initial condition for u and v
         print("\n# Initial value u_0\n")
@@ -200,19 +215,31 @@ class SimulationConfig:
                 self.EigenIndex = 1
                 print("first (constant) eigenfunction is chosen.\n")
 
-        x_values = np.linspace(0, self.L, int(self.meshsize) + 1, dtype=np.float64)
-        object.__setattr__(self, 'uinit', self.uStar + self.Epsilon * np.cos(((self.EigenIndex - 1) * np.pi / self.L) * x_values)).astype(np.float64)
+        x_values = np.linspace(
+            0, self.L, int(
+                self.meshsize) + 1, dtype=np.float64)
+        object.__setattr__(
+            self,
+            "uinit",
+            self.uStar
+            + self.Epsilon
+            * np.cos(((self.EigenIndex - 1) * np.pi / self.L) * x_values),
+        ).astype(np.float64)
 
         # Initial condition (must match exactly)
-        object.__setattr__(self, 'vinit', solve_v(
-            vector_u=self.uinit,
-            L=self.L,
-            Nx=self.meshsize,
-            mu=self.mu,
-            nu=self.nu,
-            gamma=self.gamma,
-            diagnostic=self.diagnostic
-        ))
+        object.__setattr__(
+            self,
+            "vinit",
+            solve_v(
+                vector_u=self.uinit,
+                L=self.L,
+                Nx=self.meshsize,
+                mu=self.mu,
+                nu=self.nu,
+                gamma=self.gamma,
+                diagnostic=self.diagnostic,
+            ),
+        )
 
     def display_parameters(self) -> None:
         """Display all computed parameters in a formatted way."""
@@ -222,30 +249,32 @@ class SimulationConfig:
         print("1. Logistic term: ")
         print(f"\ta = {self.a}, b = {self.b}, alpha = {self.alpha}")
         print("2. Reaction term: ")
-        print(
-            f"\tm = {self.m}, beta = {self.beta}, chi = {self.chi}")
+        print(f"\tm = {self.m}, beta = {self.beta}, chi = {self.chi}")
         print("3. The v equation: ")
-        print(
-            f"\tmu = {self.mu}, nu = {self.nu}, gamma = {self.gamma}")
+        print(f"\tmu = {self.mu}, nu = {self.nu}, gamma = {self.gamma}")
         print("4. Initial condition: ")
-        print(
-            f"\tEpsilon = {self.Epsilon}, EigenIndex = {self.EigenIndex}")
+        print(f"\tEpsilon = {self.Epsilon}, EigenIndex = {self.EigenIndex}")
         print("5. Simulation Parameters:")
         print(f"\tMeshSize = {self.meshsize}, time = {self.time}")
 
         print("\n# Asymptotic solutions and related constants")
-        print(f"Asymptotic solutions: u^* = {self.uStar:.2f} and v^* = {self.vStar:.2f}")
+        print(
+            f"Asymptotic solutions: u^* = {self.uStar:.2f} and v^* = {self.vStar:.2f}"
+        )
         print(f"A lower bound for Chi* is {self.ChiStar:.2f}")
-        print(f"Chi** = {self.ChiDStar:.2f} and beta tilde = {self.betaTilde:.2f}")
+        print(
+            f"Chi** = {self.ChiDStar:.2f} and beta tilde = {self.betaTilde:.2f}")
 
         print("\n# Chi* values\n")
         data = [
-            [f"Lambda_{i + 2}^*", f"{lam:.3f}", f"Chi_{0,i + 2}^*", f"{chi:.3f}"]
+            [f"Lambda_{i + 2}^*", f"{lam:.3f}",
+                f"Chi_{0,i + 2}^*", f"{chi:.3f}"]
             for i, (lam, chi) in enumerate(zip(self.lambdas, self.chi_vector))
         ]
         headers = ["Lambda", "Value", "Chi", "Value"]
         print(tabulate(data, headers=headers, tablefmt="grid"))
-        print(f"\nChi* = {self.ChiStar:.3f} and the choice of chi = {self.chi:.3f}")
+        print(
+            f"\nChi* = {self.ChiStar:.3f} and the choice of chi = {self.chi:.3f}")
 
         if self.positive_sigmas:
             print("\n# Positive sigma values")
@@ -253,7 +282,15 @@ class SimulationConfig:
                 print(f"sigma_{i}= {sigma}")
 
 
-def solve_v(vector_u: np.ndarray, L: float, Nx: int, mu: float, nu: float, gamma: float, diagnostic: bool = False) -> np.ndarray:
+def solve_v(
+    vector_u: np.ndarray,
+    L: float,
+    Nx: int,
+    mu: float,
+    nu: float,
+    gamma: float,
+    diagnostic: bool = False,
+) -> np.ndarray:
     """
     Solves a linear system to compute the vector `v` based on the given parameters.
 
@@ -328,7 +365,8 @@ def solve_v(vector_u: np.ndarray, L: float, Nx: int, mu: float, nu: float, gamma
     return v
 
 
-def first_derivative_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
+def first_derivative_NBC(L: float, Nx: int,
+                         vector_f: np.ndarray) -> np.ndarray:
     """
     Computes the first derivative of a vector `vector_f` using finite differences
     with Neumann boundary conditions (NBC).
@@ -492,9 +530,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
     # We multiply by 2 to make sure that the time step is small enough. This
     # factor should be adjusted based on the problem.
-    Nt = 2 * (
-        int(4 * T * Nx * Nx / L**2) + 1
-    )
+    Nt = 2 * (int(4 * T * Nx * Nx / L**2) + 1)
     # dx = L / Nx
     dt = T / Nt
 
@@ -518,7 +554,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
             mu=mu,
             nu=nu,
             gamma=gamma,
-            diagnostic=diagnostic
+            diagnostic=diagnostic,
         )
 
         k2 = rhs(u_num[n, :] + 0.5 * dt * k1, v1, config)
@@ -529,7 +565,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
             mu=mu,
             nu=nu,
             gamma=gamma,
-            diagnostic=diagnostic
+            diagnostic=diagnostic,
         )
 
         k3 = rhs(u_num[n, :] + 0.5 * dt * k2, v2, config)
@@ -540,7 +576,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
             mu=mu,
             nu=nu,
             gamma=gamma,
-            diagnostic=diagnostic
+            diagnostic=diagnostic,
         )
 
         k4 = rhs(u_num[n, :] + dt * k3, v3, config)
@@ -554,7 +590,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
             mu=mu,
             nu=nu,
             gamma=gamma,
-            diagnostic=diagnostic
+            diagnostic=diagnostic,
         )
 
     # Convert lists to numpy arrays
