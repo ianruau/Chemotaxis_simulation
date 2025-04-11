@@ -388,24 +388,26 @@ def solve_v(
 def first_derivative_NBC(L: float, Nx: int,
                          vector_f: np.ndarray) -> np.ndarray:
     """
-    Computes the first derivative of a vector `vector_f` using finite differences
-    with Neumann boundary conditions (NBC).
+    Computes the first derivative of a vector 'vector_f' using finite differences
+    with Neumann boundary conditions (NBC). The derivatives involved are computed
+    using a central difference scheme with the use of ghost points to treat the
+    Neumann boundary conditions at the endpoints.
 
     Parameters:
     - L (float): Length of the domain.
-    - Nx (int): Number of grid points.
+    - Nx (int): Number of mesh points of the space domain.
     - vector_f (np.ndarray): Input vector for which the derivative is computed.
 
     Returns:
-    - np.ndarray: The computed first derivative of `vector_f`.
+    - np.ndarray: The computed first derivative of 'vector_f'.
 
     Notes:
-    - The function constructs a sparse matrix `A` to approximate the derivative.
-    - The matrix `A` has:
+    - The function constructs a sparse matrix 'A' to approximate the derivative.
+    - The matrix 'A' has:
         - -1 on the lower diagonal.
         - 1 on the upper diagonal.
         - Zeros in the first and last rows to enforce Neumann boundary conditions.
-    - The derivative is scaled by the grid spacing `dx = L / Nx`.
+    - The derivative is scaled by the grid spacing 'dx = L / Nx'.
     """
 
     # Define the diagonals
