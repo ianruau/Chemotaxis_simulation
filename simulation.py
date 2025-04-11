@@ -796,13 +796,16 @@ def create_animation(
     FileBaseName: str,
 ) -> None:
     """
-    Create and save an animation of u and v data over time, side by side.
+    Create and save an animation of u and v data over time, side by side. The
+    values of the steady states uStar and vStar are plotted with u and v,
+    respectively.
 
     Parameters:
         time_data (ndarray): 1D array of time steps
         u_data (ndarray): 2D array of u values over time
         v_data (ndarray): 2D array of v values over time
-        uStar (float): Reference value for u
+        uStar (float): Reference value for u (steady constant state).
+        vStar (float): Reference value for v (steady constant state).
         SetupDes (str): Description of the setup
         FileBaseName (str): Base name for the output video file
     """
