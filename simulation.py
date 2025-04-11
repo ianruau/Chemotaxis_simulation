@@ -309,34 +309,37 @@ def solve_v(
     diagnostic: bool = False,
 ) -> np.ndarray:
     """
-    Solves a linear system to compute the vector `v` based on the given parameters.
+    Solves a linear system to compute the vector 'v' from the elliptic equation
+    '0 = v_xx - mu*v + nu*u^gamma' based on the given parameters. The derivatives
+    involved are computed using a central difference scheme with the use of
+    ghost points to treat the Neumann boundary conditions at the endpoints.
 
     Parameters:
-    - vector_u (np.ndarray): Input vector `u` of size `Nx` (default is a zero vector).
+    - vector_u (np.ndarray): Input vector 'u' of size 'Nx' (default is a zero vector).
     - L (float): Length of the domain.
-    - Nx (int): Number of grid points.
-    - mu (float): Coefficient for the main diagonal modification.
-    - nu (float): Coefficient for the right-hand side vector computation.
-    - gamma (float): Exponent applied to the input vector `u` in the right-hand side computation.
+    - Nx (int): Number of mesh points of the space domain.
+    - mu (float): Coefficient of v in the elliptic equation.
+    - nu (float): Coefficient of u^gamma in the elliptic equation.
+    - gamma (float): Power of 'u' in the elliptic equation.
     - diagnostic (bool): Flag for enabling diagnostic output (default is False).
 
     Returns:
-    - np.ndarray: Solution vector `v` of size `Nx + 1`.
+    - np.ndarray: Solution vector 'v' of size 'Nx + 1'.
 
     Notes:
-    - The function constructs a sparse matrix `A` using finite difference discretization.
+    - The function constructs a sparse tridiagonal matrix 'A' using finite difference discretization.
     - Neumann boundary conditions are applied by modifying the first and last off-diagonal elements.
-    - The right-hand side vector `b` is computed based on the input vector `u` and parameters.
-    - The system `A * v = b` is solved using a sparse solver.
+    - The right-hand side vector 'b' is computed based on the input vector 'u' and parameters.
+    - The system 'A * v = b' is solved using a sparse solver.
 
     Steps:
-    1. Compute the grid spacing `dx` based on the domain length `L` and number of grid points `Nx`.
-    2. Define the main, upper, and lower diagonals of the sparse matrix `A`.
+    1. Compute the mesh spacing 'dx' based on the domain length 'L' and number of mesh points 'Nx'.
+    2. Define the main, upper, and lower diagonals of the sparse matrix 'A'.
     3. Apply special handling for Neumann boundary conditions by modifying the first and last off-diagonal elements.
-    4. Construct the sparse matrix `A` using the diagonals and offsets.
-    5. Compute the right-hand side vector `b` based on the input vector `u` and parameters.
-    6. Solve the linear system `A * v = b` using a sparse solver.
-    7. Return the solution vector `v`.
+    4. Construct the sparse matrix 'A' using the diagonals and offsets.
+    5. Compute the right-hand side vector 'b' based on the input vector 'u' and parameters.
+    6. Solve the linear system 'A * v = b' using a sparse solver.
+    7. Return the solution vector 'v'.
     """
     dx = L / Nx
 
