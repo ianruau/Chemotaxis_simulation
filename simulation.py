@@ -476,17 +476,18 @@ def laplacian_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
 def rhs(u: np.ndarray, v: np.ndarray, config: SimulationConfig) -> np.ndarray:
     """
     Compute the right-hand side (RHS) of the partial differential equation
-    for the given variables and parameters.
+    'u_t = u_xx - chemotaxis term + logistic source' for the given variables
+    and parameters.
 
     Parameters:
-    u (numpy.ndarray): The primary variable (e.g., population density).
-    v (numpy.ndarray): The secondary variable (e.g., chemoattractant concentration).
+    - u (numpy.ndarray): The primary variable (e.g., population density).
+    - v (numpy.ndarray): The secondary variable (e.g., chemoattractant concentration).
 
     Returns:
-    numpy.ndarray: The computed RHS of the equation.
+    - numpy.ndarray: The computed RHS of the equation.
 
     Notes:
-    - The function uses several parameters from the global `config` dictionary:
+    - The function uses several parameters from the global 'config' dictionary:
       - m, beta, alpha, chi, a, b, mu, nu, gamma.
     - The terms in the equation include:
       - Diffusion term (u_xx).
