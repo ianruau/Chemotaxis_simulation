@@ -660,20 +660,22 @@ def create_static_plots(
     FileBaseName: str,
 ) -> None:
     """
-    Create and save static 2D and 3D plots of the simulation data.
+    Create and save static 3D plots of the simulation data.
 
     Parameters:
-    - t_mesh (np.ndarray): Temporal grid points for the simulation.
-    - x_mesh (np.ndarray): Spatial grid points for the simulation.
+    - t_mesh (np.ndarray): Temporal mesh points for the simulation.
+    - x_mesh (np.ndarray): Spatial mesh points for the simulation.
     - u_data (np.ndarray): 2D array of simulation data values for each (time, space) pair.
     - v_data (np.ndarray): 2D array of additional simulation data values for each (time, space) pair.
-    - uStar (float): Reference value for creating a constant plane in the 3D plot.
+    - uStar (float): Reference value for creating a constant plane in the 3D plot of 'u'.
+    - vStar (float): Reference value for creating a constant plane in the 3D plot of 'v'.
     - SetupDes (str): Description of the setup, used as the title of the plot.
     - FileBaseName (str): Base name for saving the output plot files.
 
     The function generates:
-    - A 3D surface plot of `u_data` and `v_data` over time and space.
-    - A reference plane at `uStar` and another at zero for comparison.
+    - A 3D surface plot of 'u_data' and 'v_data' over time and space.
+    - A reference plane at `uStar` and another at zero for comparison in the plot of 'u'.
+    - A reference plane at `vStar` and another at zero for comparison in the plot of 'v'.
     - Saves the plot as PNG and JPEG files with the specified base name.
 
     Returns:
