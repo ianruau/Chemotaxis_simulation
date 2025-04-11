@@ -436,21 +436,23 @@ def first_derivative_NBC(L: float, Nx: int,
 def laplacian_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
     """
     Create a sparse Nx x Nx square matrix representing the Laplacian operator
-    with Neumann Boundary Conditions (NBC) and apply it to a given vector.
+    with Neumann Boundary Conditions (NBC) and apply it to a given vector. The 
+    derivatives involved are computed using a central difference scheme with
+    the use of ghost points to treat the Neumann boundary conditions at the endpoints.
 
     Parameters:
-    L (float): The length of the domain.
-    Nx (int): The number of grid points.
-    vector_f (numpy.ndarray): The input vector to which the Laplacian operator is applied.
+    - L (float): The length of the domain.
+    - Nx (int): Number of mesh points of the space domain.
+    - vector_f (numpy.ndarray): The input vector to which the Laplacian operator is applied.
 
     Returns:
-    numpy.ndarray: The result of applying the Laplacian operator to the input vector.
+    - numpy.ndarray: The result of applying the Laplacian operator to the input vector.
 
     Notes:
     - The Laplacian operator is discretized using a finite difference method.
     - Neumann Boundary Conditions are applied by modifying the first and last off-diagonal elements.
     - The resulting sparse matrix is in Compressed Sparse Row (CSR) format for efficient computation.
-    - The input vector is scaled by the square of the grid spacing (dx^2) before applying the operator.
+    - The input vector is scaled by the square of the mesh spacing (dx^2) before applying the operator.
     """
     # Define the diagonals
     main_diag = np.full(Nx + 1, -2)
