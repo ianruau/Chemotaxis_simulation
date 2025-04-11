@@ -530,9 +530,9 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
 
     Returns:
     tuple: x_values (numpy array), u_num (numpy array), v_num (numpy array)
-        - x_values: Spatial grid points.
-        - u_num: Numerical solution for u over time.
-        - v_num: Numerical solution for v over time.
+        - x_values: Spatial mesh points.
+        - u_num: Numerical solution for u over time (matrix of size (Nt + 1) x (Nx + 1)).
+        - v_num: Numerical solution for v over time (matrix of size (Nt + 1) x (Nx + 1)).
     """
     L = config.L
     Nx = config.meshsize
