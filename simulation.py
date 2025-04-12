@@ -53,6 +53,7 @@ import questionary
 import termplotlib as tpl
 from matplotlib import rc
 from matplotlib.ticker import FormatStrFormatter
+
 # from scipy.linalg import solve_banded
 from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
@@ -88,7 +89,7 @@ class SimulationConfig:
 
     Output Control:
     - confirm (str): A flag to confirm simulation execution.
-    - generate_video (str): A flag to enable or disable video generation ()default is 'no').
+    - generate_video (str): A flag to enable or disable video generation (default is `no`).
     - verbose (str): A flag to enable verbose output for detailed logs.
     - diagnostic (bool): A flag to enable or disable numerical diagnostic output (default is False).
     """
@@ -131,8 +132,7 @@ class SimulationConfig:
 
     def __post_init__(self):
         # Using object.__setattr__ because the class is frozen
-        object.__setattr__(self, "uStar", (self.a / self.b)
-                           ** (1 / self.alpha))
+        object.__setattr__(self, "uStar", (self.a / self.b) ** (1 / self.alpha))
         object.__setattr__(
             self,
             "vStar",
@@ -213,9 +213,7 @@ class SimulationConfig:
                 object.__setattr__(self, "eigen_index", 1)
                 print("first (constant) eigenfunction is chosen.\n")
 
-        x_values = np.linspace(
-            0, self.L, int(
-                self.meshsize) + 1, dtype=np.float64)
+        x_values = np.linspace(0, self.L, int(self.meshsize) + 1, dtype=np.float64)
         object.__setattr__(
             self,
             "uinit",
@@ -260,19 +258,16 @@ class SimulationConfig:
             f"Asymptotic solutions: u^* = {self.uStar:.2f} and v^* = {self.vStar:.2f}"
         )
         print(f"A lower bound for Chi* is {self.ChiStar:.2f}")
-        print(
-            f"Chi** = {self.ChiDStar:.2f} and beta tilde = {self.betaTilde:.2f}")
+        print(f"Chi** = {self.ChiDStar:.2f} and beta tilde = {self.betaTilde:.2f}")
 
         print("\n# Chi* values\n")
         data = [
-            [f"Lambda_{i + 2}^*", f"{lam:.3f}",
-                f"Chi_{0,i + 2}^*", f"{chi:.3f}"]
+            [f"Lambda_{i + 2}^*", f"{lam:.3f}", f"Chi_{0,i + 2}^*", f"{chi:.3f}"]
             for i, (lam, chi) in enumerate(zip(self.lambdas, self.chi_vector))
         ]
         headers = ["Lambda", "Value", "Chi", "Value"]
         print(tabulate(data, headers=headers, tablefmt="grid"))
-        print(
-            f"\nChi* = {self.ChiStar:.3f} and the choice of chi = {self.chi:.3f}")
+        print(f"\nChi* = {self.ChiStar:.3f} and the choice of chi = {self.chi:.3f}")
 
         if self.positive_sigmas:
             print("\n# Positive sigma values")
@@ -285,7 +280,7 @@ class SimulationConfig:
 
             Args:
                 data (array-like): The data to be plotted.
-                label (str): A label describing the data (e.g., 'u' or 'v').
+                label (str): A label describing the data (e.g., `u` or `v`).
 
             This function prints a description of the initial condition and
             generates a textual plot using the `tpl` library.
@@ -309,37 +304,37 @@ def solve_v(
     diagnostic: bool = False,
 ) -> np.ndarray:
     """
-    Solves a linear system to compute the vector 'v' from the elliptic equation
-    '0 = v_xx - mu*v + nu*u^gamma' based on the given parameters. The derivatives
+    Solves a linear system to compute the vector `v` from the elliptic equation
+    `0 = v_xx - mu*v + nu*u^gamma` based on the given parameters. The derivatives
     involved are computed using a central difference scheme with the use of
     ghost points to treat the Neumann boundary conditions at the endpoints.
 
     Parameters:
-    - vector_u (np.ndarray): Input vector 'u' of size 'Nx' (default is a zero vector).
+    - vector_u (np.ndarray): Input vector `u` of size `Nx` (default is a zero vector).
     - L (float): Length of the domain.
     - Nx (int): Number of mesh points of the space domain.
     - mu (float): Coefficient of v in the elliptic equation.
     - nu (float): Coefficient of u^gamma in the elliptic equation.
-    - gamma (float): Power of 'u' in the elliptic equation.
+    - gamma (float): Power of `u` in the elliptic equation.
     - diagnostic (bool): Flag for enabling diagnostic output (default is False).
 
     Returns:
-    - np.ndarray: Solution vector 'v' of size 'Nx + 1'.
+    - np.ndarray: Solution vector `v` of size `Nx + 1`.
 
     Notes:
-    - The function constructs a sparse tridiagonal matrix 'A' using finite difference discretization.
+    - The function constructs a sparse tridiagonal matrix `A` using finite difference discretization.
     - Neumann boundary conditions are applied by modifying the first and last off-diagonal elements.
-    - The right-hand side vector 'b' is computed based on the input vector 'u' and parameters.
-    - The system 'A * v = b' is solved using a sparse solver.
+    - The right-hand side vector `b` is computed based on the input vector `u` and parameters.
+    - The system `A * v = b` is solved using a sparse solver.
 
     Steps:
-    1. Compute the mesh spacing 'dx' based on the domain length 'L' and number of mesh points 'Nx'.
-    2. Define the main, upper, and lower diagonals of the sparse matrix 'A'.
+    1. Compute the mesh spacing `dx` based on the domain length `L` and number of mesh points `Nx`.
+    2. Define the main, upper, and lower diagonals of the sparse matrix `A`.
     3. Apply special handling for Neumann boundary conditions by modifying the first and last off-diagonal elements.
-    4. Construct the sparse matrix 'A' using the diagonals and offsets.
-    5. Compute the right-hand side vector 'b' based on the input vector 'u' and parameters.
-    6. Solve the linear system 'A * v = b' using a sparse solver.
-    7. Return the solution vector 'v'.
+    4. Construct the sparse matrix `A` using the diagonals and offsets.
+    5. Compute the right-hand side vector `b` based on the input vector `u` and parameters.
+    6. Solve the linear system `A * v = b` using a sparse solver.
+    7. Return the solution vector `v`.
     """
     dx = L / Nx
 
@@ -385,10 +380,9 @@ def solve_v(
     return v
 
 
-def first_derivative_NBC(L: float, Nx: int,
-                         vector_f: np.ndarray) -> np.ndarray:
+def first_derivative_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
     """
-    Computes the first derivative of a vector 'vector_f' using finite differences
+    Computes the first derivative of a vector `vector_f` using finite differences
     with Neumann boundary conditions (NBC). The derivatives involved are computed
     using a central difference scheme with the use of ghost points to treat the
     Neumann boundary conditions at the endpoints.
@@ -399,15 +393,15 @@ def first_derivative_NBC(L: float, Nx: int,
     - vector_f (np.ndarray): Input vector for which the derivative is computed.
 
     Returns:
-    - np.ndarray: The computed first derivative of 'vector_f'.
+    - np.ndarray: The computed first derivative of `vector_f`.
 
     Notes:
-    - The function constructs a sparse matrix 'A' to approximate the derivative.
-    - The matrix 'A' has:
+    - The function constructs a sparse matrix `A` to approximate the derivative.
+    - The matrix `A` has:
         - -1 on the lower diagonal.
         - 1 on the upper diagonal.
         - Zeros in the first and last rows to enforce Neumann boundary conditions.
-    - The derivative is scaled by the grid spacing 'dx = L / Nx'.
+    - The derivative is scaled by the grid spacing `dx = L / Nx`.
     """
 
     # Define the diagonals
@@ -436,7 +430,7 @@ def first_derivative_NBC(L: float, Nx: int,
 def laplacian_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
     """
     Create a sparse Nx x Nx square matrix representing the Laplacian operator
-    with Neumann Boundary Conditions (NBC) and apply it to a given vector. The 
+    with Neumann Boundary Conditions (NBC) and apply it to a given vector. The
     derivatives involved are computed using a central difference scheme with
     the use of ghost points to treat the Neumann boundary conditions at the endpoints.
 
@@ -476,7 +470,7 @@ def laplacian_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
 def rhs(u: np.ndarray, v: np.ndarray, config: SimulationConfig) -> np.ndarray:
     """
     Compute the right-hand side (RHS) of the partial differential equation
-    'u_t = u_xx - chemotaxis term + logistic source' for the given variables
+    `u_t = u_xx - chemotaxis term + logistic source` for the given variables
     and parameters.
 
     Parameters:
@@ -487,7 +481,7 @@ def rhs(u: np.ndarray, v: np.ndarray, config: SimulationConfig) -> np.ndarray:
     - numpy.ndarray: The computed RHS of the equation.
 
     Notes:
-    - The function uses several parameters from the global 'config' dictionary:
+    - The function uses several parameters from the global `config` dictionary:
       - m, beta, alpha, chi, a, b, mu, nu, gamma.
     - The terms in the equation include:
       - Diffusion term (u_xx).
@@ -633,14 +627,8 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
 
     # Create static plots
     create_static_plots(
-        t_values,
-        x_values,
-        u_num,
-        v_num,
-        uStar,
-        vStar,
-        SetupDes,
-        FileBaseName)
+        t_values, x_values, u_num, v_num, uStar, vStar, SetupDes, FileBaseName
+    )
 
     # Create animation if requested
     if config.generate_video == "yes":
@@ -667,15 +655,15 @@ def create_static_plots(
     - x_mesh (np.ndarray): Spatial mesh points for the simulation.
     - u_data (np.ndarray): 2D array of simulation data values for each (time, space) pair.
     - v_data (np.ndarray): 2D array of additional simulation data values for each (time, space) pair.
-    - uStar (float): Reference value for creating a constant plane in the 3D plot of 'u'.
-    - vStar (float): Reference value for creating a constant plane in the 3D plot of 'v'.
+    - uStar (float): Reference value for creating a constant plane in the 3D plot of `u`.
+    - vStar (float): Reference value for creating a constant plane in the 3D plot of `v`.
     - SetupDes (str): Description of the setup, used as the title of the plot.
     - FileBaseName (str): Base name for saving the output plot files.
 
     The function generates:
-    - A 3D surface plot of 'u_data' and 'v_data' over time and space.
-    - A reference plane at `uStar` and another at zero for comparison in the plot of 'u'.
-    - A reference plane at `vStar` and another at zero for comparison in the plot of 'v'.
+    - A 3D surface plot of `u_data` and `v_data` over time and space.
+    - A reference plane at `uStar` and another at zero for comparison in the plot of `u`.
+    - A reference plane at `vStar` and another at zero for comparison in the plot of `v`.
     - Saves the plot as PNG and JPEG files with the specified base name.
 
     Returns:
@@ -731,8 +719,7 @@ def create_static_plots(
 
     # Second subplot for v(t,x)
     ax_3d_v = fig_3d.add_subplot(122, projection="3d")
-    surf_v = ax_3d_v.plot_surface(
-        T_grid, X_grid, v_data, cmap="viridis", alpha=0.8)
+    surf_v = ax_3d_v.plot_surface(T_grid, X_grid, v_data, cmap="viridis", alpha=0.8)
 
     # # Add colorbar for v
     # fig_3d.colorbar(surf_v, ax=ax_3d_v, label='v(t,x)')
@@ -839,12 +826,7 @@ def create_animation(
     frame_stride = max(1, len(time_data) // 200)  # Aim for ~200 frames total
     frames = range(0, len(time_data), frame_stride)
 
-    ani = animation.FuncAnimation(
-        fig,
-        update,
-        frames=frames,
-        interval=50,
-        blit=True)
+    ani = animation.FuncAnimation(fig, update, frames=frames, interval=50, blit=True)
 
     print("\n# Saving video file.\n")
     writer = animation.FFMpegWriter(
@@ -911,10 +893,8 @@ def parse_args() -> SimulationConfig:
         help="Enable verbose output (default: no)",
     )
     parser.add_argument(
-        "--m",
-        type=float,
-        default=1.0,
-        help="Parameter m (default: 1.0)")
+        "--m", type=float, default=1.0, help="Parameter m (default: 1.0)"
+    )
     parser.add_argument(
         "--beta", type=float, default=1.0, help="Parameter beta (default: 1.0)"
     )
@@ -925,25 +905,17 @@ def parse_args() -> SimulationConfig:
         "--chi", type=float, default=-1.0, help="Parameter chi (default: -1.0)"
     )
     parser.add_argument(
-        "--a",
-        type=float,
-        default=1.0,
-        help="Parameter a (default: 1.0)")
+        "--a", type=float, default=1.0, help="Parameter a (default: 1.0)"
+    )
     parser.add_argument(
-        "--b",
-        type=float,
-        default=1.0,
-        help="Parameter b (default: 1.0)")
+        "--b", type=float, default=1.0, help="Parameter b (default: 1.0)"
+    )
     parser.add_argument(
-        "--mu",
-        type=float,
-        default=1.0,
-        help="Parameter mu (default: 1.0)")
+        "--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)"
+    )
     parser.add_argument(
-        "--nu",
-        type=float,
-        default=1,
-        help="Parameter nu (default: 1.0)")
+        "--nu", type=float, default=1, help="Parameter nu (default: 1.0)"
+    )
     parser.add_argument(
         "--gamma", type=float, default=1.0, help="Parameter gamma (default: 1.0)"
     )
