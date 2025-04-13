@@ -1,6 +1,6 @@
-# Simulations for Chemotaxis equations
+# Chemotaxis Simulations
 
-This repository contains a program that simulates a chemotaxis process from a parabolic-elliptic system of partial differential equations. Is is based on the research paper *Global Existence and Asymptotic Behaviour of Classical Solutions of Chemotaxis Models with Signal-dependent Sensitivity and Logistic Source* by Dr. Wenxian Shen, Dr. Le Chen, and their PhD student Ian Ruau. Here is a link to the research paper **[link to paper]**
+This repository contains a program that simulates a chemotaxis process from a parabolic-elliptic system of partial differential equations. It is based on the research paper *Global Existence and Asymptotic Behaviour of Classical Solutions of Chemotaxis Models with Signal-dependent Sensitivity and Logistic Source* by Dr. Wenxian Shen, Dr. Le Chen, and their PhD student Ian Ruau. Here is a link to the research paper **[link to paper]**
 
 Simulations for special sets of parameters are consistent with proven theoretical results. The advantage of this package is that it helps us get insights about behaviours outside of the sets of parameters considered in the research paper.
 
@@ -10,7 +10,7 @@ Simulations for special sets of parameters are consistent with proven theoretica
 <!-- - Easy-to-use interface for conducting and analyzing simulations. -->
 <!-- - Detailed documentation for understanding and extending the simulations. -->
 
-## Install
+## Installation
 
 To get started with these simulations, you can install the package using pip:
 
