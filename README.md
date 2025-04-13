@@ -48,12 +48,12 @@ and .jpeg formats:
 
 ![images_saved](./homepage/images_saved.png)
 
-![plots](./a=1-0_b=1-0_alpha=1-0_m=1-0_beta=1-0_chi=150-0_mu=1-0_nu=1-0_gamma=1-0_meshsize=100_time=2-3_Epsilon=0-001_EigenIndex=2.png)
+![Plots](./homepage/a=1-0_b=1-0_alpha=1-0_m=1-0_beta=1-0_chi=30-0_mu=1-0_nu=1_gamma=1-0_meshsize=100_time=5-0_epsilon=0-5_eigen_index=2.png)
 
 If the user chose to save the animation of the chemotaxis process, an .mp4 video
 will be saved as well:
 
-![video](./homepage/a=1-0_b=1-0_alpha=1-0_m=1-0_beta=1-0_chi=30-0_mu=1-0_nu=1_gamma=1-0_meshsize=100_time=5-0_epsilon=0-5_eigen_index=2.mp4)
+![Video](./homepage/video.gif)
 
 ## Documentation
 
