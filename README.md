@@ -4,15 +4,11 @@ This repository contains a program that simulates a chemotaxis process from a pa
 
 Simulations for special sets of parameters are consistent with proven theoretical results. The advantage of this package is that it helps us get insights about behaviours outside of the sets of parameters considered in the research paper.
 
-# Simulations on Some Surface Growth Models
-
-![Sticky Tetris](./tests/simulation/config_Tetris_Sticky.gif)
-
-## Features
-
-- Comprehensive simulations of different surface growth models.
-- Easy-to-use interface for conducting and analyzing simulations.
-- Detailed documentation for understanding and extending the simulations.
+<!-- ## Features -->
+<!---->
+<!-- - Comprehensive simulations of different surface growth models. -->
+<!-- - Easy-to-use interface for conducting and analyzing simulations. -->
+<!-- - Detailed documentation for understanding and extending the simulations. -->
 
 ## Install
 
