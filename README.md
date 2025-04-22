@@ -1,14 +1,27 @@
-# Chemotaxis Simulations
+# Chemotaxis Simulations CLI Tool
+
+[![PyPI version](https://img.shields.io/pypi/v/chemotaxis-sim.svg)](https://pypi.org/project/chemotaxis-sim/)
+[![Python versions](https://img.shields.io/pypi/pyversions/chemotaxis-sim.svg)](https://pypi.org/project/chemotaxis-sim/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+A command-line interface (CLI) tool to simulate chemotaxis processes based on a parabolic-elliptic PDE model.
+
+## Table of Contents
+
+- [About](#about)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+
+## About
 
 This repository contains a program that simulates a chemotaxis process from a parabolic-elliptic system of partial differential equations. It is based on the research paper *Global Existence and Asymptotic Behaviour of Classical Solutions of Chemotaxis Models with Signal-dependent Sensitivity and Logistic Source* by Dr. Wenxian Shen, Dr. Le Chen, and their PhD student Ian Ruau. Here is a link to the research paper **[link to paper]**
 
 Simulations for special sets of parameters are consistent with proven theoretical results. The advantage of this package is that it helps us get insights about behaviours outside of the sets of parameters considered in the research paper.
-
-<!-- ## Features -->
-<!---->
-<!-- - Comprehensive simulations of different surface growth models. -->
-<!-- - Easy-to-use interface for conducting and analyzing simulations. -->
-<!-- - Detailed documentation for understanding and extending the simulations. -->
 
 ## Installation
 
@@ -18,7 +31,15 @@ To get started with these simulations, you can install the package using pip:
 pip install chemotaxis-sim
 ```
 
-## Sample Usage
+## Features
+
+- Run chemotaxis simulations with customizable parameters.
+- Terminal plots of initial conditions via termplotlib.
+- 3D static surface plots (PNG/JPEG) and optional MP4 animations.
+- Progress bar and verbose logging.
+- Easy CLI usage with help prompts.
+
+## Usage
 
 Once the package is installed, the user can access the help prompt by simply
 running the following command
@@ -57,26 +78,21 @@ will be saved as well:
 
 ## Documentation
 
-For detailed information about the package and its functionalities, visit **Link
-to documentation page**
+For detailed information about the package and its functionalities, visit **Link to documentation page**
 
-<!-- ## How to Contribute -->
-<!---->
-<!-- Contributions to this project are welcome! To contribute, please: -->
-<!---->
-<!-- 1. Fork the repository. -->
-<!-- 2. Create a new branch for your feature. -->
-<!-- 3. Add your changes and commit them. -->
-<!-- 4. Push to the branch. -->
-<!-- 5. Create a new pull request. -->
+## Contributing
 
-## References
+Contributions are welcome! Please follow these steps:
 
-**Add references**
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/my-feature`).
+3. Commit your changes (`git commit -am 'Add my feature'`).
+4. Push to the branch (`git push origin feature/my-feature`).
+5. Open a pull request.
 
 ## License
 
-This project is licensed under the **Insert license** file for details.
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
 
 ## Contact
 
