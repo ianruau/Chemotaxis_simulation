@@ -1,0 +1,9 @@
+README.md
+setup.py
+simulation.py
+chemotaxis_sim.egg-info/PKG-INFO
+chemotaxis_sim.egg-info/SOURCES.txt
+chemotaxis_sim.egg-info/dependency_links.txt
+chemotaxis_sim.egg-info/entry_points.txt
+chemotaxis_sim.egg-info/requires.txt
+chemotaxis_sim.egg-info/top_level.txt
