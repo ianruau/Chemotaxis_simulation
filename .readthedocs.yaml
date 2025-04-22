@@ -1,20 +1,23 @@
 version: 2
 
 build:
-  os: ubuntu-22.04 # Updated to newer Ubuntu version
+  os: ubuntu-22.04
   tools:
     python: "3.8"
 
+# Correct python.install syntax
 python:
   install:
     - method: pip
-      path: requirements.txt # Your main requirements
+      path: . # Installs your package
     - method: pip
-      path: . # Install your package in editable mode
-    - method: pip
-      extra_requirements: # Correct way to specify direct packages
-        - sphinx>=3.0
-        - sphinx-rtd-theme
+      path: docs/requirements.txt # Your docs requirements file
 
+# Sphinx configuration
 sphinx:
   configuration: docs/conf.py
+
+# Optional: Formats to build
+formats:
+  - pdf
+  - epub
