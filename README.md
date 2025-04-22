@@ -98,5 +98,5 @@ This project is licensed under the MIT License – see the [LICENSE](LICENSE) fi
 
 For any queries or further discussion, feel free to contact us at
 
-- Le Chen: [chenle02@gmail.com] or [le.chen@auburn.edu].
+- Le Chen: [chenle02@gmail.com] or [le.chen@auburn.edu] or [Homepage](https://webhome.auburn.edu/~lzc0090/index.html).
 - Ian Ruau: [ian.ruau@auburn.edu].
