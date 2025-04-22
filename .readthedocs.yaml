@@ -3,16 +3,16 @@ version: 2
 build:
   os: ubuntu-20.04
   tools:
-    python: '3.8'
+    python: "3.8"
 
 python:
-  version: '3.8'
   install:
     - requirements: requirements.txt
-    - setup: .
-    - pip:
+    - requirements:
         - sphinx>=3.0
         - sphinx-rtd-theme
+    - method: pip
+      path: .
 
 sphinx:
   configuration: docs/conf.py
