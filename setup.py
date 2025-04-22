@@ -18,11 +18,18 @@ setup(
         "tabulate",
         "tqdm",
         "questionary",
-        "termplotlib"
+        "termplotlib",
     ],
     entry_points={
         "console_scripts": [
             "chemotaxis-sim=simulation:main",
         ]
     },
+    extras_require={
+        "docs": [
+            "sphinx>=3.0",
+            "sphinx-rtd-theme",
+        ],
+    },
 )
+

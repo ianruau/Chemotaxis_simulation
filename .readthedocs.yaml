@@ -5,19 +5,16 @@ build:
   tools:
     python: "3.8"
 
-# Correct python.install syntax
 python:
   install:
     - method: pip
-      path: . # Installs your package
+      path: .
+      extra_requirements: ["docs"] # If you have a docs extra in setup.py
     - method: pip
-      path: docs/requirements.txt # Your docs requirements file
+      path: docs/requirements.txt
 
-# Sphinx configuration
 sphinx:
   configuration: docs/conf.py
+  fail_on_warning: true
 
-# Optional: Formats to build
-formats:
-  - pdf
-  - epub
+formats: []
