@@ -7,12 +7,10 @@ build:
 
 python:
   install:
-    - requirements: requirements.txt
-    - requirements:
-        - sphinx>=3.0
-        - sphinx-rtd-theme
     - method: pip
       path: .
+    - method: pip
+      path: docs/requirements.txt
 
 sphinx:
   configuration: docs/conf.py
