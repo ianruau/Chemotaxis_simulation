@@ -15,7 +15,7 @@ Simulations for special sets of parameters are consistent with proven theoretica
 To get started with these simulations, you can install the package using pip:
 
 ```bash
-pip install NAME-OF-THE-PACKAGE
+pip install chemotaxis-sim
 ```
 
 ## Sample Usage
@@ -24,13 +24,13 @@ Once the package is installed, the user can access the help prompt by simply
 running the following command
 
 ```bash
-./simulation.py --help
+chemotaxis-sim --help
 ```
 
 Here is an example of a simulation
 
 ```bash
-./simulation.py --chi 30 --meshsize 100 --time 5 --eigen_index 2 --epsilon 0.5 --generate_video yes
+chemotaxis-sim --chi 30 --meshsize 100 --time 5 --eigen_index 2 --epsilon 0.5 --generate_video yes
 ```
 
 The command above will show first some characteristic constants of the system of
