@@ -78,7 +78,7 @@ will be saved as well:
 
 ## Documentation
 
-For detailed information about the package and its functionalities, visit **Link to documentation page**
+For detailed information about the package and its functionalities, visit the [documentation webpage](https://chemotaxis-simulation.readthedocs.io/en/latest/).
 
 ## Contributing
 
