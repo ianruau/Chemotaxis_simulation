@@ -76,6 +76,7 @@ class SimulationConfig:
     - chi (float): Constant numerator of the chemotaxis function Chi(v).
     - a (float): Linear reaction coefficient in the logistic source.
     - b (float): Nonlinear reaction coefficient in the logistic source.
+    - c (float): Parameter in the denominator of chi(v).
     - mu (float): Coefficient of v in the elliptic PDE.
     - nu (float): Coefficient of u^gamma in the elliptic PDE.
     - gamma (float): Exponent of the source term u^gamma in the elliptic equation.
@@ -101,6 +102,7 @@ class SimulationConfig:
     chi: float = 25.0
     a: float = 1.0
     b: float = 1.0
+    c: float = 1.0
     mu: float = 1.0
     nu: float = 1.0
     gamma: float = 1.0
@@ -243,7 +245,7 @@ class SimulationConfig:
         # Now access them via config['m'], config['beta'], etc.
         print("Model Parameters:")
         print("1. Logistic term: ")
-        print(f"\ta = {self.a}, b = {self.b}, alpha = {self.alpha}")
+        print(f"\ta = {self.a}, b = {self.b}, c = {self.c}, alpha = {self.alpha}")
         print("2. Reaction term: ")
         print(f"\tm = {self.m}, beta = {self.beta}, chi = {self.chi}")
         print("3. The v equation: ")
@@ -496,6 +498,7 @@ def rhs(u: np.ndarray, v: np.ndarray, config: SimulationConfig) -> np.ndarray:
     chi = config.chi
     a = config.a
     b = config.b
+    c = config.c
     mu = config.mu
     nu = config.nu
     gamma = config.gamma
@@ -503,11 +506,11 @@ def rhs(u: np.ndarray, v: np.ndarray, config: SimulationConfig) -> np.ndarray:
     u_xx = laplacian_NBC(L, Nx, u)
     u_x = first_derivative_NBC(L, Nx, u)
     v_x = first_derivative_NBC(L, Nx, v)
-    term1 = ((beta * chi) / ((1 + v) ** (beta + 1))) * (v_x**2) * (u**m)
+    term1 = ((beta * chi) / ((c + v) ** (beta + 1))) * (v_x**2) * (u**m)
     # print("term1=", term1)
-    term2 = ((m * chi) / (1 + v) ** beta) * (u ** (m - 1)) * u_x * v_x
+    term2 = ((m * chi) / (c + v) ** beta) * (u ** (m - 1)) * u_x * v_x
     # print("term2=", term2)
-    term3 = (chi / ((1 + v) ** beta)) * (u**m) * (mu * v - nu * u**gamma)
+    term3 = (chi / ((c + v) ** beta)) * (u**m) * (mu * v - nu * u**gamma)
     # print("term3=", term3)
     # chemotaxis = -1 * first_derivative_NBC(L, Nx, u ** m * (chi /((1 + v)**beta)) * v_x)
     logistic = a * u - b * u ** (1 + alpha)
@@ -539,6 +542,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     chi = config.chi
     a = config.a
     b = config.b
+    c = config.c
     mu = config.mu
     nu = config.nu
     gamma = config.gamma
@@ -619,7 +623,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
 
     # Setup description for the title
     SetupDes = rf"""
-    $a$ = {a}, $b$ = {b}, $\alpha$ = {alpha};
+    $a$ = {a}, $b$ = {b}, $c$ = {c}, $\alpha$ = {alpha};
     $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
     $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
     $u^*$ = {uStar}, $\epsilon$ = {epsilon}, $n$ = {eigen_index}.
@@ -863,6 +867,7 @@ def parse_args() -> SimulationConfig:
     --chi (float): Parameter chi (default: -1).
     --a (float): Parameter a (default: 1).
     --b (float): Parameter b (default: 1).
+    --c (float): Parameter c (default: 1).
     --mu (float): Parameter mu (default: 1).
     --nu (float): Parameter nu (default: 1).
     --gamma (float): Parameter gamma (default: 1).
@@ -909,6 +914,9 @@ def parse_args() -> SimulationConfig:
     )
     parser.add_argument(
         "--b", type=float, default=1.0, help="Parameter b (default: 1.0)"
+    )
+    parser.add_argument(
+        "--c", type=float, default=1.0, help="Parameter c (default: 1.0)"
     )
     parser.add_argument(
         "--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)"
@@ -967,7 +975,7 @@ def main():
     config.display_parameters()
 
     # Using the above parameters to generate a file base name string
-    basename = f"a={config.a}_b={config.b}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_epsilon={config.epsilon}_eigen_index={config.eigen_index}".replace(
+    basename = f"a={config.a}_b={config.b}_c={config.c}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_epsilon={config.epsilon}_eigen_index={config.eigen_index}".replace(
         ".", "-"
     )
     print(f"Output files will be saved with the basename:\n\t {basename}\n")
