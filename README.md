@@ -80,6 +80,13 @@ will be saved as well:
 
 For detailed information about the package and its functionalities, visit the [documentation webpage](https://chemotaxis-simulation.readthedocs.io/en/latest/).
 
+## Reproducing previous results
+
+In the following page, we reproduce the results of the research paper by ....
+
+[Reproducing_Results](Reproducing_Results)
+
+
 ## Contributing
 
 Contributions are welcome! Please follow these steps:
