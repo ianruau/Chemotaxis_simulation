@@ -26,6 +26,7 @@ Parameters:
     --time FLOAT      Total simulation time (default: 2.5)
     --eigen_index INT  Parameter eigen_index (default: 0, letting system choose)
     --epsilon FLOAT   Parameter perturbation epsilon (default: 0.001)
+    --epsilon2 FLOAT   Parameter perturbation epsilon2 (default: 0.0)
 
     Output Control:
     --confirm        Skip confirmation prompt if set to yes (default: no)
@@ -87,6 +88,7 @@ class SimulationConfig:
     - time (float): The total simulation time.
     - eigen_index (int): An index used for eigenvalue-related computations.
     - epsilon (float): A small parameter used for numerical stability or perturbations.
+    - epsilon2 (float): A small parameter used for numerical stability or perturbations.
 
     Output Control:
     - confirm (str): A flag to confirm simulation execution.
@@ -113,6 +115,7 @@ class SimulationConfig:
     time: float = 2.5
     eigen_index: int = 0
     epsilon: float = 0.001
+    epsilon2: float = 0.0
 
     # Output control
     confirm: str = "no"
@@ -221,7 +224,9 @@ class SimulationConfig:
             "uinit",
             self.uStar
             + self.epsilon
-            * np.cos(((self.eigen_index - 1) * np.pi / self.L) * x_values),
+            * np.cos(((self.eigen_index - 1) * np.pi / self.L) * x_values)
+            + self.epsilon2
+            * np.cos(((self.eigen_index) * np.pi / self.L) * x_values),
         ),
 
         # Initial condition (must match exactly)
@@ -534,6 +539,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     L = config.L
     Nx = config.meshsize
     epsilon = config.epsilon
+    epsilon2 = config.epsilon2
     eigen_index = config.eigen_index
     T = config.time
     m = config.m
@@ -626,7 +632,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     $a$ = {a}, $b$ = {b}, $c$ = {c}, $\alpha$ = {alpha};
     $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
     $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
-    $u^*$ = {uStar}, $\epsilon$ = {epsilon}, $n$ = {eigen_index}.
+    $u^*$ = {uStar}, $\epsilon$ = {epsilon}, $\epsilon2$ = {epsilon2}, $n$ = {eigen_index}.
     """
 
     # Create static plots
@@ -875,6 +881,7 @@ def parse_args() -> SimulationConfig:
     --time (float): Parameter for time to lapse (default: 2.5).
     --eigen_index (int): Parameter eigen index (default: 0, letting system choose).
     --epsilon (float): Parameter perturbation epsilon (default: 0.001).
+    --epsilon2 (float): Parameter perturbation epsilon2 (default: 0.0).
     """
     parser = argparse.ArgumentParser(
         description="A CLI tool for configuring parameters"
@@ -951,6 +958,12 @@ def parse_args() -> SimulationConfig:
         default=0.001,
         help="Parameter perturbation epsilon (default: 0.001)",
     )
+    parser.add_argument(
+        "--epsilon2",
+        type=float,
+        default=0.0,
+        help="Parameter perturbation epsilon2 (default: 0.0)",
+    )
 
     args = parser.parse_args()
     return SimulationConfig(**vars(args))
@@ -975,7 +988,7 @@ def main():
     config.display_parameters()
 
     # Using the above parameters to generate a file base name string
-    basename = f"a={config.a}_b={config.b}_c={config.c}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_epsilon={config.epsilon}_eigen_index={config.eigen_index}".replace(
+    basename = f"a={config.a}_b={config.b}_c={config.c}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_epsilon={config.epsilon}_epsilon2={config.epsilon2}_eigen_index={config.eigen_index}".replace(
         ".", "-"
     )
     print(f"Output files will be saved with the basename:\n\t {basename}\n")
