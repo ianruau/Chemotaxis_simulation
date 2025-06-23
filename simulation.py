@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # pylint: disable=invalid-name
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
 """
 Chemotaxis Simulation Tool
 
@@ -47,8 +50,9 @@ Output:
 import argparse
 from dataclasses import dataclass, field
 from typing import Final, List
+from matplotlib import animation
 
-import matplotlib.animation as animation
+# import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import questionary
@@ -83,7 +87,8 @@ class SimulationConfig:
     - c (float): Parameter in the denominator of chi(v).
     - mu (float): Coefficient of v in the elliptic PDE.
     - nu (float): Coefficient of u^gamma in the elliptic PDE.
-    - gamma (float): Exponent of the source term u^gamma in the elliptic equation.
+    - gamma (float): Exponent of the source term u^gamma in the elliptic 
+      equation.
     - L (float): The length of the spatial domain (default is 1.0).
 
     Simulation Parameters:
@@ -326,7 +331,8 @@ def solve_v(
     - mu (float): Coefficient of v in the elliptic equation.
     - nu (float): Coefficient of u^gamma in the elliptic equation.
     - gamma (float): Power of `u` in the elliptic equation.
-    - diagnostic (bool): Flag for enabling diagnostic output (default is False).
+    - diagnostic (bool): Flag for enabling diagnostic output (default is 
+      False).
 
     Returns:
     - np.ndarray: Solution vector `v` of size `Nx + 1`.
@@ -334,7 +340,8 @@ def solve_v(
     Notes:
     - The function constructs a sparse tridiagonal matrix `A` using finite difference discretization.
     - Neumann boundary conditions are applied by modifying the first and last off-diagonal elements.
-    - The right-hand side vector `b` is computed based on the input vector `u` and parameters.
+    - The right-hand side vector `b` is computed based on the input vector 
+      `u` and parameters.
     - The system `A * v = b` is solved using a sparse solver.
 
     Steps:
@@ -447,7 +454,8 @@ def laplacian_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
     Parameters:
     - L (float): The length of the domain.
     - Nx (int): Number of mesh points of the space domain.
-    - vector_f (numpy.ndarray): The input vector to which the Laplacian operator is applied.
+    - vector_f (numpy.ndarray): The input vector to which the Laplacian 
+      operator is applied.
 
     Returns:
     - numpy.ndarray: The result of applying the Laplacian operator to the input vector.
@@ -650,16 +658,9 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     return x_values, u_num, v_num
 
 
-def create_static_plots(
-    t_mesh: np.ndarray,
-    x_mesh: np.ndarray,
-    u_data: np.ndarray,
-    v_data: np.ndarray,
-    uStar: float,
-    vStar: float,
-    SetupDes: str,
-    FileBaseName: str,
-) -> None:
+def create_static_plots( t_mesh: np.ndarray, x_mesh: np.ndarray,
+    u_data: np.ndarray, v_data: np.ndarray, uStar: float,
+    vStar: float, SetupDes: str, FileBaseName: str,) -> None:
     """
     Create and save static 3D plots of the simulation data.
 
@@ -732,7 +733,7 @@ def create_static_plots(
 
     # Second subplot for v(t,x)
     ax_3d_v = fig_3d.add_subplot(122, projection="3d")
-    surf_v = ax_3d_v.plot_surface(T_grid, X_grid, v_data, cmap="viridis", alpha=0.8)
+    #surf_v = ax_3d_v.plot_surface(T_grid, X_grid, v_data, cmap="viridis", alpha=0.8)
 
     # # Add colorbar for v
     # fig_3d.colorbar(surf_v, ax=ax_3d_v, label='v(t,x)')
@@ -864,7 +865,8 @@ def parse_args() -> SimulationConfig:
     Parse command-line arguments for configuring simulation parameters.
 
     Returns:
-    argparse.Namespace: Parsed arguments as an object with attributes corresponding to the parameters.
+    argparse.Namespace: Parsed arguments as an object with attributes 
+    corresponding to the parameters.
 
     Command-line Arguments:
     --confirm (str): Skip confirmation prompt if set to 'yes' (default: 'yes').
