@@ -61,6 +61,8 @@ from scipy.sparse.linalg import spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
 
+import joblib
+
 # Matplotlib configurations
 rc("text", usetex=True)  # Enable LaTeX rendering
 
@@ -1000,6 +1002,15 @@ def main():
     ):
         print("Continuing simulation...")
         x, u, v = RK4(config=config, FileBaseName=basename)
+        # Save numerical results to a joblib file
+        joblib_filename = f"{basename}.joblib"
+        joblib.dump({
+            "config": config,
+            "x_values": x,
+            "u_num": u,
+            "v_num": v
+        }, joblib_filename)
+        print(f"Simulation data saved to {joblib_filename}")
     else:
         print("Exiting simulation.")
         exit()
