@@ -36,10 +36,12 @@ __pycache__/
 # that do not work properly, or defective batches of numerical experiments
 BatchExp/
 BatchParameters/
-ChatGPT-01_SHE.py
 ChiSimulation/
 Deepseek_SHE.py
 HSSpaper/
 RKsimulation.py
 sim.py
 scratchtest.py
+ChatGPT-O1_SHE.py
+exactsimulation.py
+build/
