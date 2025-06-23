@@ -22,4 +22,24 @@ BatchExp/upload.sh
 *.blg
 *.run.xml
 *.bcf
+
+# Ignore the virtual environment
+
+
 venv/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore folders and files that have been previously used. They unused or irrelevant files, or they may contain programs
+# that do not work properly, or defective batches of numerical experiments
+BatchExp/
+BatchParameters/
+ChatGPT-01_SHE.py
+ChiSimulation/
+Deepseek_SHE.py
+HSSpaper/
+RKsimulation.py
+sim.py
+scratchtest.py
