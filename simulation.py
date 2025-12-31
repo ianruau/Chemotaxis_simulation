@@ -47,6 +47,16 @@ Output:
     - All output files use a basename containing parameter values
 """
 
+import os
+import tempfile
+
+# Matplotlib writes cache files (including TeX-related caches when usetex=True).
+# Ensure a writable cache directory even in sandboxed / restricted environments.
+if "MPLCONFIGDIR" not in os.environ:
+    mpl_config_dir = os.path.join(tempfile.gettempdir(), "chemotaxis-sim-mplconfig")
+    os.makedirs(mpl_config_dir, exist_ok=True)
+    os.environ["MPLCONFIGDIR"] = mpl_config_dir
+
 import argparse
 import shutil
 from dataclasses import dataclass, field
@@ -759,6 +769,7 @@ def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> 
     history.append((0, u_current.copy(), v_current.copy()))
 
     stop_step = Nt_max
+    stop_reason = "max_time"
     for step in tqdm(range(Nt_max), desc="Progress..."):
         # RK4 stages (same structure as in RK4()).
         k1 = rhs(u_current, v_current, config)
@@ -818,9 +829,24 @@ def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> 
 
             if check_convergence(now_step):
                 stop_step = now_step
+                stop_reason = "converged"
+                if saved_times and saved_times[-1] != now_time:
+                    save_snapshot(now_step, now_time)
                 if config.verbose == "yes":
                     print(f"[stop] converged at step={stop_step} t={stop_step*dt:.6g}")
                 break
+
+    stop_time = stop_step * dt
+    if stop_reason == "converged":
+        print(
+            f"Stopped early at T_stop={stop_time:.6g} (converged; "
+            f"tol={config.convergence_tol}, window={config.convergence_window_time}, min_time={config.convergence_min_time})."
+        )
+    else:
+        print(
+            f"Reached T_max={T_max:.6g} without convergence ("
+            f"tol={config.convergence_tol}, window={config.convergence_window_time}, min_time={config.convergence_min_time})."
+        )
 
     t_values = np.asarray(saved_times, dtype=np.float64)
     u_num = np.column_stack(saved_u)
@@ -830,7 +856,7 @@ def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> 
     $a$ = {config.a}, $b$ = {config.b}, $c$ = {config.c}, $\alpha$ = {config.alpha};
     $m$ = {config.m}, $\beta$ = {config.beta}, $\chi_0$ = {config.chi};
     $\mu$ = {config.mu}, $\nu$ = {config.nu}, $\gamma$ = {config.gamma}; $N$ = {Nx}, $T_\max$ = {T_max};
-    $T_{{stop}}$ = {stop_step*dt};
+    $T_{{stop}}$ = {stop_time};
     $u^*$ = {config.uStar}, $\epsilon$ = {config.epsilon}, $\epsilon2$ = {config.epsilon2}, $n$ = {config.eigen_index}.
     """
 
