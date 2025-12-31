@@ -1,2 +1,0 @@
-[console_scripts]
-chemotaxis-sim = simulation:main

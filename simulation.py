@@ -50,6 +50,7 @@ Output:
 import argparse
 import shutil
 from dataclasses import dataclass, field
+from collections import deque
 from typing import Final, List
 from matplotlib import animation
 
@@ -131,6 +132,11 @@ class SimulationConfig:
     generate_video: str = "no"
     verbose: str = "no"
     diagnostic: bool = False
+    until_converged: str = "no"
+    convergence_tol: float = 1e-4
+    convergence_window_time: float = 5.0
+    convergence_min_time: float = 10.0
+    max_saved_frames: int = 2000
 
     # Computed values
     uStar: float = field(init=False, default=None)
@@ -670,6 +676,173 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     return x_values, u_num, v_num
 
 
+def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
+    """
+    Run RK4 time-stepping up to `config.time`, but stop early once the solution
+    is approximately steady over a fixed time window.
+
+    This mode stores at most `config.max_saved_frames` snapshots for plotting and
+    saving (to avoid allocating huge arrays when `time` is large).
+    """
+    L = config.L
+    Nx = config.meshsize
+    T_max = config.time
+    mu = config.mu
+    nu = config.nu
+    gamma = config.gamma
+    diagnostic = config.diagnostic
+
+    # Match the legacy dt choice derived from `Nt = 2*(int(4*T*Nx^2/L^2)+1)`.
+    Nt_max = 2 * (int(4 * T_max * Nx * Nx / L**2) + 1)
+    dt = T_max / Nt_max
+
+    window_steps = max(1, int(config.convergence_window_time / dt))
+    min_steps = max(0, int(config.convergence_min_time / dt))
+
+    # Store a small number of snapshots for convergence checks.
+    max_check_points = 200
+    check_stride = max(1, window_steps // max_check_points)
+    history: deque[tuple[int, np.ndarray, np.ndarray]] = deque()
+
+    # Store snapshots for output (downsampled in time).
+    save_stride = max(1, Nt_max // max(1, config.max_saved_frames))
+    saved_times: List[float] = []
+    saved_u: List[np.ndarray] = []
+    saved_v: List[np.ndarray] = []
+
+    x_values = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
+    u_current = np.array(config.uinit, dtype=np.float64, copy=True)
+    v_current = np.array(config.vinit, dtype=np.float64, copy=True)
+
+    def save_snapshot(step: int, t: float) -> None:
+        saved_times.append(t)
+        saved_u.append(u_current.copy())
+        saved_v.append(v_current.copy())
+        if config.verbose == "yes":
+            print(f"[save] step={step} t={t:.6g} (frames={len(saved_times)})")
+
+    def check_convergence(step: int) -> bool:
+        if step < max(window_steps, min_steps):
+            return False
+        if not history:
+            return False
+        target = step - window_steps
+        ref_step = None
+        ref_u = None
+        ref_v = None
+        for s, u_snap, v_snap in reversed(history):
+            if s <= target:
+                ref_step = s
+                ref_u = u_snap
+                ref_v = v_snap
+                break
+        if ref_u is None or ref_v is None:
+            return False
+
+        u_amp = float(np.max(u_current) - np.min(u_current))
+        v_amp = float(np.max(v_current) - np.min(v_current))
+        u_scale = max(1.0, u_amp)
+        v_scale = max(1.0, v_amp)
+        du = float(np.max(np.abs(u_current - ref_u)))
+        dv = float(np.max(np.abs(v_current - ref_v)))
+        ok = (du <= config.convergence_tol * u_scale) and (dv <= config.convergence_tol * v_scale)
+        if config.verbose == "yes" and ref_step is not None:
+            t_ref = ref_step * dt
+            t_now = step * dt
+            print(
+                f"[conv] t={t_now:.6g} vs t_ref={t_ref:.6g} (dt*steps={window_steps}): "
+                f"du={du:.3g} dv={dv:.3g} amp_u={u_amp:.3g} amp_v={v_amp:.3g} ok={ok}"
+            )
+        return ok
+
+    save_snapshot(0, 0.0)
+    history.append((0, u_current.copy(), v_current.copy()))
+
+    stop_step = Nt_max
+    for step in tqdm(range(Nt_max), desc="Progress..."):
+        # RK4 stages (same structure as in RK4()).
+        k1 = rhs(u_current, v_current, config)
+        v1 = solve_v(
+            vector_u=u_current + 0.5 * dt * k1,
+            L=L,
+            Nx=Nx,
+            mu=mu,
+            nu=nu,
+            gamma=gamma,
+            diagnostic=diagnostic,
+        )
+        k2 = rhs(u_current + 0.5 * dt * k1, v1, config)
+        v2 = solve_v(
+            vector_u=u_current + 0.5 * dt * k2,
+            L=L,
+            Nx=Nx,
+            mu=mu,
+            nu=nu,
+            gamma=gamma,
+            diagnostic=diagnostic,
+        )
+        k3 = rhs(u_current + 0.5 * dt * k2, v2, config)
+        v3 = solve_v(
+            vector_u=u_current + dt * k3,
+            L=L,
+            Nx=Nx,
+            mu=mu,
+            nu=nu,
+            gamma=gamma,
+            diagnostic=diagnostic,
+        )
+        k4 = rhs(u_current + dt * k3, v3, config)
+
+        u_current = u_current + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+        v_current = solve_v(
+            vector_u=u_current,
+            L=L,
+            Nx=Nx,
+            mu=mu,
+            nu=nu,
+            gamma=gamma,
+            diagnostic=diagnostic,
+        )
+
+        now_step = step + 1
+        now_time = now_step * dt
+
+        if now_step % save_stride == 0 or now_step == Nt_max:
+            save_snapshot(now_step, now_time)
+
+        if now_step % check_stride == 0 or now_step == Nt_max:
+            history.append((now_step, u_current.copy(), v_current.copy()))
+            cutoff = now_step - window_steps - check_stride
+            while history and history[0][0] < cutoff:
+                history.popleft()
+
+            if check_convergence(now_step):
+                stop_step = now_step
+                if config.verbose == "yes":
+                    print(f"[stop] converged at step={stop_step} t={stop_step*dt:.6g}")
+                break
+
+    t_values = np.asarray(saved_times, dtype=np.float64)
+    u_num = np.column_stack(saved_u)
+    v_num = np.column_stack(saved_v)
+
+    SetupDes = rf"""
+    $a$ = {config.a}, $b$ = {config.b}, $c$ = {config.c}, $\alpha$ = {config.alpha};
+    $m$ = {config.m}, $\beta$ = {config.beta}, $\chi_0$ = {config.chi};
+    $\mu$ = {config.mu}, $\nu$ = {config.nu}, $\gamma$ = {config.gamma}; $N$ = {Nx}, $T_\max$ = {T_max};
+    $T_{{stop}}$ = {stop_step*dt};
+    $u^*$ = {config.uStar}, $\epsilon$ = {config.epsilon}, $\epsilon2$ = {config.epsilon2}, $n$ = {config.eigen_index}.
+    """
+
+    create_static_plots(
+        t_values, x_values, u_num, v_num, config.uStar, config.vStar, SetupDes, FileBaseName
+    )
+    if config.generate_video == "yes":
+        create_animation(t_values, u_num, v_num, config.uStar, config.vStar, SetupDes, FileBaseName)
+
+    return x_values, u_num, v_num
+
+
 def create_static_plots( t_mesh: np.ndarray, x_mesh: np.ndarray,
     u_data: np.ndarray, v_data: np.ndarray, uStar: float,
     vStar: float, SetupDes: str, FileBaseName: str,) -> None:
@@ -981,6 +1154,36 @@ def parse_args() -> SimulationConfig:
         default=0.0,
         help="Parameter perturbation epsilon2 (default: 0.0)",
     )
+    parser.add_argument(
+        "--until_converged",
+        choices=["yes", "no"],
+        default="no",
+        help="Stop early once the solution is approximately steady (default: no)",
+    )
+    parser.add_argument(
+        "--convergence_tol",
+        type=float,
+        default=1e-4,
+        help="Convergence tolerance (default: 1e-4)",
+    )
+    parser.add_argument(
+        "--convergence_window_time",
+        type=float,
+        default=5.0,
+        help="Time window length used for convergence checks (default: 5.0)",
+    )
+    parser.add_argument(
+        "--convergence_min_time",
+        type=float,
+        default=10.0,
+        help="Minimum time before convergence checks can stop the run (default: 10.0)",
+    )
+    parser.add_argument(
+        "--max_saved_frames",
+        type=int,
+        default=2000,
+        help="Maximum number of time snapshots saved when --until_converged=yes (default: 2000)",
+    )
 
     args = parser.parse_args()
     return SimulationConfig(**vars(args))
@@ -1016,7 +1219,10 @@ def main():
         or questionary.confirm("Do you want to continue the simulation?").ask()
     ):
         print("Continuing simulation...")
-        x, u, v = RK4(config=config, FileBaseName=basename)
+        if config.until_converged == "yes":
+            x, u, v = RK4_until_converged(config=config, FileBaseName=basename)
+        else:
+            x, u, v = RK4(config=config, FileBaseName=basename)
         # Save numerical results to a joblib file
         joblib_filename = f"{basename}.joblib"
         joblib.dump({

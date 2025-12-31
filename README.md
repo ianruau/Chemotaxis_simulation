@@ -54,6 +54,20 @@ Here is an example of a simulation
 chemotaxis-sim --chi 30 --meshsize 100 --time 5 --eigen_index 2 --epsilon 0.5 --generate_video yes
 ```
 
+### Stopping automatically when converged
+If you do not want to guess a sufficiently large final time, you can run with
+`--until_converged yes`.
+In this mode, `--time` is interpreted as a *maximum* time horizon and the solver
+will stop early once the solution changes by at most `--convergence_tol` over a
+time window of length `--convergence_window_time` (after an initial
+`--convergence_min_time` warm-up).
+
+Example:
+
+```bash
+chemotaxis-sim --chi 2.19 --meshsize 50 --time 200 --eigen_index 2 --epsilon 0.001 --until_converged yes
+```
+
 The command above will show first some characteristic constants of the system of
 partial differential equations that depend on the parameters input by the user:
 
