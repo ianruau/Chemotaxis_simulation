@@ -81,7 +81,10 @@ from tqdm import tqdm  # Import tqdm for progress bar
 import joblib
 
 # Matplotlib configurations
-rc("text", usetex=True)  # Enable LaTeX rendering
+# Use LaTeX rendering by default, but allow disabling it for robustness in long
+# batch runs (e.g., missing TeX packages, TeX errors, or restricted environments).
+_USE_TEX = os.environ.get("CHEMOTAXIS_SIM_USETEX", "yes").strip().lower() not in ("0", "no", "false")
+rc("text", usetex=_USE_TEX)
 
 
 @dataclass(frozen=True)
@@ -855,7 +858,7 @@ def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> 
     SetupDes = rf"""
     $a$ = {config.a}, $b$ = {config.b}, $c$ = {config.c}, $\alpha$ = {config.alpha};
     $m$ = {config.m}, $\beta$ = {config.beta}, $\chi_0$ = {config.chi};
-    $\mu$ = {config.mu}, $\nu$ = {config.nu}, $\gamma$ = {config.gamma}; $N$ = {Nx}, $T_\max$ = {T_max};
+    $\mu$ = {config.mu}, $\nu$ = {config.nu}, $\gamma$ = {config.gamma}; $N$ = {Nx}, $T_{{\max}}$ = {T_max};
     $T_{{stop}}$ = {stop_time};
     $u^*$ = {config.uStar}, $\epsilon$ = {config.epsilon}, $\epsilon2$ = {config.epsilon2}, $n$ = {config.eigen_index}.
     """
