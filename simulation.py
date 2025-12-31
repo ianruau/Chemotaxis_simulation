@@ -48,6 +48,7 @@ Output:
 """
 
 import argparse
+import shutil
 from dataclasses import dataclass, field
 from typing import Final, List
 from matplotlib import animation
@@ -301,9 +302,20 @@ class SimulationConfig:
             generates a textual plot using the `tpl` library.
             """
             print(f"\n# Initial condition for {label}")
-            fig = tpl.figure()
-            fig.plot(range(len(data)), data, label=label, width=100, height=36)
-            fig.show()
+            if shutil.which("gnuplot") is None:
+                print("Terminal plot skipped (requires `gnuplot` for termplotlib).")
+                return
+            try:
+                fig = tpl.figure()
+                fig.plot(range(len(data)), data, label=label, width=100, height=36)
+                fig.show()
+            except FileNotFoundError as exc:
+                if exc.filename == "gnuplot":
+                    print(
+                        "Terminal plot skipped (`gnuplot` not found; install it to enable termplotlib plots)."
+                    )
+                    return
+                raise
 
         plot_initial_condition(self.uinit, "u_0")
         plot_initial_condition(self.vinit, "v_0")

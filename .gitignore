@@ -45,3 +45,5 @@ scratchtest.py
 ChatGPT-O1_SHE.py
 exactsimulation.py
 build/
+
+chemotaxis_sim.egg-info
