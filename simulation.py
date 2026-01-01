@@ -58,10 +58,11 @@ if "MPLCONFIGDIR" not in os.environ:
     os.environ["MPLCONFIGDIR"] = mpl_config_dir
 
 import argparse
+import json
 import shutil
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from collections import deque
-from typing import Final, List
+from typing import Final, List, Optional
 from matplotlib import animation
 
 # import matplotlib.animation as animation
@@ -78,7 +79,9 @@ from scipy.sparse.linalg import spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
 
-import joblib
+#
+# NOTE: keep the simulator self-contained: prefer NumPy `.npz` files for saved
+# data instead of pickled formats.
 
 # Matplotlib configurations
 # Use LaTeX rendering by default, but allow disabling it for robustness in long
@@ -150,6 +153,10 @@ class SimulationConfig:
     convergence_window_time: float = 5.0
     convergence_min_time: float = 10.0
     max_saved_frames: int = 2000
+    save_data: str = "yes"
+    data_format: str = "npz"
+    save_max_frames: int = 2000
+    save_summary6: str = "yes"
 
     # Computed values
     uStar: float = field(init=False, default=None)
@@ -428,6 +435,137 @@ def solve_v(
     return v
 
 
+@dataclass(frozen=True)
+class SimulationResult:
+    x_values: np.ndarray
+    t_values: np.ndarray
+    u_num: np.ndarray
+    v_num: np.ndarray
+    stop_time: float
+    stop_reason: str
+    dt: float
+    setup_description: str
+
+
+def _downsample_time_indices(n_frames: int, max_frames: int) -> np.ndarray:
+    if max_frames <= 0:
+        raise ValueError("max_frames must be positive")
+    if n_frames <= max_frames:
+        return np.arange(n_frames, dtype=np.int64)
+    raw = np.linspace(0, n_frames - 1, num=max_frames)
+    idx = np.unique(np.round(raw).astype(np.int64))
+    if idx[0] != 0:
+        idx = np.insert(idx, 0, 0)
+    if idx[-1] != n_frames - 1:
+        idx = np.append(idx, n_frames - 1)
+    return idx
+
+
+def _config_metadata(config: SimulationConfig) -> dict:
+    d = asdict(config)
+    for key in ("uinit", "vinit"):
+        d.pop(key, None)
+    d["usetex"] = bool(_USE_TEX)
+    return d
+
+
+def save_simulation_data_npz(
+    filename: str,
+    config: SimulationConfig,
+    result: SimulationResult,
+    *,
+    max_frames: Optional[int] = None,
+) -> str:
+    max_frames = config.save_max_frames if max_frames is None else max_frames
+    idx = _downsample_time_indices(int(result.t_values.shape[0]), int(max_frames))
+    t_saved = result.t_values[idx]
+    u_saved = result.u_num[:, idx]
+    v_saved = result.v_num[:, idx]
+
+    config_json = json.dumps(_config_metadata(config), sort_keys=True)
+    np.savez_compressed(
+        filename,
+        schema_version=np.asarray(1, dtype=np.int64),
+        config_json=np.asarray(config_json),
+        setup_description=np.asarray(result.setup_description),
+        stop_reason=np.asarray(result.stop_reason),
+        stop_time=np.asarray(result.stop_time, dtype=np.float64),
+        dt=np.asarray(result.dt, dtype=np.float64),
+        x_values=np.asarray(result.x_values, dtype=np.float64),
+        t_values=np.asarray(t_saved, dtype=np.float64),
+        u_num=np.asarray(u_saved, dtype=np.float64),
+        v_num=np.asarray(v_saved, dtype=np.float64),
+        downsample_indices=np.asarray(idx, dtype=np.int64),
+    )
+    return filename
+
+
+def load_simulation_data_npz(filename: str) -> dict:
+    with np.load(filename, allow_pickle=False) as data:
+        out = {k: data[k] for k in data.files}
+    out["schema_version"] = int(out["schema_version"].item())
+    out["config"] = json.loads(str(out["config_json"].item()))
+    out["setup_description"] = str(out["setup_description"].item())
+    out["stop_reason"] = str(out["stop_reason"].item())
+    out["stop_time"] = float(out["stop_time"].item())
+    out["dt"] = float(out["dt"].item())
+    out["config_json"] = str(out["config_json"].item())
+    return out
+
+
+def create_six_frame_summary(
+    x_values: np.ndarray,
+    t_values: np.ndarray,
+    u_num: np.ndarray,
+    v_num: np.ndarray,
+    uStar: float,
+    vStar: float,
+    setup_description: str,
+    file_base_name: str,
+) -> None:
+    if t_values.size == 0:
+        return
+    t_end = float(t_values[-1])
+    targets = t_end * np.linspace(0.0, 1.0, 6)
+    indices: List[int] = []
+    for t_target in targets:
+        idx = int(np.argmin(np.abs(t_values - t_target)))
+        indices.append(idx)
+
+    u_min = float(np.min(u_num))
+    u_max = float(np.max(u_num))
+    v_min = float(np.min(v_num))
+    v_max = float(np.max(v_num))
+    u_pad = 0.05 * max(1e-12, u_max - u_min)
+    v_pad = 0.05 * max(1e-12, v_max - v_min)
+
+    fig, axes = plt.subplots(2, 6, figsize=(18, 6), dpi=300, sharex=True)
+    for j, idx in enumerate(indices):
+        t_here = float(t_values[idx])
+        ax_u = axes[0, j]
+        ax_v = axes[1, j]
+
+        ax_u.plot(x_values, u_num[:, idx], color="black", linewidth=1.0)
+        ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.8)
+        ax_u.set_title(rf"$t={t_here:.3g}$", fontsize=10)
+        ax_u.set_ylim(u_min - u_pad, u_max + u_pad)
+        if j == 0:
+            ax_u.set_ylabel(r"$u(x,t)$")
+
+        ax_v.plot(x_values, v_num[:, idx], color="black", linewidth=1.0)
+        ax_v.axhline(y=vStar, color="red", linestyle="--", linewidth=0.8)
+        ax_v.set_ylim(v_min - v_pad, v_max + v_pad)
+        ax_v.set_xlabel(r"$x$")
+        if j == 0:
+            ax_v.set_ylabel(r"$v(x,t)$")
+
+    fig.suptitle(setup_description, fontsize=9)
+    plt.tight_layout()
+    fig.savefig(f"{file_base_name}_summary6.png", bbox_inches="tight")
+    fig.savefig(f"{file_base_name}_summary6.jpeg", bbox_inches="tight")
+    plt.close(fig)
+
+
 def first_derivative_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
     """
     Computes the first derivative of a vector `vector_f` using finite differences
@@ -565,7 +703,7 @@ def rhs(u: np.ndarray, v: np.ndarray, config: SimulationConfig) -> np.ndarray:
     return u_xx + term1 - term2 - term3 + logistic
 
 
-def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
+def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult:
     """
     Perform numerical simulation using the Runge-Kutta 4th order (RK4) method.
 
@@ -686,10 +824,19 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
     if config.generate_video == "yes":
         create_animation(t_values, u_num, v_num, uStar, vStar, SetupDes, FileBaseName)
 
-    return x_values, u_num, v_num
+    return SimulationResult(
+        x_values=np.asarray(x_values, dtype=np.float64),
+        t_values=np.asarray(t_values, dtype=np.float64),
+        u_num=np.asarray(u_num, dtype=np.float64),
+        v_num=np.asarray(v_num, dtype=np.float64),
+        stop_time=float(T),
+        stop_reason="t_max",
+        dt=float(dt),
+        setup_description=SetupDes,
+    )
 
 
-def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> tuple:
+def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult:
     """
     Run RK4 time-stepping up to `config.time`, but stop early once the solution
     is approximately steady over a fixed time window.
@@ -869,7 +1016,16 @@ def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> 
     if config.generate_video == "yes":
         create_animation(t_values, u_num, v_num, config.uStar, config.vStar, SetupDes, FileBaseName)
 
-    return x_values, u_num, v_num
+    return SimulationResult(
+        x_values=np.asarray(x_values, dtype=np.float64),
+        t_values=np.asarray(t_values, dtype=np.float64),
+        u_num=np.asarray(u_num, dtype=np.float64),
+        v_num=np.asarray(v_num, dtype=np.float64),
+        stop_time=float(stop_time),
+        stop_reason=stop_reason,
+        dt=float(dt),
+        setup_description=SetupDes,
+    )
 
 
 def create_static_plots( t_mesh: np.ndarray, x_mesh: np.ndarray,
@@ -1213,6 +1369,30 @@ def parse_args() -> SimulationConfig:
         default=2000,
         help="Maximum number of time snapshots saved when --until_converged=yes (default: 2000)",
     )
+    parser.add_argument(
+        "--save_data",
+        choices=["yes", "no"],
+        default="yes",
+        help="Save numerical simulation data to disk (default: yes)",
+    )
+    parser.add_argument(
+        "--data_format",
+        choices=["npz"],
+        default="npz",
+        help="Format for saved numerical data (default: npz)",
+    )
+    parser.add_argument(
+        "--save_max_frames",
+        type=int,
+        default=2000,
+        help="Maximum number of frames stored in the saved data (default: 2000)",
+    )
+    parser.add_argument(
+        "--save_summary6",
+        choices=["yes", "no"],
+        default="yes",
+        help="Save a 6-frame (0%,20%,...,100%) summary figure (default: yes)",
+    )
 
     args = parser.parse_args()
     return SimulationConfig(**vars(args))
@@ -1249,18 +1429,28 @@ def main():
     ):
         print("Continuing simulation...")
         if config.until_converged == "yes":
-            x, u, v = RK4_until_converged(config=config, FileBaseName=basename)
+            result = RK4_until_converged(config=config, FileBaseName=basename)
         else:
-            x, u, v = RK4(config=config, FileBaseName=basename)
-        # Save numerical results to a joblib file
-        joblib_filename = f"{basename}.joblib"
-        joblib.dump({
-            "config": config,
-            "x_values": x,
-            "u_num": u,
-            "v_num": v
-        }, joblib_filename)
-        print(f"Simulation data saved to {joblib_filename}")
+            result = RK4(config=config, FileBaseName=basename)
+
+        if config.save_summary6 == "yes":
+            create_six_frame_summary(
+                x_values=result.x_values,
+                t_values=result.t_values,
+                u_num=result.u_num,
+                v_num=result.v_num,
+                uStar=config.uStar,
+                vStar=config.vStar,
+                setup_description=result.setup_description,
+                file_base_name=basename,
+            )
+
+        if config.save_data == "yes":
+            if config.data_format != "npz":
+                raise ValueError(f"Unsupported data_format: {config.data_format}")
+            npz_filename = f"{basename}.npz"
+            save_simulation_data_npz(npz_filename, config=config, result=result)
+            print(f"Simulation data saved to {npz_filename}")
     else:
         print("Exiting simulation.")
         exit()

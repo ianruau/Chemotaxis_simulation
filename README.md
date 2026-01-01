@@ -54,6 +54,12 @@ Here is an example of a simulation
 chemotaxis-sim --chi 30 --meshsize 100 --time 5 --eigen_index 2 --epsilon 0.5 --generate_video yes
 ```
 
+Saved data controls (optional):
+
+```bash
+chemotaxis-sim --save_data yes --save_max_frames 2000 --save_summary6 yes
+```
+
 ### Stopping automatically when converged
 If you do not want to guess a sufficiently large final time, you can run with
 `--until_converged yes`.
@@ -84,6 +90,19 @@ and .jpeg formats:
 ![images_saved](./homepage/images_saved.png)
 
 ![Plots](./homepage/a=1-0_b=1-0_alpha=1-0_m=1-0_beta=1-0_chi=30-0_mu=1-0_nu=1_gamma=1-0_meshsize=100_time=5-0_epsilon=0-5_eigen_index=2.png)
+
+In addition, the numerical data are saved for later post-processing in a
+compressed NumPy file:
+
+- `a=..._b=..._c=..._alpha=..._m=..._beta=..._chi=..._mu=..._nu=..._gamma=..._meshsize=..._time=..._epsilon=..._epsilon2=..._eigen_index=....npz`
+
+This `.npz` contains (downsampled) `x_values`, `t_values`, `u_num`, `v_num`,
+plus a JSON-encoded copy of the run configuration and some metadata.
+
+The CLI also writes a quick diagnostic figure with 6 time slices (0%, 20%, …,
+100%):
+
+- `..._summary6.png` and `..._summary6.jpeg`
 
 If the user chose to save the animation of the chemotaxis process, an .mp4 video
 will be saved as well:
