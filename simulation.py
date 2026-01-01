@@ -1279,6 +1279,12 @@ def parse_args() -> SimulationConfig:
         default="",
         help="Load default parameter values from a YAML file (CLI flags override)",
     )
+    pre_parser.add_argument(
+        "--config_warn_unknown",
+        choices=["yes", "no"],
+        default="no",
+        help="Warn about unknown YAML keys (default: no)",
+    )
     pre_args, _ = pre_parser.parse_known_args(argv)
 
     config_overrides: dict[str, Any] = {}
@@ -1286,11 +1292,14 @@ def parse_args() -> SimulationConfig:
         config_overrides = _load_yaml_config_as_overrides(pre_args.config)
 
     parser = _build_arg_parser()
-    _apply_parser_defaults_from_config(parser, config_overrides)
+    _apply_parser_defaults_from_config(
+        parser, config_overrides, warn_unknown=(pre_args.config_warn_unknown == "yes")
+    )
 
     args = parser.parse_args(argv)
     args_dict = vars(args)
     args_dict.pop("config", None)
+    args_dict.pop("config_warn_unknown", None)
     return SimulationConfig(**args_dict)
 
 
@@ -1343,16 +1352,17 @@ def _load_yaml_config_as_overrides(path: str) -> dict[str, Any]:
 
 
 def _apply_parser_defaults_from_config(
-    parser: argparse.ArgumentParser, config: dict[str, Any]
+    parser: argparse.ArgumentParser, config: dict[str, Any], *, warn_unknown: bool = False
 ) -> None:
     if not config:
         return
 
     by_dest = {action.dest: action for action in parser._actions if action.dest}  # pylint: disable=protected-access
 
-    unknown_keys = [k for k in config.keys() if k not in by_dest]
-    for k in unknown_keys:
-        print(f"Warning: unknown config key ignored: {k}", file=sys.stderr)
+    if warn_unknown:
+        unknown_keys = [k for k in config.keys() if k not in by_dest]
+        for k in unknown_keys:
+            print(f"Warning: unknown config key ignored: {k}", file=sys.stderr)
 
     coerced: dict[str, Any] = {}
     for key, value in config.items():
@@ -1395,6 +1405,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         type=str,
         default="",
         help="Load default parameter values from a YAML file (CLI flags override)",
+    )
+    parser.add_argument(
+        "--config_warn_unknown",
+        choices=["yes", "no"],
+        default="no",
+        help="Warn about unknown YAML keys (default: no)",
     )
 
     io_group = parser.add_argument_group("Output / UI")

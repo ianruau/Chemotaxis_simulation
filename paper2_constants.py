@@ -162,69 +162,6 @@ def paper2_eq112_constants(
     )
 
 
-def main() -> None:
-    import argparse
-
-    argv = sys.argv[1:]
-
-    pre_parser = argparse.ArgumentParser(add_help=False)
-    pre_parser.add_argument(
-        "--config",
-        type=str,
-        default="",
-        help="Load default parameter values from a YAML file (CLI flags override)",
-    )
-    pre_args, _ = pre_parser.parse_known_args(argv)
-    config_overrides: dict[str, Any] = {}
-    if pre_args.config:
-        config_overrides = _load_yaml_config_as_overrides(pre_args.config)
-
-    parser = argparse.ArgumentParser(description="Compute Paper II Eq. (1.8) and Eq. (1.12) constants.")
-    parser.add_argument(
-        "--config",
-        type=str,
-        default="",
-        help="Load default parameter values from a YAML file (CLI flags override)",
-    )
-    parser.add_argument("--a", type=float, default=1.0, help="Parameter a (default: 1.0)")
-    parser.add_argument("--b", type=float, default=1.0, help="Parameter b (default: 1.0)")
-    parser.add_argument("--alpha", type=float, default=1.0, help="Parameter alpha (default: 1.0)")
-    parser.add_argument("--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)")
-    parser.add_argument("--nu", type=float, default=1.0, help="Parameter nu (default: 1.0)")
-    parser.add_argument("--gamma", type=float, default=1.0, help="Parameter gamma (default: 1.0)")
-    parser.add_argument("--m", type=float, default=1.0, help="Parameter m (default: 1.0)")
-    parser.add_argument("--beta", type=float, default=1.0, help="Parameter beta (default: 1.0)")
-    parser.add_argument("--L", type=float, default=1.0, help="Domain length L (default: 1.0)")
-    parser.add_argument("--n_max", type=int, default=200000)
-    parser.add_argument("--early_stop_patience", type=int, default=2000)
-    _apply_parser_defaults_from_config(parser, config_overrides)
-
-    args = parser.parse_args(argv)
-
-    c = paper2_eq112_constants(
-        a=args.a,
-        b=args.b,
-        alpha=args.alpha,
-        mu=args.mu,
-        nu=args.nu,
-        gamma=args.gamma,
-        m=args.m,
-        beta=args.beta,
-        L=args.L,
-        n_max=args.n_max,
-        early_stop_patience=args.early_stop_patience,
-    )
-
-    print(f"u* = {c.u_star}")
-    print(f"v* = {c.v_star}")
-    print(f"chi_a^*(u*) [Eq. (1.12)] = {c.chi_a_star}")
-    print(f"argmin n = {c.n_min} (lambda_n = {c.lambda_min})")
-
-
-if __name__ == "__main__":
-    main()
-
-
 def _flatten_yaml_mapping(data: Any) -> dict[str, Any]:
     if data is None:
         return {}
@@ -260,14 +197,21 @@ def _load_yaml_config_as_overrides(path: str) -> dict[str, Any]:
 
 
 def _apply_parser_defaults_from_config(parser, config: dict[str, Any]) -> None:
+    _apply_parser_defaults_from_config_impl(parser, config, warn_unknown=False)
+
+
+def _apply_parser_defaults_from_config_impl(
+    parser, config: dict[str, Any], *, warn_unknown: bool = False
+) -> None:
     if not config:
         return
 
     by_dest = {action.dest: action for action in parser._actions if action.dest}  # pylint: disable=protected-access
 
-    unknown_keys = [k for k in config.keys() if k not in by_dest]
-    for k in unknown_keys:
-        print(f"Warning: unknown config key ignored: {k}", file=sys.stderr)
+    if warn_unknown:
+        unknown_keys = [k for k in config.keys() if k not in by_dest]
+        for k in unknown_keys:
+            print(f"Warning: unknown config key ignored: {k}", file=sys.stderr)
 
     coerced: dict[str, Any] = {}
     for key, value in config.items():
@@ -291,3 +235,111 @@ def _apply_parser_defaults_from_config(parser, config: dict[str, Any]) -> None:
             )
 
     parser.set_defaults(**coerced)
+
+
+def main() -> None:
+    import argparse
+
+    argv = sys.argv[1:]
+    if not argv:
+        parser = argparse.ArgumentParser(
+            description="Compute Paper II Eq. (1.8) and Eq. (1.12) constants."
+        )
+        parser.add_argument(
+            "--config",
+            type=str,
+            default="",
+            help="Load default parameter values from a YAML file (CLI flags override)",
+        )
+        parser.add_argument("--a", type=float, default=1.0, help="Parameter a (default: 1.0)")
+        parser.add_argument("--b", type=float, default=1.0, help="Parameter b (default: 1.0)")
+        parser.add_argument("--alpha", type=float, default=1.0, help="Parameter alpha (default: 1.0)")
+        parser.add_argument("--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)")
+        parser.add_argument("--nu", type=float, default=1.0, help="Parameter nu (default: 1.0)")
+        parser.add_argument("--gamma", type=float, default=1.0, help="Parameter gamma (default: 1.0)")
+        parser.add_argument("--m", type=float, default=1.0, help="Parameter m (default: 1.0)")
+        parser.add_argument("--beta", type=float, default=1.0, help="Parameter beta (default: 1.0)")
+        parser.add_argument("--L", type=float, default=1.0, help="Domain length L (default: 1.0)")
+        parser.add_argument("--n_max", type=int, default=200000)
+        parser.add_argument("--early_stop_patience", type=int, default=2000)
+        parser.add_argument(
+            "--config_warn_unknown",
+            choices=["yes", "no"],
+            default="no",
+            help="Warn about unknown YAML keys (default: no)",
+        )
+        parser.print_help(sys.stderr)
+        return
+
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument(
+        "--config",
+        type=str,
+        default="",
+        help="Load default parameter values from a YAML file (CLI flags override)",
+    )
+    pre_parser.add_argument(
+        "--config_warn_unknown",
+        choices=["yes", "no"],
+        default="no",
+        help="Warn about unknown YAML keys (default: no)",
+    )
+    pre_args, _ = pre_parser.parse_known_args(argv)
+    config_overrides: dict[str, Any] = {}
+    if pre_args.config:
+        config_overrides = _load_yaml_config_as_overrides(pre_args.config)
+
+    parser = argparse.ArgumentParser(
+        description="Compute Paper II Eq. (1.8) and Eq. (1.12) constants."
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="",
+        help="Load default parameter values from a YAML file (CLI flags override)",
+    )
+    parser.add_argument(
+        "--config_warn_unknown",
+        choices=["yes", "no"],
+        default="no",
+        help="Warn about unknown YAML keys (default: no)",
+    )
+    parser.add_argument("--a", type=float, default=1.0, help="Parameter a (default: 1.0)")
+    parser.add_argument("--b", type=float, default=1.0, help="Parameter b (default: 1.0)")
+    parser.add_argument("--alpha", type=float, default=1.0, help="Parameter alpha (default: 1.0)")
+    parser.add_argument("--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)")
+    parser.add_argument("--nu", type=float, default=1.0, help="Parameter nu (default: 1.0)")
+    parser.add_argument("--gamma", type=float, default=1.0, help="Parameter gamma (default: 1.0)")
+    parser.add_argument("--m", type=float, default=1.0, help="Parameter m (default: 1.0)")
+    parser.add_argument("--beta", type=float, default=1.0, help="Parameter beta (default: 1.0)")
+    parser.add_argument("--L", type=float, default=1.0, help="Domain length L (default: 1.0)")
+    parser.add_argument("--n_max", type=int, default=200000)
+    parser.add_argument("--early_stop_patience", type=int, default=2000)
+    _apply_parser_defaults_from_config_impl(
+        parser, config_overrides, warn_unknown=(pre_args.config_warn_unknown == "yes")
+    )
+
+    args = parser.parse_args(argv)
+
+    c = paper2_eq112_constants(
+        a=args.a,
+        b=args.b,
+        alpha=args.alpha,
+        mu=args.mu,
+        nu=args.nu,
+        gamma=args.gamma,
+        m=args.m,
+        beta=args.beta,
+        L=args.L,
+        n_max=args.n_max,
+        early_stop_patience=args.early_stop_patience,
+    )
+
+    print(f"u* = {c.u_star}")
+    print(f"v* = {c.v_star}")
+    print(f"chi_a^*(u*) [Eq. (1.12)] = {c.chi_a_star}")
+    print(f"argmin n = {c.n_min} (lambda_n = {c.lambda_min})")
+
+
+if __name__ == "__main__":
+    main()
