@@ -1391,7 +1391,7 @@ def parse_args() -> SimulationConfig:
         "--save_summary6",
         choices=["yes", "no"],
         default="yes",
-        help="Save a 6-frame (0%,20%,...,100%) summary figure (default: yes)",
+        help="Save a 6-frame (0,20,...,100 percent) summary figure (default: yes)",
     )
 
     args = parser.parse_args()
