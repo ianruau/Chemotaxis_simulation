@@ -19,6 +19,7 @@ setup(
         "tqdm",
         "questionary",
         "termplotlib",
+        "PyYAML",
     ],
     entry_points={
         "console_scripts": [
@@ -32,4 +33,3 @@ setup(
         ],
     },
 )
-

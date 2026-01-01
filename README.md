@@ -66,6 +66,20 @@ Output naming controls (optional):
 chemotaxis-sim --output_dir images/branch_capture --basename run_beta0_chi2185_epsP
 ```
 
+### YAML config files
+For long parameter lists, you can load defaults from a YAML file via `--config`.
+CLI flags always override YAML values, and any missing parameter falls back to
+the CLI default.
+
+Example:
+
+```bash
+chemotaxis-sim --config config.example.yaml
+chemotaxis-sim --config config.example.yaml --chi 2.185 --meshsize 100
+```
+
+See `config.example.yaml` for a grouped template.
+
 ### Stopping automatically when converged
 If you do not want to guess a sufficiently large final time, you can run with
 `--until_converged yes`.

@@ -1,0 +1,52 @@
+# Example YAML configuration for `chemotaxis-sim`.
+#
+# Notes
+# - Parameters are key/value pairs.
+# - You may group parameters into nested mappings; the CLI flattens them.
+# - Any missing parameter falls back to the CLI default.
+# - For yes/no CLI flags you may use:
+#     - strings: "yes"/"no" (recommended; quoted), or
+#     - booleans: true/false
+#
+# Usage:
+#   chemotaxis-sim --config config.example.yaml
+#   chemotaxis-sim --config config.example.yaml --chi 2.185   # CLI overrides YAML
+
+ui:
+  confirm: "yes"
+  verbose: "no"
+  generate_video: "no"
+
+model:
+  a: 10.0
+  b: 1.0
+  c: 1.0
+  alpha: 1.0
+  m: 1.0
+  beta: 0.0
+  chi: 2.185
+  mu: 1.0
+  nu: 1.0
+  gamma: 1.0
+
+grid:
+  meshsize: 50
+  time: 100.0
+  eigen_index: 2
+  epsilon: 0.001
+  epsilon2: 0.0
+
+stopping:
+  until_converged: "yes"
+  convergence_tol: 1.0e-4
+  convergence_window_time: 5.0
+  convergence_min_time: 10.0
+  max_saved_frames: 2000
+
+output:
+  output_dir: "images/branch_capture"
+  basename: "example_run"
+  save_data: "yes"
+  data_format: "npz"
+  save_max_frames: 2000
+  save_summary6: "yes"

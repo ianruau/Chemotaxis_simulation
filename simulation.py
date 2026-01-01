@@ -60,9 +60,10 @@ if "MPLCONFIGDIR" not in os.environ:
 import argparse
 import json
 import shutil
+import sys
 from dataclasses import asdict, dataclass, field
 from collections import deque
-from typing import Final, List, Optional
+from typing import Any, Final, List, Optional
 from matplotlib import animation
 
 # import matplotlib.animation as animation
@@ -1269,156 +1270,251 @@ def parse_args() -> SimulationConfig:
     --epsilon (float): Parameter perturbation epsilon (default: 0.001).
     --epsilon2 (float): Parameter perturbation epsilon2 (default: 0.0).
     """
-    parser = argparse.ArgumentParser(
-        description="A CLI tool for configuring parameters"
+    argv = sys.argv[1:]
+
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument(
+        "--config",
+        type=str,
+        default="",
+        help="Load default parameter values from a YAML file (CLI flags override)",
     )
+    pre_args, _ = pre_parser.parse_known_args(argv)
+
+    config_overrides: dict[str, Any] = {}
+    if pre_args.config:
+        config_overrides = _load_yaml_config_as_overrides(pre_args.config)
+
+    parser = _build_arg_parser()
+    _apply_parser_defaults_from_config(parser, config_overrides)
+
+    args = parser.parse_args(argv)
+    args_dict = vars(args)
+    args_dict.pop("config", None)
+    return SimulationConfig(**args_dict)
+
+
+def _flatten_yaml_mapping(data: Any) -> dict[str, Any]:
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise TypeError("YAML config must be a mapping (dict-like) at the top level.")
+    out: dict[str, Any] = {}
+    for key, value in data.items():
+        if not isinstance(key, str):
+            raise TypeError("YAML config keys must be strings.")
+        if isinstance(value, dict):
+            out.update(_flatten_yaml_mapping(value))
+        else:
+            out[key] = value
+    return out
+
+
+def _yaml_yes_no(value: Any) -> Optional[str]:
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if value is None:
+        return None
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in ("yes", "y", "true", "1", "on"):
+            return "yes"
+        if lowered in ("no", "n", "false", "0", "off"):
+            return "no"
+    return None
+
+
+def _load_yaml_config_as_overrides(path: str) -> dict[str, Any]:
+    try:
+        import yaml  # type: ignore
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Missing dependency: PyYAML is required for `--config`. "
+            "Install it with `pip install pyyaml`."
+        ) from exc
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(path)
+
+    with open(path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    return _flatten_yaml_mapping(raw)
+
+
+def _apply_parser_defaults_from_config(
+    parser: argparse.ArgumentParser, config: dict[str, Any]
+) -> None:
+    if not config:
+        return
+
+    by_dest = {action.dest: action for action in parser._actions if action.dest}  # pylint: disable=protected-access
+
+    unknown_keys = [k for k in config.keys() if k not in by_dest]
+    for k in unknown_keys:
+        print(f"Warning: unknown config key ignored: {k}", file=sys.stderr)
+
+    coerced: dict[str, Any] = {}
+    for key, value in config.items():
+        action = by_dest.get(key)
+        if action is None:
+            continue
+
+        if action.choices and list(action.choices) == ["yes", "no"]:
+            yn = _yaml_yes_no(value)
+            if yn is None:
+                raise ValueError(f"Invalid value for `{key}`: {value!r} (expected yes/no or boolean)")
+            coerced[key] = yn
+            continue
+
+        if value is None:
+            coerced[key] = None
+            continue
+
+        if action.type is not None:
+            try:
+                coerced[key] = action.type(value)  # pylint: disable=not-callable
+            except (TypeError, ValueError):
+                coerced[key] = action.type(str(value))  # pylint: disable=not-callable
+        else:
+            coerced[key] = value
+
+        if action.choices and coerced[key] not in action.choices:
+            raise ValueError(
+                f"Invalid value for `{key}`: {coerced[key]!r} (choices: {sorted(action.choices)})"
+            )
+
+    parser.set_defaults(**coerced)
+
+
+def _build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="A CLI tool for configuring parameters")
+
     parser.add_argument(
+        "--config",
+        type=str,
+        default="",
+        help="Load default parameter values from a YAML file (CLI flags override)",
+    )
+
+    io_group = parser.add_argument_group("Output / UI")
+    io_group.add_argument(
         "--confirm",
         choices=["yes", "no"],
         default="yes",
         help="Skip confirmation prompt if set to yes (default: no)",
     )
-    parser.add_argument(
+    io_group.add_argument(
         "--generate_video",
         choices=["yes", "no"],
         default="no",
         help="Generate MP4 animation (default: no)",
     )
-    parser.add_argument(
+    io_group.add_argument(
         "--verbose",
         choices=["yes", "no"],
         default="no",
         help="Enable verbose output (default: no)",
     )
-    parser.add_argument(
-        "--m", type=float, default=1.0, help="Parameter m (default: 1.0)"
+
+    model_group = parser.add_argument_group("Model parameters")
+    model_group.add_argument("--m", type=float, default=1.0, help="Parameter m (default: 1.0)")
+    model_group.add_argument("--beta", type=float, default=1.0, help="Parameter beta (default: 1.0)")
+    model_group.add_argument("--alpha", type=float, default=1.0, help="Parameter alpha (default: 1.0)")
+    model_group.add_argument("--chi", type=float, default=-1.0, help="Parameter chi (default: -1.0)")
+    model_group.add_argument("--a", type=float, default=1.0, help="Parameter a (default: 1.0)")
+    model_group.add_argument("--b", type=float, default=1.0, help="Parameter b (default: 1.0)")
+    model_group.add_argument("--c", type=float, default=1.0, help="Parameter c (default: 1.0)")
+    model_group.add_argument("--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)")
+    model_group.add_argument("--nu", type=float, default=1.0, help="Parameter nu (default: 1.0)")
+    model_group.add_argument("--gamma", type=float, default=1.0, help="Parameter gamma (default: 1.0)")
+
+    grid_group = parser.add_argument_group("Grid / initial condition")
+    grid_group.add_argument(
+        "--meshsize", type=int, default=50, help="Parameter for spatial mesh size (default: 50)"
     )
-    parser.add_argument(
-        "--beta", type=float, default=1.0, help="Parameter beta (default: 1.0)"
-    )
-    parser.add_argument(
-        "--alpha", type=float, default=1.0, help="Parameter alpha (default: 1.0)"
-    )
-    parser.add_argument(
-        "--chi", type=float, default=-1.0, help="Parameter chi (default: -1.0)"
-    )
-    parser.add_argument(
-        "--a", type=float, default=1.0, help="Parameter a (default: 1.0)"
-    )
-    parser.add_argument(
-        "--b", type=float, default=1.0, help="Parameter b (default: 1.0)"
-    )
-    parser.add_argument(
-        "--c", type=float, default=1.0, help="Parameter c (default: 1.0)"
-    )
-    parser.add_argument(
-        "--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)"
-    )
-    parser.add_argument(
-        "--nu", type=float, default=1, help="Parameter nu (default: 1.0)"
-    )
-    parser.add_argument(
-        "--gamma", type=float, default=1.0, help="Parameter gamma (default: 1.0)"
-    )
-    parser.add_argument(
-        "--meshsize",
-        type=int,
-        default=50,
-        help="Parameter for spatial mesh size (default: 50)",
-    )
-    parser.add_argument(
-        "--time",
-        type=float,
-        default=2.5,
-        help="Parameter for time to lapse (default: 2.5)",
-    )
-    parser.add_argument(
+    grid_group.add_argument("--time", type=float, default=2.5, help="Parameter for time to lapse (default: 2.5)")
+    grid_group.add_argument(
         "--eigen_index",
         type=int,
         default=0,
         help="Parameter eigen index (default: 0, letting system to choose)",
     )
-    parser.add_argument(
-        "--epsilon",
-        type=float,
-        default=0.001,
-        help="Parameter perturbation epsilon (default: 0.001)",
+    grid_group.add_argument(
+        "--epsilon", type=float, default=0.001, help="Parameter perturbation epsilon (default: 0.001)"
     )
-    parser.add_argument(
-        "--epsilon2",
-        type=float,
-        default=0.0,
-        help="Parameter perturbation epsilon2 (default: 0.0)",
+    grid_group.add_argument(
+        "--epsilon2", type=float, default=0.0, help="Parameter perturbation epsilon2 (default: 0.0)"
     )
-    parser.add_argument(
+
+    stopping_group = parser.add_argument_group("Stopping criteria")
+    stopping_group.add_argument(
         "--until_converged",
         choices=["yes", "no"],
         default="no",
         help="Stop early once the solution is approximately steady (default: no)",
     )
-    parser.add_argument(
-        "--convergence_tol",
-        type=float,
-        default=1e-4,
-        help="Convergence tolerance (default: 1e-4)",
+    stopping_group.add_argument(
+        "--convergence_tol", type=float, default=1e-4, help="Convergence tolerance (default: 1e-4)"
     )
-    parser.add_argument(
+    stopping_group.add_argument(
         "--convergence_window_time",
         type=float,
         default=5.0,
         help="Time window length used for convergence checks (default: 5.0)",
     )
-    parser.add_argument(
+    stopping_group.add_argument(
         "--convergence_min_time",
         type=float,
         default=10.0,
         help="Minimum time before convergence checks can stop the run (default: 10.0)",
     )
-    parser.add_argument(
+    stopping_group.add_argument(
         "--max_saved_frames",
         type=int,
         default=2000,
         help="Maximum number of time snapshots saved when --until_converged=yes (default: 2000)",
     )
-    parser.add_argument(
+
+    output_group = parser.add_argument_group("Saved outputs")
+    output_group.add_argument(
         "--save_data",
         choices=["yes", "no"],
         default="yes",
         help="Save numerical simulation data to disk (default: yes)",
     )
-    parser.add_argument(
+    output_group.add_argument(
         "--data_format",
         choices=["npz"],
         default="npz",
         help="Format for saved numerical data (default: npz)",
     )
-    parser.add_argument(
+    output_group.add_argument(
         "--save_max_frames",
         type=int,
         default=2000,
         help="Maximum number of frames stored in the saved data (default: 2000)",
     )
-    parser.add_argument(
+    output_group.add_argument(
         "--save_summary6",
         choices=["yes", "no"],
         default="yes",
         help="Save a 6-frame (0,20,...,100 percent) summary figure (default: yes)",
     )
-    parser.add_argument(
+    output_group.add_argument(
         "--basename",
         type=str,
         default="",
         help="Override output filename basename (default: auto from parameters)",
     )
-    parser.add_argument(
+    output_group.add_argument(
         "--output_dir",
         type=str,
         default="",
         help="Output directory for saved files (default: current working directory)",
     )
 
-    args = parser.parse_args()
-    return SimulationConfig(**vars(args))
+    return parser
 
 
 def main():
