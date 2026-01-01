@@ -144,8 +144,9 @@ compressed NumPy file:
 This `.npz` contains (downsampled) `x_values`, `t_values`, `u_num`, `v_num`,
 plus a JSON-encoded copy of the run configuration and some metadata.
 
-The CLI also writes a quick diagnostic figure with 6 time slices (0%, 20%, …,
-100%):
+The CLI also writes a quick diagnostic figure with 6 time slices of $u(x,t)$
+(0%, 20%, …, 100%). The title shows $\chi_0$ and the critical threshold
+$\chi^*(u^*)$:
 
 - `..._summary6.png` and `..._summary6.jpeg`
 

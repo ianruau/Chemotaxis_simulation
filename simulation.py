@@ -62,6 +62,7 @@ import json
 import shutil
 import sys
 from dataclasses import asdict, dataclass, field
+from functools import lru_cache
 from collections import deque
 from typing import Any, Final, List, Optional
 from matplotlib import animation
@@ -76,7 +77,7 @@ from matplotlib.ticker import FormatStrFormatter
 
 # from scipy.linalg import solve_banded
 from scipy.sparse import diags
-from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import factorized, spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
 
@@ -394,27 +395,16 @@ def solve_v(
     6. Solve the linear system `A * v = b` using a sparse solver.
     7. Return the solution vector `v`.
     """
-    dx = L / Nx
-
-    # Define the diagonals
-    main_diag = np.full(Nx + 1, -(2 + mu * dx**2))
-    upper_diag = np.ones(Nx)
-    lower_diag = np.ones(Nx)
-
-    # Special handling for Neumann BC
-    upper_diag[0] = 2
-    lower_diag[-1] = 2
-
-    # Create sparse matrix
-    diagonals = [main_diag, upper_diag, lower_diag]
-    offsets = [0, 1, -1]
-    A = diags(diagonals, offsets, format="csr")
+    dx, A, solver = _get_v_solver(L=L, Nx=Nx, mu=mu)
 
     # Define right-hand side
-    b = -(dx**2) * nu * (vector_u**gamma)
+    b = -(dx**2) * float(nu) * np.power(vector_u, float(gamma))
 
     # Solve system
-    v = spsolve(A, b)
+    if solver is None:
+        v = spsolve(A, b)
+    else:
+        v = solver(b)
 
     # Print matrix A in a readable format
     if diagnostic:
@@ -425,17 +415,47 @@ def solve_v(
             row = [f"{x:8.3f}" for x in A_dense[i]]
             print(f"Row {i:2d}: {' '.join(row)}")
         print("-" * 50 + "\n")
-        # Print out v in the same format
-        # print("\nVector v:")
         row = [f"{x:8.3f}" for x in vector_u]
-        print(f"vector_u {i:2d}: {' '.join(row)}")
+        print(f"vector_u: {' '.join(row)}")
         row = [f"{x:8.3f}" for x in b]
-        print(f"b {i:2d}: {' '.join(row)}")
+        print(f"b:        {' '.join(row)}")
         row = [f"{x:8.3f}" for x in v]
-        print(f"v {i:2d}: {' '.join(row)}")
+        print(f"v:        {' '.join(row)}")
         print("-" * 50 + "\n")
 
     return v
+
+
+@lru_cache(maxsize=32)
+def _get_v_solver(*, L: float, Nx: int, mu: float) -> tuple[float, Any, Optional[Any]]:
+    """
+    Return (dx, A, solver) for the elliptic solve in `solve_v`.
+
+    The sparse matrix A depends only on (L, Nx, mu), so we cache its factorization
+    to avoid rebuilding/factorizing it at every RK4 stage.
+    """
+    L = float(L)
+    Nx = int(Nx)
+    mu = float(mu)
+    dx = L / Nx
+
+    main_diag = np.full(Nx + 1, -(2 + mu * dx**2))
+    upper_diag = np.ones(Nx)
+    lower_diag = np.ones(Nx)
+    upper_diag[0] = 2
+    lower_diag[-1] = 2
+
+    # Use CSC for factorization/backsolves.
+    A = diags([main_diag, upper_diag, lower_diag], [0, 1, -1], format="csc")
+
+    try:
+        solver = factorized(A)
+    except Exception:  # pragma: no cover (fallback path depends on SciPy internals)
+        solver = None
+        # Keep A in a usable format for spsolve fallback.
+        A = A.tocsr()
+
+    return dx, A, solver
 
 
 @dataclass(frozen=True)
@@ -516,14 +536,45 @@ def load_simulation_data_npz(filename: str) -> dict:
     return out
 
 
+def chi_star_threshold_discrete(
+    config: SimulationConfig, *, n_max: int = 5000
+) -> float:
+    """
+    Compute the discrete threshold chi^*(u^*) (Paper II Eq. (1.12)) on (0,L)
+    using 1D Neumann eigenvalues lambda_n = (n*pi/L)^2 for n>=1.
+
+    Notes:
+    - This uses (c + v^*)^beta to match the simulator's sensitivity denominator.
+      In the manuscript, c=1.
+    - The infimum is approximated by scanning n=1..n_max.
+    """
+    if n_max < 1:
+        raise ValueError("n_max must be >= 1")
+    if config.uStar <= 0:
+        raise ValueError("uStar must be positive to compute chi^*.")
+    if config.nu == 0 or config.gamma == 0:
+        raise ValueError("nu and gamma must be nonzero to compute chi^*.")
+    if config.L <= 0:
+        raise ValueError("L must be positive to compute chi^*.")
+
+    prefactor = ((config.c + config.vStar) ** config.beta) / (
+        config.nu
+        * config.gamma
+        * (config.uStar ** (config.m + config.gamma - 1.0))
+    )
+    n = np.arange(1, int(n_max) + 1, dtype=np.float64)
+    lam = (n * np.pi / config.L) ** 2
+    values = prefactor * (((lam + config.a * config.alpha) * (config.mu + lam)) / lam)
+    return float(np.min(values))
+
+
 def create_six_frame_summary(
     x_values: np.ndarray,
     t_values: np.ndarray,
     u_num: np.ndarray,
-    v_num: np.ndarray,
     uStar: float,
-    vStar: float,
-    setup_description: str,
+    chi0: float,
+    chi_star: float,
     file_base_name: str,
 ) -> None:
     if t_values.size == 0:
@@ -538,41 +589,41 @@ def create_six_frame_summary(
 
     u_min = float(np.min(u_num))
     u_max = float(np.max(u_num))
-    v_min = float(np.min(v_num))
-    v_max = float(np.max(v_num))
     u_pad = 0.05 * max(1e-12, u_max - u_min)
-    v_pad = 0.05 * max(1e-12, v_max - v_min)
 
     cmap = plt.get_cmap("viridis")
     color_positions = np.linspace(0.15, 0.9, len(indices))
     colors = [cmap(float(p)) for p in color_positions]
 
-    fig, (ax_u, ax_v) = plt.subplots(1, 2, figsize=(14, 5), dpi=300, sharex=True)
-    for j, (idx, frac, color) in enumerate(zip(indices, fractions, colors)):
+    fig, ax_u = plt.subplots(1, 1, figsize=(7.5, 4.8), dpi=300)
+    for idx, frac, color in zip(indices, fractions, colors):
         t_here = float(t_values[idx])
         pct = int(round(float(frac) * 100))
-        label = rf"{pct}\% ($t={t_here:.2f}$)"
+        if _USE_TEX:
+            label = rf"{pct}\% ($t={t_here:.2f}$)"
+        else:
+            label = f"{pct}% (t={t_here:.2f})"
         ax_u.plot(x_values, u_num[:, idx], color=color, linewidth=1.6, label=label)
-        ax_v.plot(x_values, v_num[:, idx], color=color, linewidth=1.6, label=label)
 
-    ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.9, label=r"$u^*$")
-    ax_v.axhline(y=vStar, color="red", linestyle="--", linewidth=0.9, label=r"$v^*$")
+    if _USE_TEX:
+        ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.9, label=r"$u^*$")
+        ax_u.set_title(
+            rf"$\chi_0={chi0:.4f},\ \chi^*(u^*)={chi_star:.4f}$",
+            fontsize=11,
+        )
+        ax_u.set_xlabel(r"$x$")
+        ax_u.set_ylabel(r"$u(x,t)$")
+    else:
+        ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.9, label="u*")
+        ax_u.set_title(f"chi0={chi0:.4f}, chi*={chi_star:.4f}", fontsize=11)
+        ax_u.set_xlabel("x")
+        ax_u.set_ylabel("u(x,t)")
 
-    ax_u.set_title(rf"$u(x,t)$ slices ($T_{{stop}}={t_end:.2f}$)")
-    ax_v.set_title(rf"$v(x,t)$ slices ($T_{{stop}}={t_end:.2f}$)")
-
-    ax_u.set_xlabel(r"$x$")
-    ax_v.set_xlabel(r"$x$")
-    ax_u.set_ylabel(r"$u(x,t)$")
-    ax_v.set_ylabel(r"$v(x,t)$")
     ax_u.set_ylim(u_min - u_pad, u_max + u_pad)
-    ax_v.set_ylim(v_min - v_pad, v_max + v_pad)
 
     ax_u.legend(loc="best", fontsize=8, frameon=False)
-    ax_v.legend(loc="best", fontsize=8, frameon=False)
 
-    fig.suptitle(setup_description, fontsize=9)
-    plt.tight_layout(rect=(0, 0, 1, 0.95))
+    plt.tight_layout()
     fig.savefig(f"{file_base_name}_summary6.png", bbox_inches="tight")
     fig.savefig(f"{file_base_name}_summary6.jpeg", bbox_inches="tight")
     plt.close(fig)
@@ -1578,14 +1629,14 @@ def main():
             result = RK4(config=config, FileBaseName=file_base)
 
         if config.save_summary6 == "yes":
+            chi_star = chi_star_threshold_discrete(config)
             create_six_frame_summary(
                 x_values=result.x_values,
                 t_values=result.t_values,
                 u_num=result.u_num,
-                v_num=result.v_num,
                 uStar=config.uStar,
-                vStar=config.vStar,
-                setup_description=result.setup_description,
+                chi0=float(config.chi),
+                chi_star=float(chi_star),
                 file_base_name=file_base,
             )
 
