@@ -80,6 +80,31 @@ chemotaxis-sim --config config.example.yaml --chi 2.185 --meshsize 100
 
 See `config.example.yaml` for a grouped template.
 
+### Paper II constants (Eq. (1.8) and Eq. (1.12))
+The module `paper2_constants.py` computes the equilibrium and the discrete
+threshold \(\chi_a^*(u^*)\) from Paper II:
+
+```bash
+python paper2_constants.py --a 10 --b 1 --alpha 1 --mu 1 --nu 1 --gamma 1 --m 1 --beta 0 --L 1
+```
+
+Load parameters from a YAML file (same key names as the simulator; missing keys
+fall back to defaults; CLI overrides YAML):
+
+```bash
+python paper2_constants.py --config config.example.yaml
+python paper2_constants.py --config config.example.yaml --beta 0 --L 1
+```
+
+Or import it in Python:
+
+```python
+from paper2_constants import paper2_eq112_constants
+
+c = paper2_eq112_constants(a=10, b=1, alpha=1, mu=1, nu=1, gamma=1, m=1, beta=0)
+print(c.u_star, c.v_star, c.chi_a_star)
+```
+
 ### Stopping automatically when converged
 If you do not want to guess a sufficiently large final time, you can run with
 `--until_converged yes`.

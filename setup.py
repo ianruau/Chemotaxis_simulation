@@ -10,7 +10,7 @@ setup(
     author="Le Chen and Ian Ruau",
     author_email="chenle02@gmail.com",
     python_requires=">=3.7",
-    py_modules=["simulation"],
+    py_modules=["simulation", "paper2_constants"],
     install_requires=[
         "numpy",
         "scipy",
