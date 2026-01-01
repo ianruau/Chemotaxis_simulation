@@ -157,6 +157,8 @@ class SimulationConfig:
     data_format: str = "npz"
     save_max_frames: int = 2000
     save_summary6: str = "yes"
+    basename: str = ""
+    output_dir: str = ""
 
     # Computed values
     uStar: float = field(init=False, default=None)
@@ -526,7 +528,8 @@ def create_six_frame_summary(
     if t_values.size == 0:
         return
     t_end = float(t_values[-1])
-    targets = t_end * np.linspace(0.0, 1.0, 6)
+    fractions = np.linspace(0.0, 1.0, 6)
+    targets = t_end * fractions
     indices: List[int] = []
     for t_target in targets:
         idx = int(np.argmin(np.abs(t_values - t_target)))
@@ -539,28 +542,36 @@ def create_six_frame_summary(
     u_pad = 0.05 * max(1e-12, u_max - u_min)
     v_pad = 0.05 * max(1e-12, v_max - v_min)
 
-    fig, axes = plt.subplots(2, 6, figsize=(18, 6), dpi=300, sharex=True)
-    for j, idx in enumerate(indices):
+    cmap = plt.get_cmap("viridis")
+    color_positions = np.linspace(0.15, 0.9, len(indices))
+    colors = [cmap(float(p)) for p in color_positions]
+
+    fig, (ax_u, ax_v) = plt.subplots(1, 2, figsize=(14, 5), dpi=300, sharex=True)
+    for j, (idx, frac, color) in enumerate(zip(indices, fractions, colors)):
         t_here = float(t_values[idx])
-        ax_u = axes[0, j]
-        ax_v = axes[1, j]
+        pct = int(round(float(frac) * 100))
+        label = rf"{pct}\% ($t={t_here:.2f}$)"
+        ax_u.plot(x_values, u_num[:, idx], color=color, linewidth=1.6, label=label)
+        ax_v.plot(x_values, v_num[:, idx], color=color, linewidth=1.6, label=label)
 
-        ax_u.plot(x_values, u_num[:, idx], color="black", linewidth=1.0)
-        ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.8)
-        ax_u.set_title(rf"$t={t_here:.3g}$", fontsize=10)
-        ax_u.set_ylim(u_min - u_pad, u_max + u_pad)
-        if j == 0:
-            ax_u.set_ylabel(r"$u(x,t)$")
+    ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.9, label=r"$u^*$")
+    ax_v.axhline(y=vStar, color="red", linestyle="--", linewidth=0.9, label=r"$v^*$")
 
-        ax_v.plot(x_values, v_num[:, idx], color="black", linewidth=1.0)
-        ax_v.axhline(y=vStar, color="red", linestyle="--", linewidth=0.8)
-        ax_v.set_ylim(v_min - v_pad, v_max + v_pad)
-        ax_v.set_xlabel(r"$x$")
-        if j == 0:
-            ax_v.set_ylabel(r"$v(x,t)$")
+    ax_u.set_title(rf"$u(x,t)$ slices ($T_{{stop}}={t_end:.2f}$)")
+    ax_v.set_title(rf"$v(x,t)$ slices ($T_{{stop}}={t_end:.2f}$)")
+
+    ax_u.set_xlabel(r"$x$")
+    ax_v.set_xlabel(r"$x$")
+    ax_u.set_ylabel(r"$u(x,t)$")
+    ax_v.set_ylabel(r"$v(x,t)$")
+    ax_u.set_ylim(u_min - u_pad, u_max + u_pad)
+    ax_v.set_ylim(v_min - v_pad, v_max + v_pad)
+
+    ax_u.legend(loc="best", fontsize=8, frameon=False)
+    ax_v.legend(loc="best", fontsize=8, frameon=False)
 
     fig.suptitle(setup_description, fontsize=9)
-    plt.tight_layout()
+    plt.tight_layout(rect=(0, 0, 1, 0.95))
     fig.savefig(f"{file_base_name}_summary6.png", bbox_inches="tight")
     fig.savefig(f"{file_base_name}_summary6.jpeg", bbox_inches="tight")
     plt.close(fig)
@@ -1006,7 +1017,7 @@ def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> 
     $a$ = {config.a}, $b$ = {config.b}, $c$ = {config.c}, $\alpha$ = {config.alpha};
     $m$ = {config.m}, $\beta$ = {config.beta}, $\chi_0$ = {config.chi};
     $\mu$ = {config.mu}, $\nu$ = {config.nu}, $\gamma$ = {config.gamma}; $N$ = {Nx}, $T_{{\max}}$ = {T_max};
-    $T_{{stop}}$ = {stop_time};
+    $T_{{stop}}$ = {stop_time:.2f};
     $u^*$ = {config.uStar}, $\epsilon$ = {config.epsilon}, $\epsilon2$ = {config.epsilon2}, $n$ = {config.eigen_index}.
     """
 
@@ -1393,6 +1404,18 @@ def parse_args() -> SimulationConfig:
         default="yes",
         help="Save a 6-frame (0,20,...,100 percent) summary figure (default: yes)",
     )
+    parser.add_argument(
+        "--basename",
+        type=str,
+        default="",
+        help="Override output filename basename (default: auto from parameters)",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="",
+        help="Output directory for saved files (default: current working directory)",
+    )
 
     args = parser.parse_args()
     return SimulationConfig(**vars(args))
@@ -1416,11 +1439,20 @@ def main():
     # # Display the parsed arguments
     config.display_parameters()
 
+    output_dir = (config.output_dir or "").strip() or "."
+    os.makedirs(output_dir, exist_ok=True)
+
+    user_basename = (config.basename or "").strip()
+    if user_basename and (os.sep in user_basename or (os.altsep and os.altsep in user_basename)):
+        raise ValueError("`--basename` must not contain path separators; use `--output_dir` for directories.")
+
     # Using the above parameters to generate a file base name string
-    basename = f"a={config.a}_b={config.b}_c={config.c}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_epsilon={config.epsilon}_epsilon2={config.epsilon2}_eigen_index={config.eigen_index}".replace(
-        ".", "-"
+    auto_basename = (
+        f"a={config.a}_b={config.b}_c={config.c}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_epsilon={config.epsilon}_epsilon2={config.epsilon2}_eigen_index={config.eigen_index}"
     )
-    print(f"Output files will be saved with the basename:\n\t {basename}\n")
+    basename = (user_basename or auto_basename).replace(".", "-")
+    file_base = os.path.join(output_dir, basename)
+    print(f"Output files will be saved with the basename:\n\t {file_base}\n")
 
     # Run the solver
     if (
@@ -1429,9 +1461,9 @@ def main():
     ):
         print("Continuing simulation...")
         if config.until_converged == "yes":
-            result = RK4_until_converged(config=config, FileBaseName=basename)
+            result = RK4_until_converged(config=config, FileBaseName=file_base)
         else:
-            result = RK4(config=config, FileBaseName=basename)
+            result = RK4(config=config, FileBaseName=file_base)
 
         if config.save_summary6 == "yes":
             create_six_frame_summary(
@@ -1442,13 +1474,13 @@ def main():
                 uStar=config.uStar,
                 vStar=config.vStar,
                 setup_description=result.setup_description,
-                file_base_name=basename,
+                file_base_name=file_base,
             )
 
         if config.save_data == "yes":
             if config.data_format != "npz":
                 raise ValueError(f"Unsupported data_format: {config.data_format}")
-            npz_filename = f"{basename}.npz"
+            npz_filename = f"{file_base}.npz"
             save_simulation_data_npz(npz_filename, config=config, result=result)
             print(f"Simulation data saved to {npz_filename}")
     else:

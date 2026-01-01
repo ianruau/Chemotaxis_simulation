@@ -60,6 +60,12 @@ Saved data controls (optional):
 chemotaxis-sim --save_data yes --save_max_frames 2000 --save_summary6 yes
 ```
 
+Output naming controls (optional):
+
+```bash
+chemotaxis-sim --output_dir images/branch_capture --basename run_beta0_chi2185_epsP
+```
+
 ### Stopping automatically when converged
 If you do not want to guess a sufficiently large final time, you can run with
 `--until_converged yes`.
