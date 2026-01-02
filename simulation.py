@@ -967,7 +967,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
     $a$ = {a}, $b$ = {b}, $c$ = {c}, $\alpha$ = {alpha};
     $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
     $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
-    $u^*$ = {uStar}, $\epsilon$ = {epsilon}, $\epsilon2$ = {epsilon2}, $n$ = {eigen_index}.
+    $u^*$ = {uStar}, $\epsilon$ = {epsilon}, $\epsilon_2$ = {epsilon2}, $n_0$ = {eigen_index}.
     """
 
     # Create static plots
@@ -1166,7 +1166,7 @@ def RK4_until_converged(
     $m$ = {config.m}, $\beta$ = {config.beta}, $\chi_0$ = {config.chi};
     $\mu$ = {config.mu}, $\nu$ = {config.nu}, $\gamma$ = {config.gamma}; $N$ = {Nx}, $T_{{\max}}$ = {T_max};
     $T_{{stop}}$ = {stop_time:.2f};
-    $u^*$ = {config.uStar}, $\epsilon$ = {config.epsilon}, $\epsilon2$ = {config.epsilon2}, $n$ = {config.eigen_index}.
+    $u^*$ = {config.uStar}, $\epsilon$ = {config.epsilon}, $\epsilon_2$ = {config.epsilon2}, $n_0$ = {config.eigen_index}.
     """
 
     create_static_plots(
