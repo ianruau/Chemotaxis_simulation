@@ -94,7 +94,11 @@ except Exception:  # pragma: no cover
 # Matplotlib configurations
 # Use LaTeX rendering by default, but allow disabling it for robustness in long
 # batch runs (e.g., missing TeX packages, TeX errors, or restricted environments).
-_USE_TEX = os.environ.get("CHEMOTAXIS_SIM_USETEX", "yes").strip().lower() not in ("0", "no", "false")
+_USE_TEX = os.environ.get("CHEMOTAXIS_SIM_USETEX", "yes").strip().lower() not in (
+    "0",
+    "no",
+    "false",
+)
 rc("text", usetex=_USE_TEX)
 
 
@@ -113,7 +117,7 @@ class SimulationConfig:
     - c (float): Parameter in the denominator of chi(v).
     - mu (float): Coefficient of v in the elliptic PDE.
     - nu (float): Coefficient of u^gamma in the elliptic PDE.
-    - gamma (float): Exponent of the source term u^gamma in the elliptic 
+    - gamma (float): Exponent of the source term u^gamma in the elliptic
       equation.
     - L (float): The length of the spatial domain (default is 1.0).
 
@@ -282,7 +286,8 @@ class SimulationConfig:
                 u0
                 + self.epsilon
                 * np.cos(((self.eigen_index - 1) * np.pi / self.L) * x_values)
-                + self.epsilon2 * np.cos(((self.eigen_index) * np.pi / self.L) * x_values)
+                + self.epsilon2
+                * np.cos(((self.eigen_index) * np.pi / self.L) * x_values)
             )
         else:
             u0 = (
@@ -400,7 +405,7 @@ def solve_v(
     - mu (float): Coefficient of v in the elliptic equation.
     - nu (float): Coefficient of u^gamma in the elliptic equation.
     - gamma (float): Power of `u` in the elliptic equation.
-    - diagnostic (bool): Flag for enabling diagnostic output (default is 
+    - diagnostic (bool): Flag for enabling diagnostic output (default is
       False).
 
     Returns:
@@ -409,7 +414,7 @@ def solve_v(
     Notes:
     - The function constructs a sparse tridiagonal matrix `A` using finite difference discretization.
     - Neumann boundary conditions are applied by modifying the first and last off-diagonal elements.
-    - The right-hand side vector `b` is computed based on the input vector 
+    - The right-hand side vector `b` is computed based on the input vector
       `u` and parameters.
     - The system `A * v = b` is solved using a sparse solver.
 
@@ -585,9 +590,7 @@ def chi_star_threshold_discrete(
         raise ValueError("L must be positive to compute chi^*.")
 
     prefactor = ((config.c + config.vStar) ** config.beta) / (
-        config.nu
-        * config.gamma
-        * (config.uStar ** (config.m + config.gamma - 1.0))
+        config.nu * config.gamma * (config.uStar ** (config.m + config.gamma - 1.0))
     )
     n = np.arange(1, int(n_max) + 1, dtype=np.float64)
     lam = (n * np.pi / config.L) ** 2
@@ -633,7 +636,9 @@ def create_six_frame_summary(
         ax_u.plot(x_values, u_num[:, idx], color=color, linewidth=1.6, label=label)
 
     if _USE_TEX:
-        ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.9, label=r"$u^*$")
+        ax_u.axhline(
+            y=uStar, color="red", linestyle="--", linewidth=0.9, label=r"$u^*$"
+        )
         ax_u.set_title(
             rf"$\chi_0={chi0:.4f},\ \chi^*(u^*)={chi_star:.4f}$",
             fontsize=11,
@@ -697,7 +702,7 @@ def laplacian_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
     Parameters:
     - L (float): The length of the domain.
     - Nx (int): Number of mesh points of the space domain.
-    - vector_f (numpy.ndarray): The input vector to which the Laplacian 
+    - vector_f (numpy.ndarray): The input vector to which the Laplacian
       operator is applied.
 
     Returns:
@@ -986,7 +991,9 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
     )
 
 
-def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult:
+def RK4_until_converged(
+    config: SimulationConfig, FileBaseName="Simulation"
+) -> SimulationResult:
     """
     Run RK4 time-stepping up to `config.time`, but stop early once the solution
     is approximately steady over a fixed time window.
@@ -1055,7 +1062,9 @@ def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> 
         v_scale = max(1.0, v_amp)
         du = float(np.max(np.abs(u_current - ref_u)))
         dv = float(np.max(np.abs(v_current - ref_v)))
-        ok = (du <= config.convergence_tol * u_scale) and (dv <= config.convergence_tol * v_scale)
+        ok = (du <= config.convergence_tol * u_scale) and (
+            dv <= config.convergence_tol * v_scale
+        )
         if config.verbose == "yes" and ref_step is not None:
             t_ref = ref_step * dt
             t_now = step * dt
@@ -1161,10 +1170,19 @@ def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> 
     """
 
     create_static_plots(
-        t_values, x_values, u_num, v_num, config.uStar, config.vStar, SetupDes, FileBaseName
+        t_values,
+        x_values,
+        u_num,
+        v_num,
+        config.uStar,
+        config.vStar,
+        SetupDes,
+        FileBaseName,
     )
     if config.generate_video == "yes":
-        create_animation(t_values, u_num, v_num, config.uStar, config.vStar, SetupDes, FileBaseName)
+        create_animation(
+            t_values, u_num, v_num, config.uStar, config.vStar, SetupDes, FileBaseName
+        )
 
     return SimulationResult(
         x_values=np.asarray(x_values, dtype=np.float64),
@@ -1178,9 +1196,16 @@ def RK4_until_converged(config: SimulationConfig, FileBaseName="Simulation") -> 
     )
 
 
-def create_static_plots( t_mesh: np.ndarray, x_mesh: np.ndarray,
-    u_data: np.ndarray, v_data: np.ndarray, uStar: float,
-    vStar: float, SetupDes: str, FileBaseName: str,) -> None:
+def create_static_plots(
+    t_mesh: np.ndarray,
+    x_mesh: np.ndarray,
+    u_data: np.ndarray,
+    v_data: np.ndarray,
+    uStar: float,
+    vStar: float,
+    SetupDes: str,
+    FileBaseName: str,
+) -> None:
     """
     Create and save static 3D plots of the simulation data.
 
@@ -1246,14 +1271,16 @@ def create_static_plots( t_mesh: np.ndarray, x_mesh: np.ndarray,
     ax_3d_u.set_xlabel(r"Time $t$")
     ax_3d_u.set_ylabel(r"Space $x$")
     # ax_3d_u.set_zlabel(r"$u(t,x)$")
-    ax_3d_u.set_zlim(-0.05, u_data.max())
-    ax_3d_u.set_zticks(np.linspace(0, u_data.max(), 5))
-    ax_3d_u.zaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+    # ax_3d_u.set_zlim(-0.05, u_data.max())
+    u_min, u_max = u_data.min(), u_data.max()
+    ax_3d_u.set_zlim(u_min, u_max)
+    ax_3d_u.set_zticks(np.linspace(u_min, u_max, 5))
+    ax_3d_u.zaxis.set_major_formatter(FormatStrFormatter("%.5f"))
     ax_3d_u.set_title("Solution u(t,x)", pad=10)
 
     # Second subplot for v(t,x)
     ax_3d_v = fig_3d.add_subplot(122, projection="3d")
-    #surf_v = ax_3d_v.plot_surface(T_grid, X_grid, v_data, cmap="viridis", alpha=0.8)
+    # surf_v = ax_3d_v.plot_surface(T_grid, X_grid, v_data, cmap="viridis", alpha=0.8)
 
     # # Add colorbar for v
     # fig_3d.colorbar(surf_v, ax=ax_3d_v, label='v(t,x)')
@@ -1284,9 +1311,11 @@ def create_static_plots( t_mesh: np.ndarray, x_mesh: np.ndarray,
     ax_3d_v.set_xlabel(r"Time $t$")
     ax_3d_v.set_ylabel(r"Space $x$")
     # ax_3d_v.set_zlabel(r"$v(t,x)$")
-    ax_3d_v.set_zlim(-0.05, v_data.max())
-    ax_3d_v.set_zticks(np.linspace(0, v_data.max(), 5))
-    ax_3d_v.zaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+    # ax_3d_v.set_zlim(-0.05, v_data.max())
+    v_min, v_max = v_data.min(), v_data.max()
+    ax_3d_v.set_zlim(v_min, v_max)
+    ax_3d_v.set_zticks(np.linspace(v_min, v_max, 5))
+    ax_3d_v.zaxis.set_major_formatter(FormatStrFormatter("%.5f"))
     ax_3d_v.set_title("Solution v(t,x)", pad=10)
 
     # Add overall title
@@ -1385,7 +1414,7 @@ def parse_args() -> SimulationConfig:
     Parse command-line arguments for configuring simulation parameters.
 
     Returns:
-    argparse.Namespace: Parsed arguments as an object with attributes 
+    argparse.Namespace: Parsed arguments as an object with attributes
     corresponding to the parameters.
 
     Command-line Arguments:
@@ -1490,12 +1519,17 @@ def _load_yaml_config_as_overrides(path: str) -> dict[str, Any]:
 
 
 def _apply_parser_defaults_from_config(
-    parser: argparse.ArgumentParser, config: dict[str, Any], *, warn_unknown: bool = False
+    parser: argparse.ArgumentParser,
+    config: dict[str, Any],
+    *,
+    warn_unknown: bool = False,
 ) -> None:
     if not config:
         return
 
-    by_dest = {action.dest: action for action in parser._actions if action.dest}  # pylint: disable=protected-access
+    by_dest = {
+        action.dest: action for action in parser._actions if action.dest
+    }  # pylint: disable=protected-access
 
     if warn_unknown:
         unknown_keys = [k for k in config.keys() if k not in by_dest]
@@ -1511,7 +1545,9 @@ def _apply_parser_defaults_from_config(
         if action.choices and list(action.choices) == ["yes", "no"]:
             yn = _yaml_yes_no(value)
             if yn is None:
-                raise ValueError(f"Invalid value for `{key}`: {value!r} (expected yes/no or boolean)")
+                raise ValueError(
+                    f"Invalid value for `{key}`: {value!r} (expected yes/no or boolean)"
+                )
             coerced[key] = yn
             continue
 
@@ -1536,7 +1572,9 @@ def _apply_parser_defaults_from_config(
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="A CLI tool for configuring parameters")
+    parser = argparse.ArgumentParser(
+        description="A CLI tool for configuring parameters"
+    )
 
     parser.add_argument(
         "--config",
@@ -1572,22 +1610,50 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
 
     model_group = parser.add_argument_group("Model parameters")
-    model_group.add_argument("--m", type=float, default=1.0, help="Parameter m (default: 1.0)")
-    model_group.add_argument("--beta", type=float, default=1.0, help="Parameter beta (default: 1.0)")
-    model_group.add_argument("--alpha", type=float, default=1.0, help="Parameter alpha (default: 1.0)")
-    model_group.add_argument("--chi", type=float, default=-1.0, help="Parameter chi (default: -1.0)")
-    model_group.add_argument("--a", type=float, default=1.0, help="Parameter a (default: 1.0)")
-    model_group.add_argument("--b", type=float, default=1.0, help="Parameter b (default: 1.0)")
-    model_group.add_argument("--c", type=float, default=1.0, help="Parameter c (default: 1.0)")
-    model_group.add_argument("--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)")
-    model_group.add_argument("--nu", type=float, default=1.0, help="Parameter nu (default: 1.0)")
-    model_group.add_argument("--gamma", type=float, default=1.0, help="Parameter gamma (default: 1.0)")
+    model_group.add_argument(
+        "--m", type=float, default=1.0, help="Parameter m (default: 1.0)"
+    )
+    model_group.add_argument(
+        "--beta", type=float, default=1.0, help="Parameter beta (default: 1.0)"
+    )
+    model_group.add_argument(
+        "--alpha", type=float, default=1.0, help="Parameter alpha (default: 1.0)"
+    )
+    model_group.add_argument(
+        "--chi", type=float, default=-1.0, help="Parameter chi (default: -1.0)"
+    )
+    model_group.add_argument(
+        "--a", type=float, default=1.0, help="Parameter a (default: 1.0)"
+    )
+    model_group.add_argument(
+        "--b", type=float, default=1.0, help="Parameter b (default: 1.0)"
+    )
+    model_group.add_argument(
+        "--c", type=float, default=1.0, help="Parameter c (default: 1.0)"
+    )
+    model_group.add_argument(
+        "--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)"
+    )
+    model_group.add_argument(
+        "--nu", type=float, default=1.0, help="Parameter nu (default: 1.0)"
+    )
+    model_group.add_argument(
+        "--gamma", type=float, default=1.0, help="Parameter gamma (default: 1.0)"
+    )
 
     grid_group = parser.add_argument_group("Grid / initial condition")
     grid_group.add_argument(
-        "--meshsize", type=int, default=50, help="Parameter for spatial mesh size (default: 50)"
+        "--meshsize",
+        type=int,
+        default=50,
+        help="Parameter for spatial mesh size (default: 50)",
     )
-    grid_group.add_argument("--time", type=float, default=2.5, help="Parameter for time to lapse (default: 2.5)")
+    grid_group.add_argument(
+        "--time",
+        type=float,
+        default=2.5,
+        help="Parameter for time to lapse (default: 2.5)",
+    )
     grid_group.add_argument(
         "--eigen_index",
         type=int,
@@ -1595,10 +1661,16 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help="Parameter eigen index (default: 0, letting system to choose)",
     )
     grid_group.add_argument(
-        "--epsilon", type=float, default=0.001, help="Parameter perturbation epsilon (default: 0.001)"
+        "--epsilon",
+        type=float,
+        default=0.001,
+        help="Parameter perturbation epsilon (default: 0.001)",
     )
     grid_group.add_argument(
-        "--epsilon2", type=float, default=0.0, help="Parameter perturbation epsilon2 (default: 0.0)"
+        "--epsilon2",
+        type=float,
+        default=0.0,
+        help="Parameter perturbation epsilon2 (default: 0.0)",
     )
     grid_group.add_argument(
         "--restart_from",
@@ -1615,7 +1687,10 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help="Stop early once the solution is approximately steady (default: no)",
     )
     stopping_group.add_argument(
-        "--convergence_tol", type=float, default=1e-4, help="Convergence tolerance (default: 1e-4)"
+        "--convergence_tol",
+        type=float,
+        default=1e-4,
+        help="Convergence tolerance (default: 1e-4)",
     )
     stopping_group.add_argument(
         "--convergence_window_time",
@@ -1699,13 +1774,15 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     user_basename = (config.basename or "").strip()
-    if user_basename and (os.sep in user_basename or (os.altsep and os.altsep in user_basename)):
-        raise ValueError("`--basename` must not contain path separators; use `--output_dir` for directories.")
+    if user_basename and (
+        os.sep in user_basename or (os.altsep and os.altsep in user_basename)
+    ):
+        raise ValueError(
+            "`--basename` must not contain path separators; use `--output_dir` for directories."
+        )
 
     # Using the above parameters to generate a file base name string
-    auto_basename = (
-        f"a={config.a}_b={config.b}_c={config.c}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_epsilon={config.epsilon}_epsilon2={config.epsilon2}_eigen_index={config.eigen_index}"
-    )
+    auto_basename = f"a={config.a}_b={config.b}_c={config.c}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_epsilon={config.epsilon}_epsilon2={config.epsilon2}_eigen_index={config.eigen_index}"
     basename = (user_basename or auto_basename).replace(".", "-")
     file_base = os.path.join(output_dir, basename)
     print(f"Output files will be saved with the basename:\n\t {file_base}\n")
