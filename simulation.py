@@ -764,34 +764,72 @@ def rhs(u: np.ndarray, v: np.ndarray, config: SimulationConfig) -> np.ndarray:
     - The terms in the equation include:
       - Diffusion term (u_xx).
       - Chemotaxis-related terms (term1, term2, term3).
-      - Logistic growth term (logistic).
+    - Logistic growth term (logistic).
     """
-    L = config.L
-    Nx = config.meshsize
-    m = config.m
-    beta = config.beta
-    alpha = config.alpha
-    chi = config.chi
-    a = config.a
-    b = config.b
-    c = config.c
-    mu = config.mu
-    nu = config.nu
-    gamma = config.gamma
+    L = float(config.L)
+    Nx = int(config.meshsize)
+    m = float(config.m)
+    beta = float(config.beta)
+    alpha = float(config.alpha)
+    chi = float(config.chi)
+    a = float(config.a)
+    b = float(config.b)
+    c = float(config.c)
+    mu = float(config.mu)
+    nu = float(config.nu)
+    gamma = float(config.gamma)
 
-    u_xx = laplacian_NBC(L, Nx, u)
-    u_x = first_derivative_NBC(L, Nx, u)
-    v_x = first_derivative_NBC(L, Nx, v)
-    term1 = ((beta * chi) / ((c + v) ** (beta + 1))) * (v_x**2) * (u**m)
-    # print("term1=", term1)
-    term2 = ((m * chi) / (c + v) ** beta) * (u ** (m - 1)) * u_x * v_x
-    # print("term2=", term2)
-    term3 = (chi / ((c + v) ** beta)) * (u**m) * (mu * v - nu * u**gamma)
-    # print("term3=", term3)
-    # chemotaxis = -1 * first_derivative_NBC(L, Nx, u ** m * (chi /((1 + v)**beta)) * v_x)
-    logistic = a * u - b * u ** (1 + alpha)
-    # print("logistic=", logistic)
-    return u_xx + term1 - term2 - term3 + logistic
+    u_vec = np.ascontiguousarray(u, dtype=np.float64)
+    v_vec = np.ascontiguousarray(v, dtype=np.float64)
+
+    u_xx = laplacian_NBC(L, Nx, u_vec)
+    u_x = first_derivative_NBC(L, Nx, u_vec)
+    v_x = first_derivative_NBC(L, Nx, v_vec)
+
+    # Base term: diffusion u_xx
+    out = u_xx
+
+    # Reuse shared quantities to reduce allocations.
+    cv = c + v_vec
+    inv_cv_beta = np.power(cv, -beta)  # (c+v)^{-beta}
+
+    # u^m (used by term1 and term3). For m==1, reuse u directly.
+    if m == 1.0:
+        u_m = u_vec
+    else:
+        u_m = np.power(u_vec, m)
+
+    # term1: beta*chi*(v_x^2)*u^m*(c+v)^{-(beta+1)} (skip when beta==0).
+    if beta != 0.0:
+        tmp = np.multiply(v_x, v_x)  # v_x^2
+        tmp *= u_m
+        tmp *= inv_cv_beta / cv  # (c+v)^{-(beta+1)}
+        out += (beta * chi) * tmp
+
+    # term2: m*chi*u^{m-1}*u_x*v_x*(c+v)^{-beta} (skip when chi==0 or m==0).
+    if chi != 0.0 and m != 0.0:
+        tmp = np.multiply(u_x, v_x)
+        if m != 1.0:
+            tmp *= np.power(u_vec, m - 1.0)
+        tmp *= inv_cv_beta
+        out -= (m * chi) * tmp
+
+    # term3: chi*u^m*(mu*v - nu*u^gamma)*(c+v)^{-beta}
+    if chi != 0.0:
+        tmp = mu * v_vec
+        if nu != 0.0:
+            tmp = tmp - nu * np.power(u_vec, gamma)
+        tmp = tmp * u_m
+        tmp = tmp * inv_cv_beta
+        out -= chi * tmp
+
+    # logistic: a*u - b*u^{1+alpha}
+    if a != 0.0:
+        out += a * u_vec
+    if b != 0.0:
+        out -= b * np.power(u_vec, 1.0 + alpha)
+
+    return out
 
 
 def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult:
