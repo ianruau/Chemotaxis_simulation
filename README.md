@@ -159,6 +159,14 @@ will be saved as well:
 
 For detailed information about the package and its functionalities, visit the [documentation webpage](https://chemotaxis-simulation.readthedocs.io/en/latest/).
 
+## TODO (performance / workflow)
+
+- Stream RK4 storage for long runs (avoid allocating full `u_num/v_num` history; store only downsampled frames for plots/npz/video).
+- Expose an explicit time-step/CFL knob (current `Nt ~ O(T N^2)` can be expensive for `T=100`).
+- Add a pure-Python (optional Numba) tridiagonal solver for `solve_v` as a non-SciPy fallback / speed path.
+- Add an option to skip heavy 3D surface plots in batch runs and generate them from saved `.npz` in post-processing.
+- Add a lightweight smoke-test script (short run + basic invariants) since there is no dedicated test suite yet.
+
 ## Reproducing previous results
 
 In the following page, we reproduce the results of the research paper by ....

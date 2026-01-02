@@ -150,6 +150,7 @@ class SimulationConfig:
     eigen_index: int = 0
     epsilon: float = 0.001
     epsilon2: float = 0.0
+    restart_from: str = ""
 
     # Output control
     confirm: str = "no"
@@ -264,15 +265,35 @@ class SimulationConfig:
                 print("first (constant) eigenfunction is chosen.\n")
 
         x_values = np.linspace(0, self.L, int(self.meshsize) + 1, dtype=np.float64)
-        object.__setattr__(
-            self,
-            "uinit",
-            self.uStar
-            + self.epsilon
-            * np.cos(((self.eigen_index - 1) * np.pi / self.L) * x_values)
-            + self.epsilon2
-            * np.cos(((self.eigen_index) * np.pi / self.L) * x_values),
-        ),
+        if (self.restart_from or "").strip():
+            data = load_simulation_data_npz(self.restart_from)
+            u_num = np.asarray(data.get("u_num"))
+            if u_num.ndim != 2:
+                raise ValueError(
+                    f"`--restart_from` expects a 2D `u_num` array in the .npz, got shape {u_num.shape}"
+                )
+            u0 = np.asarray(u_num[:, -1], dtype=np.float64)
+            if u0.shape[0] != x_values.shape[0]:
+                raise ValueError(
+                    "`--restart_from` mesh mismatch: expected u0 with "
+                    f"{x_values.shape[0]} points (meshsize={self.meshsize}), got {u0.shape[0]}."
+                )
+            u0 = (
+                u0
+                + self.epsilon
+                * np.cos(((self.eigen_index - 1) * np.pi / self.L) * x_values)
+                + self.epsilon2 * np.cos(((self.eigen_index) * np.pi / self.L) * x_values)
+            )
+        else:
+            u0 = (
+                self.uStar
+                + self.epsilon
+                * np.cos(((self.eigen_index - 1) * np.pi / self.L) * x_values)
+                + self.epsilon2
+                * np.cos(((self.eigen_index) * np.pi / self.L) * x_values)
+            )
+
+        object.__setattr__(self, "uinit", u0)
 
         # Initial condition (must match exactly)
         object.__setattr__(
@@ -1578,6 +1599,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     grid_group.add_argument(
         "--epsilon2", type=float, default=0.0, help="Parameter perturbation epsilon2 (default: 0.0)"
+    )
+    grid_group.add_argument(
+        "--restart_from",
+        type=str,
+        default="",
+        help="Restart from a saved .npz (uses the last saved u as u0; epsilon terms are added on top; default: none)",
     )
 
     stopping_group = parser.add_argument_group("Stopping criteria")
