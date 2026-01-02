@@ -81,6 +81,12 @@ from scipy.sparse.linalg import factorized, spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
 
+# Optional acceleration: stencil derivatives can be JIT-compiled with Numba.
+try:  # pragma: no cover
+    from numba import njit  # type: ignore
+except Exception:  # pragma: no cover
+    njit = None  # type: ignore
+
 #
 # NOTE: keep the simulator self-contained: prefer NumPy `.npz` files for saved
 # data instead of pickled formats.
@@ -653,27 +659,11 @@ def first_derivative_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
     - The derivative is scaled by the grid spacing `dx = L / Nx`.
     """
 
-    # Define the diagonals
-    upper_diag = np.ones(Nx)
-    lower_diag = -np.ones(Nx)
-
-    # Special handling for Neumann BC
-    upper_diag[0] = 0
-    lower_diag[-1] = 0
-    # Create diagonals
-    # diagonals = {
-    #     1: np.ones(Nx),  # Upper diagonal
-    #     -1: -np.ones(Nx),  # Lower diagonal
-    # }
-
-    # Create sparse matrix
-    diagonals = [upper_diag, lower_diag]
-    offsets = [1, -1]
-    A = diags(diagonals, offsets, format="csr")
-    # print(A.toarray())
-
-    dx = L / Nx
-    return A.dot(vector_f / (2 * dx))
+    dx = float(L) / int(Nx)
+    f = np.ascontiguousarray(vector_f, dtype=np.float64)
+    if njit is not None:
+        return _first_derivative_nbc_numba(f, dx)
+    return _first_derivative_nbc_numpy(f, dx)
 
 
 def laplacian_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
@@ -698,23 +688,61 @@ def laplacian_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
     - The resulting sparse matrix is in Compressed Sparse Row (CSR) format for efficient computation.
     - The input vector is scaled by the square of the mesh spacing (dx^2) before applying the operator.
     """
-    # Define the diagonals
-    main_diag = np.full(Nx + 1, -2)
-    upper_diag = np.ones(Nx)
-    lower_diag = np.ones(Nx)
+    dx = float(L) / int(Nx)
+    f = np.ascontiguousarray(vector_f, dtype=np.float64)
+    if njit is not None:
+        return _laplacian_nbc_numba(f, dx)
+    return _laplacian_nbc_numpy(f, dx)
 
-    # Special handling for Neumann BC
-    upper_diag[0] = 2
-    lower_diag[-1] = 2
 
-    # Create sparse matrix
-    diagonals = [main_diag, upper_diag, lower_diag]
-    offsets = [0, 1, -1]
-    A = diags(diagonals, offsets, format="csr")
+def _first_derivative_nbc_numpy(vector_f: np.ndarray, dx: float) -> np.ndarray:
+    """
+    Central difference approximation of u_x with Neumann BC enforced by setting
+    endpoint derivatives to 0.
+    """
+    out = np.empty_like(vector_f, dtype=np.float64)
+    out[0] = 0.0
+    out[-1] = 0.0
+    out[1:-1] = (vector_f[2:] - vector_f[:-2]) / (2.0 * dx)
+    return out
 
-    dx = L / Nx
 
-    return A.dot(vector_f / (dx**2))
+def _laplacian_nbc_numpy(vector_f: np.ndarray, dx: float) -> np.ndarray:
+    """
+    Central difference approximation of u_xx with Neumann BC enforced via
+    ghost-point reflection: f[-1]=f[1], f[N+1]=f[N-1].
+    """
+    out = np.empty_like(vector_f, dtype=np.float64)
+    inv_dx2 = 1.0 / (dx * dx)
+    out[1:-1] = (vector_f[2:] - 2.0 * vector_f[1:-1] + vector_f[:-2]) * inv_dx2
+    out[0] = 2.0 * (vector_f[1] - vector_f[0]) * inv_dx2
+    out[-1] = 2.0 * (vector_f[-2] - vector_f[-1]) * inv_dx2
+    return out
+
+
+if njit is not None:  # pragma: no cover
+
+    @njit(cache=True)
+    def _first_derivative_nbc_numba(vector_f: np.ndarray, dx: float) -> np.ndarray:
+        out = np.empty_like(vector_f)
+        n = vector_f.shape[0]
+        out[0] = 0.0
+        out[n - 1] = 0.0
+        inv_2dx = 1.0 / (2.0 * dx)
+        for i in range(1, n - 1):
+            out[i] = (vector_f[i + 1] - vector_f[i - 1]) * inv_2dx
+        return out
+
+    @njit(cache=True)
+    def _laplacian_nbc_numba(vector_f: np.ndarray, dx: float) -> np.ndarray:
+        out = np.empty_like(vector_f)
+        n = vector_f.shape[0]
+        inv_dx2 = 1.0 / (dx * dx)
+        for i in range(1, n - 1):
+            out[i] = (vector_f[i + 1] - 2.0 * vector_f[i] + vector_f[i - 1]) * inv_dx2
+        out[0] = 2.0 * (vector_f[1] - vector_f[0]) * inv_dx2
+        out[n - 1] = 2.0 * (vector_f[n - 2] - vector_f[n - 1]) * inv_dx2
+        return out
 
 
 def rhs(u: np.ndarray, v: np.ndarray, config: SimulationConfig) -> np.ndarray:
