@@ -262,10 +262,10 @@ class SimulationConfig:
 
         if self.eigen_index == 0:
             if len(positive_sigmas) > 0:
-                object.__setattr__(self, "eigen_index", 2)
+                object.__setattr__(self, "eigen_index", 1)
                 print("Second (first nonconstant) eigenfunction is chosen.\n")
             else:
-                object.__setattr__(self, "eigen_index", 1)
+                object.__setattr__(self, "eigen_index", 0)
                 print("first (constant) eigenfunction is chosen.\n")
 
         x_values = np.linspace(0, self.L, int(self.meshsize) + 1, dtype=np.float64)
@@ -285,17 +285,17 @@ class SimulationConfig:
             u0 = (
                 u0
                 + self.epsilon
-                * np.cos(((self.eigen_index - 1) * np.pi / self.L) * x_values)
-                + self.epsilon2
                 * np.cos(((self.eigen_index) * np.pi / self.L) * x_values)
+                + self.epsilon2
+                * np.cos(((self.eigen_index + 1) * np.pi / self.L) * x_values)
             )
         else:
             u0 = (
                 self.uStar
                 + self.epsilon
-                * np.cos(((self.eigen_index - 1) * np.pi / self.L) * x_values)
-                + self.epsilon2
                 * np.cos(((self.eigen_index) * np.pi / self.L) * x_values)
+                + self.epsilon2
+                * np.cos(((self.eigen_index + 1) * np.pi / self.L) * x_values)
             )
 
         object.__setattr__(self, "uinit", u0)
