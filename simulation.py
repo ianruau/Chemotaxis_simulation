@@ -1280,7 +1280,7 @@ def create_static_plots(
 
     # Second subplot for v(t,x)
     ax_3d_v = fig_3d.add_subplot(122, projection="3d")
-    # surf_v = ax_3d_v.plot_surface(T_grid, X_grid, v_data, cmap="viridis", alpha=0.8)
+    ax_3d_v.plot_surface(T_grid, X_grid, v_data, cmap="viridis", alpha=0.8)
 
     # # Add colorbar for v
     # fig_3d.colorbar(surf_v, ax=ax_3d_v, label='v(t,x)')
