@@ -48,3 +48,4 @@ build/
 
 chemotaxis_sim.egg-info
 chemotaxis_sim.egg-info
+.venv
