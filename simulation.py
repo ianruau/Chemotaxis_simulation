@@ -630,9 +630,9 @@ def create_six_frame_summary(
         t_here = float(t_values[idx])
         pct = int(round(float(frac) * 100))
         if _USE_TEX:
-            label = rf"{pct}\% ($t={t_here:.2f}$)"
+            label = rf"{pct}\% ($t={int(t_here)}$)"
         else:
-            label = f"{pct}% (t={t_here:.2f})"
+            label = f"{pct}% (t={int(t_here)})"
         ax_u.plot(x_values, u_num[:, idx], color=color, linewidth=1.6, label=label)
 
     if _USE_TEX:
