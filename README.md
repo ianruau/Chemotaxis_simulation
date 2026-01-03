@@ -48,6 +48,20 @@ running the following command
 chemotaxis-sim --help
 ```
 
+### Shell completion (zsh)
+This package supports tab completion via `argcomplete`, but your shell must be configured.
+
+In `~/.zshrc`:
+
+```bash
+autoload -Uz compinit && compinit
+eval "$(register-python-argcomplete --shell zsh chemotaxis-sim)"
+eval "$(register-python-argcomplete --shell zsh chemotaxis-plot)"
+eval "$(register-python-argcomplete --shell zsh chemotaxis-constants)"
+```
+
+Restart your shell (or run `exec zsh`).
+
 Here is an example of a simulation
 
 ```bash

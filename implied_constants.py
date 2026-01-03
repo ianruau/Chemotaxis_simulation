@@ -432,6 +432,13 @@ def _parse_inputs(argv: list[str]) -> tuple[argparse.Namespace, Inputs]:
     if pre_args.config:
         _apply_config_defaults(parser, _load_yaml_config_as_overrides(pre_args.config))
 
+    try:
+        import argcomplete  # type: ignore
+    except ModuleNotFoundError:
+        argcomplete = None
+    if argcomplete is not None:
+        argcomplete.autocomplete(parser)
+
     args = parser.parse_args(argv)
     inputs = Inputs(
         a=float(args.a),

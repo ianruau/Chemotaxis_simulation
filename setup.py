@@ -16,6 +16,7 @@ setup(
         "scipy",
         "matplotlib",
         "sympy",
+        "argcomplete",
         "tabulate",
         "tqdm",
         "questionary",

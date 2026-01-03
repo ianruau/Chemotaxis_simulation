@@ -1492,6 +1492,13 @@ def parse_args() -> SimulationConfig:
         parser, config_overrides, warn_unknown=(pre_args.config_warn_unknown == "yes")
     )
 
+    try:
+        import argcomplete  # type: ignore
+    except ModuleNotFoundError:
+        argcomplete = None
+    if argcomplete is not None:
+        argcomplete.autocomplete(parser)
+
     args = parser.parse_args(argv)
     args_dict = vars(args)
     args_dict.pop("config", None)
@@ -1798,7 +1805,26 @@ def main():
     4. Prompt the user for confirmation to proceed with the simulation
     5. Run the simulation using the specified parameters or exit if declined
     """
-    # config = parse_args()  # Returns SimulationConfig directly
+    if not sys.argv[1:] and os.environ.get("_ARGCOMPLETE") != "1":
+        print("chemotaxis-sim (short help)")
+        print()
+        print("Usage:")
+        print("  chemotaxis-sim --config <config.yaml> [overrides...]")
+        print("  chemotaxis-sim --chi <chi0> --meshsize <N> --time <T> --eigen_index <k> [options]")
+        print()
+        print("Common options:")
+        print("  --config <yaml>            Load defaults from YAML")
+        print("  --output_dir <dir>         Where to write outputs")
+        print("  --basename <name>          Override output basename")
+        print("  --save_data yes|no         Save .npz (default: yes)")
+        print("  --save_summary6 yes|no     Save *_summary6.{png,jpeg} (default: yes)")
+        print("  --save_static_plots yes|no Save <basename>.{png,jpeg} (default: yes)")
+        print("  --generate_video yes|no    Save <basename>.mp4 (default: no)")
+        print("  --until_converged yes|no   Stop early if steady (default: no)")
+        print()
+        print("Run `chemotaxis-sim --help` for full help.")
+        return
+
     # Get immutable config
     config: Final[SimulationConfig] = parse_args()
 

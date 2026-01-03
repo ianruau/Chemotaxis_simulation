@@ -274,6 +274,12 @@ def main() -> None:
             default="no",
             help="Warn about unknown YAML keys (default: no)",
         )
+        try:
+            import argcomplete  # type: ignore
+        except ModuleNotFoundError:
+            argcomplete = None
+        if argcomplete is not None:
+            argcomplete.autocomplete(parser)
         parser.print_help(sys.stderr)
         return
 
@@ -325,6 +331,13 @@ def main() -> None:
     _apply_parser_defaults_from_config_impl(
         parser, config_overrides, warn_unknown=(pre_args.config_warn_unknown == "yes")
     )
+
+    try:
+        import argcomplete  # type: ignore
+    except ModuleNotFoundError:
+        argcomplete = None
+    if argcomplete is not None:
+        argcomplete.autocomplete(parser)
 
     args = parser.parse_args(argv)
 

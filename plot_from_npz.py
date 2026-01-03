@@ -63,6 +63,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 def _parse_args() -> PlotConfig:
     parser = _build_arg_parser()
+    try:
+        import argcomplete  # type: ignore
+    except ModuleNotFoundError:
+        argcomplete = None
+    if argcomplete is not None:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
 
     npz_file = args.npz_file
@@ -139,4 +145,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
