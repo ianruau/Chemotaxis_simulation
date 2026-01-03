@@ -84,6 +84,9 @@ Implied constants / bifurcation diagnostics:
 # Global threshold (Eq. (1.12)) + equilibrium (Eq. (1.8))
 chemotaxis-constants threshold --config config.example.yaml
 
+# `--config` can be passed before or after the subcommand
+chemotaxis-constants --config config.example.yaml threshold
+
 # Bifurcation coefficients (defaults to n0 = argmin mode from the chi_a^* scan)
 chemotaxis-constants bifurcation --config config.example.yaml
 

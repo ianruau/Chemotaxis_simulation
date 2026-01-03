@@ -349,14 +349,21 @@ class Inputs:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=str, default="", help="Load defaults from YAML (CLI overrides)")
-    parser.add_argument(
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument(
+        "--config",
+        type=str,
+        default="",
+        help="Load defaults from YAML (CLI overrides; accepted before/after the subcommand)",
+    )
+    common.add_argument(
         "--format",
         choices=["text", "json"],
         default="text",
-        help="Output format (default: text)",
+        help="Output format (default: text; accepted before/after the subcommand)",
     )
+
+    parser = argparse.ArgumentParser(description=__doc__, parents=[common])
     parser.add_argument("--a", type=float, default=1.0)
     parser.add_argument("--b", type=float, default=1.0)
     parser.add_argument("--c", type=float, default=1.0)
@@ -377,9 +384,21 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--early_stop_patience", type=int, default=2000)
 
     sub = parser.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("threshold", help="Compute Eq. (1.8) and global discrete chi_a^*(u^*)")
-    sub.add_parser("bifurcation", help="Compute bifurcation coefficients at mode n0")
-    sub.add_parser("report", help="Compute both threshold and bifurcation, plus consistency checks")
+    sub.add_parser(
+        "threshold",
+        parents=[common],
+        help="Compute Eq. (1.8) and global discrete chi_a^*(u^*)",
+    )
+    sub.add_parser(
+        "bifurcation",
+        parents=[common],
+        help="Compute bifurcation coefficients at mode n0",
+    )
+    sub.add_parser(
+        "report",
+        parents=[common],
+        help="Compute both threshold and bifurcation, plus consistency checks",
+    )
     return parser
 
 
