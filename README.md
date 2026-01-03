@@ -71,6 +71,13 @@ Batch-run output control (optional):
 chemotaxis-sim --save_static_plots no --save_summary6 yes
 ```
 
+Post-processing heavy plots from saved data:
+
+```bash
+# Later, regenerate the main 3D plots (<basename>.png/.jpeg) from the saved .npz
+chemotaxis-plot images/branch_capture/some_run.npz
+```
+
 Output naming controls (optional):
 
 ```bash

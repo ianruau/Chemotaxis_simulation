@@ -10,7 +10,7 @@ setup(
     author="Le Chen and Ian Ruau",
     author_email="chenle02@gmail.com",
     python_requires=">=3.7",
-    py_modules=["simulation", "paper2_constants"],
+    py_modules=["simulation", "paper2_constants", "plot_from_npz"],
     install_requires=[
         "numpy",
         "scipy",
@@ -24,6 +24,7 @@ setup(
     entry_points={
         "console_scripts": [
             "chemotaxis-sim=simulation:main",
+            "chemotaxis-plot=plot_from_npz:main",
         ]
     },
     extras_require={
