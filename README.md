@@ -78,6 +78,32 @@ Post-processing heavy plots from saved data:
 chemotaxis-plot images/branch_capture/some_run.npz
 ```
 
+Implied constants / bifurcation diagnostics:
+
+```bash
+# Global threshold (Eq. (1.12)) + equilibrium (Eq. (1.8))
+chemotaxis-constants threshold --config config.example.yaml
+
+# Bifurcation coefficients (defaults to n0 = argmin mode from the chi_a^* scan)
+chemotaxis-constants bifurcation --config config.example.yaml
+
+# Override the mode if desired
+chemotaxis-constants bifurcation --config config.example.yaml --n0 1
+
+# Full report + consistency check (is n0 the argmin mode for chi_a^*?)
+chemotaxis-constants report --config config.example.yaml --format json
+
+# Sensitivity shift c is supported (defaults to c=1)
+chemotaxis-constants report --config config.example.yaml --c 1
+```
+
+Why override `--n0`?
+- Multi-mode diagnostics: compare higher modes even if `n_min` destabilizes first.
+- Near-degenerate minima: inspect competing modes when `chi^*(n)` is very close for multiple `n`.
+- Reproducibility: match tables/figures that report coefficients at a fixed mode (often `n0=1`).
+- Sensitivity studies: track how the cubic coefficient `beta_{n0}` varies with `n0`.
+- Domain effects: compare the same `n0` across changes in `L` even when the argmin mode shifts.
+
 Output naming controls (optional):
 
 ```bash

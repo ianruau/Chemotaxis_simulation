@@ -10,11 +10,12 @@ setup(
     author="Le Chen and Ian Ruau",
     author_email="chenle02@gmail.com",
     python_requires=">=3.7",
-    py_modules=["simulation", "paper2_constants", "plot_from_npz"],
+    py_modules=["simulation", "paper2_constants", "plot_from_npz", "implied_constants"],
     install_requires=[
         "numpy",
         "scipy",
         "matplotlib",
+        "sympy",
         "tabulate",
         "tqdm",
         "questionary",
@@ -25,6 +26,7 @@ setup(
         "console_scripts": [
             "chemotaxis-sim=simulation:main",
             "chemotaxis-plot=plot_from_npz:main",
+            "chemotaxis-constants=implied_constants:main",
         ]
     },
     extras_require={

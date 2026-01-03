@@ -65,6 +65,7 @@ def chi_a_star_eq112_discrete(
     *,
     u_star: float,
     v_star: float,
+    c: float = 1.0,
     a: float,
     alpha: float,
     mu: float,
@@ -90,7 +91,10 @@ def chi_a_star_eq112_discrete(
     if n_max < 1:
         raise ValueError("n_max must be >= 1")
 
-    prefactor = ((1.0 + v_star) ** beta) / (nu * gamma * (u_star ** (m + gamma - 1.0)))
+    if c + v_star <= 0:
+        raise ValueError("Eq. (1.12) requires c + v_star > 0.")
+
+    prefactor = ((c + v_star) ** beta) / (nu * gamma * (u_star ** (m + gamma - 1.0)))
 
     best_val = float("inf")
     best_n = 1
@@ -125,6 +129,7 @@ def paper2_eq112_constants(
     *,
     a: float,
     b: float,
+    c: float = 1.0,
     alpha: float,
     mu: float,
     nu: float,
@@ -142,6 +147,7 @@ def paper2_eq112_constants(
     chi_a_star, n_min, lambda_min = chi_a_star_eq112_discrete(
         u_star=u_star,
         v_star=v_star,
+        c=c,
         a=a,
         alpha=alpha,
         mu=mu,
@@ -306,6 +312,7 @@ def main() -> None:
     )
     parser.add_argument("--a", type=float, default=1.0, help="Parameter a (default: 1.0)")
     parser.add_argument("--b", type=float, default=1.0, help="Parameter b (default: 1.0)")
+    parser.add_argument("--c", type=float, default=1.0, help="Sensitivity shift c (default: 1.0)")
     parser.add_argument("--alpha", type=float, default=1.0, help="Parameter alpha (default: 1.0)")
     parser.add_argument("--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)")
     parser.add_argument("--nu", type=float, default=1.0, help="Parameter nu (default: 1.0)")
@@ -324,6 +331,7 @@ def main() -> None:
     c = paper2_eq112_constants(
         a=args.a,
         b=args.b,
+        c=args.c,
         alpha=args.alpha,
         mu=args.mu,
         nu=args.nu,
