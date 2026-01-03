@@ -49,4 +49,5 @@ output:
   save_data: "yes"
   data_format: "npz"
   save_max_frames: 2000
+  save_static_plots: "yes"
   save_summary6: "yes"

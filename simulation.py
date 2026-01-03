@@ -169,6 +169,7 @@ class SimulationConfig:
     save_data: str = "yes"
     data_format: str = "npz"
     save_max_frames: int = 2000
+    save_static_plots: str = "yes"
     save_summary6: str = "yes"
     basename: str = ""
     output_dir: str = ""
@@ -971,9 +972,10 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
     """
 
     # Create static plots
-    create_static_plots(
-        t_values, x_values, u_num, v_num, uStar, vStar, SetupDes, FileBaseName
-    )
+    if config.save_static_plots == "yes":
+        create_static_plots(
+            t_values, x_values, u_num, v_num, uStar, vStar, SetupDes, FileBaseName
+        )
 
     # Create animation if requested
     if config.generate_video == "yes":
@@ -1169,16 +1171,17 @@ def RK4_until_converged(
     $u^*$ = {config.uStar}, $\epsilon$ = {config.epsilon}, $\epsilon_2$ = {config.epsilon2}, $n_0$ = {config.eigen_index}.
     """
 
-    create_static_plots(
-        t_values,
-        x_values,
-        u_num,
-        v_num,
-        config.uStar,
-        config.vStar,
-        SetupDes,
-        FileBaseName,
-    )
+    if config.save_static_plots == "yes":
+        create_static_plots(
+            t_values,
+            x_values,
+            u_num,
+            v_num,
+            config.uStar,
+            config.vStar,
+            SetupDes,
+            FileBaseName,
+        )
     if config.generate_video == "yes":
         create_animation(
             t_values, u_num, v_num, config.uStar, config.vStar, SetupDes, FileBaseName
@@ -1735,6 +1738,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         choices=["yes", "no"],
         default="yes",
         help="Save a 6-frame (0,20,...,100 percent) summary figure (default: yes)",
+    )
+    output_group.add_argument(
+        "--save_static_plots",
+        choices=["yes", "no"],
+        default="yes",
+        help="Save the main 3D static plots (<basename>.png/.jpeg) (default: yes)",
     )
     output_group.add_argument(
         "--basename",

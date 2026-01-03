@@ -60,6 +60,13 @@ Saved data controls (optional):
 chemotaxis-sim --save_data yes --save_max_frames 2000 --save_summary6 yes
 ```
 
+Batch-run output control (optional):
+
+```bash
+# Keep only the 6-frame summary images (*_summary6.{png,jpeg}) and any saved data
+chemotaxis-sim --save_static_plots no --save_summary6 yes
+```
+
 Output naming controls (optional):
 
 ```bash
@@ -130,7 +137,7 @@ terminal:
 ![initial_plots](./homepage/u_v_terminal_plots.png)
 
 Once the simulation is complete, a picture of the results is saved in both .png
-and .jpeg formats:
+and .jpeg formats (disable with `--save_static_plots no`):
 
 ![images_saved](./homepage/images_saved.png)
 
@@ -164,7 +171,7 @@ For detailed information about the package and its functionalities, visit the [d
 - Stream RK4 storage for long runs (avoid allocating full `u_num/v_num` history; store only downsampled frames for plots/npz/video).
 - Expose an explicit time-step/CFL knob (current `Nt ~ O(T N^2)` can be expensive for `T=100`).
 - Add a pure-Python (optional Numba) tridiagonal solver for `solve_v` as a non-SciPy fallback / speed path.
-- Add an option to skip heavy 3D surface plots in batch runs and generate them from saved `.npz` in post-processing.
+- Generate heavy 3D surface plots from saved `.npz` in post-processing for large batch runs.
 - Add a lightweight smoke-test script (short run + basic invariants) since there is no dedicated test suite yet.
 
 ## Reproducing previous results
