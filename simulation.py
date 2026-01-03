@@ -73,7 +73,7 @@ import numpy as np
 import questionary
 import termplotlib as tpl
 from matplotlib import rc
-from matplotlib.ticker import FormatStrFormatter
+from matplotlib.ticker import FormatStrFormatter, ScalarFormatter
 
 # from scipy.linalg import solve_banded
 from scipy.sparse import diags
@@ -688,6 +688,9 @@ def create_six_frame_summary(
         ax_u.set_ylabel("u(x,t)")
 
     ax_u.set_ylim(u_min - u_pad, u_max + u_pad)
+    y_formatter = ScalarFormatter(useOffset=False)
+    y_formatter.set_scientific(False)
+    ax_u.yaxis.set_major_formatter(y_formatter)
 
     ax_u.legend(loc="best", fontsize=8, frameon=False)
 
