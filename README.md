@@ -60,6 +60,10 @@ Saved data controls (optional):
 chemotaxis-sim --save_data yes --save_max_frames 2000 --save_summary6 yes
 ```
 
+Notes:
+- `--save_max_frames` controls the maximum number of time snapshots kept for outputs (plots/summary/video) and written to the saved `.npz` (default: `2000`).
+- When using `--until_converged yes`, the in-run snapshot cap is instead `--max_saved_frames` (default: `2000`).
+
 Batch-run output control (optional):
 
 ```bash
@@ -168,7 +172,6 @@ For detailed information about the package and its functionalities, visit the [d
 
 ## TODO (performance / workflow)
 
-- Stream RK4 storage for long runs (avoid allocating full `u_num/v_num` history; store only downsampled frames for plots/npz/video).
 - Expose an explicit time-step/CFL knob (current `Nt ~ O(T N^2)` can be expensive for `T=100`).
 - Add a pure-Python (optional Numba) tridiagonal solver for `solve_v` as a non-SciPy fallback / speed path.
 - Generate heavy 3D surface plots from saved `.npz` in post-processing for large batch runs.

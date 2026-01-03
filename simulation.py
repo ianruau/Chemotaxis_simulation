@@ -537,6 +537,7 @@ def save_simulation_data_npz(
     t_saved = result.t_values[idx]
     u_saved = result.u_num[:, idx]
     v_saved = result.v_num[:, idx]
+    step_indices = np.round(t_saved / float(result.dt)).astype(np.int64)
 
     config_json = json.dumps(_config_metadata(config), sort_keys=True)
     np.savez_compressed(
@@ -552,6 +553,7 @@ def save_simulation_data_npz(
         u_num=np.asarray(u_saved, dtype=np.float64),
         v_num=np.asarray(v_saved, dtype=np.float64),
         downsample_indices=np.asarray(idx, dtype=np.int64),
+        step_indices=np.asarray(step_indices, dtype=np.int64),
     )
     return filename
 
@@ -899,21 +901,34 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
     # dx = L / Nx
     dt = T / Nt
 
-    # Initialize solutions
-    u_num = np.zeros((Nt + 1, Nx + 1))
-    v_num = np.zeros((Nt + 1, Nx + 1))
-
     x_values = np.linspace(0, L, int(Nx) + 1, dtype=np.float64)
+    u_current = np.array(config.uinit, dtype=np.float64, copy=True)
+    v_current = np.array(config.vinit, dtype=np.float64, copy=True)
 
-    u_num[0, :] = config.uinit
-    v_num[0, :] = config.vinit
+    save_indices = _downsample_time_indices(int(Nt) + 1, int(config.save_max_frames))
+    n_saved = int(save_indices.size)
+    if n_saved <= 0:
+        raise RuntimeError("Internal error: no saved frames selected.")
+
+    saved_times = np.empty(n_saved, dtype=np.float64)
+    saved_u = np.empty((n_saved, int(Nx) + 1), dtype=np.float64)
+    saved_v = np.empty((n_saved, int(Nx) + 1), dtype=np.float64)
+
+    save_pos = 0
+    if int(save_indices[0]) != 0:
+        raise RuntimeError("Internal error: expected first saved index to be 0.")
+
+    saved_times[save_pos] = 0.0
+    saved_u[save_pos, :] = u_current
+    saved_v[save_pos, :] = v_current
+    save_pos += 1
 
     # Time integration
     for n in tqdm(range(Nt), desc="Progress..."):
         # rk4 steps
-        k1 = rhs(u_num[n, :], v_num[n, :], config)
+        k1 = rhs(u_current, v_current, config)
         v1 = solve_v(
-            vector_u=u_num[n, :] + 0.5 * dt * k1,
+            vector_u=u_current + 0.5 * dt * k1,
             L=L,
             Nx=Nx,
             mu=mu,
@@ -922,9 +937,9 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
             diagnostic=diagnostic,
         )
 
-        k2 = rhs(u_num[n, :] + 0.5 * dt * k1, v1, config)
+        k2 = rhs(u_current + 0.5 * dt * k1, v1, config)
         v2 = solve_v(
-            vector_u=u_num[n, :] + 0.5 * dt * k2,
+            vector_u=u_current + 0.5 * dt * k2,
             L=L,
             Nx=Nx,
             mu=mu,
@@ -933,9 +948,9 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
             diagnostic=diagnostic,
         )
 
-        k3 = rhs(u_num[n, :] + 0.5 * dt * k2, v2, config)
+        k3 = rhs(u_current + 0.5 * dt * k2, v2, config)
         v3 = solve_v(
-            vector_u=u_num[n, :] + dt * k3,
+            vector_u=u_current + dt * k3,
             L=L,
             Nx=Nx,
             mu=mu,
@@ -944,12 +959,12 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
             diagnostic=diagnostic,
         )
 
-        k4 = rhs(u_num[n, :] + dt * k3, v3, config)
+        k4 = rhs(u_current + dt * k3, v3, config)
 
         # Update
-        u_num[n + 1, :] = u_num[n, :] + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
-        v_num[n + 1, :] = solve_v(
-            vector_u=u_num[n + 1, :],
+        u_current = u_current + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+        v_current = solve_v(
+            vector_u=u_current,
             L=L,
             Nx=Nx,
             mu=mu,
@@ -958,10 +973,21 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
             diagnostic=diagnostic,
         )
 
-    # Convert lists to numpy arrays
-    u_num = np.array(u_num).T  # Convert list to numpy array and transpose
-    v_num = np.array(v_num).T  # Convert list to numpy array and transpose
-    t_values = np.linspace(0, T, Nt + 1)
+        now_step = int(n) + 1
+        while save_pos < n_saved and now_step == int(save_indices[save_pos]):
+            saved_times[save_pos] = float(now_step) * float(dt)
+            saved_u[save_pos, :] = u_current
+            saved_v[save_pos, :] = v_current
+            save_pos += 1
+
+    if save_pos != n_saved:
+        raise RuntimeError(
+            f"Internal error: saved {save_pos} frames but expected {n_saved}."
+        )
+
+    u_num = saved_u.T
+    v_num = saved_v.T
+    t_values = saved_times
 
     # Setup description for the title
     SetupDes = rf"""
