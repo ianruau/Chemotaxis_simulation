@@ -349,7 +349,7 @@ class Inputs:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    common = argparse.ArgumentParser(add_help=False)
+    common = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     common.add_argument(
         "--config",
         type=str,
@@ -362,26 +362,31 @@ def _build_parser() -> argparse.ArgumentParser:
         default="text",
         help="Output format (default: text; accepted before/after the subcommand)",
     )
-
-    parser = argparse.ArgumentParser(description=__doc__, parents=[common])
-    parser.add_argument("--a", type=float, default=1.0)
-    parser.add_argument("--b", type=float, default=1.0)
-    parser.add_argument("--c", type=float, default=1.0)
-    parser.add_argument("--alpha", type=float, default=1.0)
-    parser.add_argument("--beta", type=float, default=1.0)
-    parser.add_argument("--m", type=float, default=1.0)
-    parser.add_argument("--mu", type=float, default=1.0)
-    parser.add_argument("--nu", type=float, default=1.0)
-    parser.add_argument("--gamma", type=float, default=1.0)
-    parser.add_argument("--L", type=float, default=1.0)
-    parser.add_argument(
+    common.add_argument("--a", type=float, default=1.0)
+    common.add_argument("--b", type=float, default=1.0)
+    common.add_argument("--c", type=float, default=1.0)
+    common.add_argument("--alpha", type=float, default=1.0)
+    common.add_argument("--beta", type=float, default=1.0)
+    common.add_argument("--m", type=float, default=1.0)
+    common.add_argument("--mu", type=float, default=1.0)
+    common.add_argument("--nu", type=float, default=1.0)
+    common.add_argument("--gamma", type=float, default=1.0)
+    common.add_argument("--L", type=float, default=1.0)
+    common.add_argument(
         "--n0",
         type=int,
         default=None,
         help="Mode index for bifurcation coefficients (default: argmin mode from the chi_a^* scan)",
     )
-    parser.add_argument("--n_max", type=int, default=200000, help="Max n for discrete chi* scan (default: 200000)")
-    parser.add_argument("--early_stop_patience", type=int, default=2000)
+    common.add_argument(
+        "--n_max",
+        type=int,
+        default=200000,
+        help="Max n for discrete chi* scan (default: 200000)",
+    )
+    common.add_argument("--early_stop_patience", type=int, default=2000)
+
+    parser = argparse.ArgumentParser(description=__doc__, parents=[common], allow_abbrev=False)
 
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser(
@@ -424,7 +429,7 @@ def _apply_config_defaults(parser: argparse.ArgumentParser, cfg: dict[str, Any])
 
 
 def _parse_inputs(argv: list[str]) -> tuple[argparse.Namespace, Inputs]:
-    pre = argparse.ArgumentParser(add_help=False)
+    pre = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     pre.add_argument("--config", type=str, default="")
     pre_args, _ = pre.parse_known_args(argv)
 

@@ -141,6 +141,28 @@ chemotaxis-sim --config config.example.yaml --chi 2.185 --meshsize 100
 
 See `config.example.yaml` for a grouped template.
 
+### Eigenmode indexing (`--eigen_index`)
+The initial condition uses a cosine perturbation of the form:
+
+`u_0(x) = u^* + \epsilon cos(n\pi x/L) + \epsilon_2 cos((n+1)\pi x/L)`.
+
+Paper II indexes Neumann eigenmodes by `n>=0`, with `n=0` the constant mode.
+
+Preferred: use the paper-0-based flag `--eigen_mode_n n`:
+- `--eigen_mode_n 0`: constant mode (`\lambda_0=0`)
+- `--eigen_mode_n 1`: first nonconstant mode (`\cos(\pi x/L)`)
+- `--eigen_mode_n 2`: second nonconstant mode (`\cos(2\pi x/L)`), etc.
+
+Backward compatible: the legacy flag `--eigen_index k` is interpreted as `k=n+1`, with `k=0` reserved for auto:
+- `--eigen_index 0`: auto-select (`k=1` if stable, otherwise `k=2`)
+- `--eigen_index 1`: constant mode (`n=0`)
+- `--eigen_index 2`: first nonconstant mode (`n=1`)
+- `--eigen_index k` with `k>=1`: mode `n=k-1`
+
+If `--eigen_mode_n` is provided, it overrides `--eigen_index`.
+
+The CLI prints the resolved mode as `mode n = ...` when it starts.
+
 ### Paper II constants (Eq. (1.8) and Eq. (1.12))
 The module `paper2_constants.py` computes the equilibrium and the discrete
 threshold \(\chi_a^*(u^*)\) from Paper II:

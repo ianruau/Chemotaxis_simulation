@@ -152,6 +152,7 @@ class SimulationConfig:
     meshsize: int = 50
     time: float = 2.5
     eigen_index: int = 0
+    eigen_mode_n: Optional[int] = None
     epsilon: float = 0.001
     epsilon2: float = 0.0
     restart_from: str = ""
@@ -185,6 +186,7 @@ class SimulationConfig:
     chi_vector: List[float] = field(init=False, default_factory=list)
     uinit: np.ndarray = field(init=False, default=None)
     vinit: np.ndarray = field(init=False, default=None)
+    eigen_mode_n_resolved: int = field(init=False, default=None)
 
     def __post_init__(self):
         # Using object.__setattr__ because the class is frozen
@@ -196,8 +198,10 @@ class SimulationConfig:
         )
 
         # Compute ChiStar
+        if self.c + self.vStar <= 0:
+            raise ValueError("Expected c + vStar > 0 for sensitivity (c+v)^(-beta).")
         chistar = (
-            (1 + self.vStar) ** self.beta
+            (self.c + self.vStar) ** self.beta
             * (np.sqrt(self.a * self.alpha) + np.sqrt(self.mu)) ** 2
             / (self.nu * self.gamma * self.uStar ** (self.m + self.gamma - 1) + 1e-10)
         )
@@ -227,7 +231,7 @@ class SimulationConfig:
             chi_val = (
                 ((self.a * self.alpha - lam) / (self.nu * self.gamma + 1e-10))
                 * (
-                    ((1 + self.vStar) ** self.beta)
+                    ((self.c + self.vStar) ** self.beta)
                     / ((self.uStar) ** (self.m + self.gamma - 1) + 1e-10)
                 )
                 * ((lam - self.mu) / (lam + 1e-10))
@@ -252,7 +256,7 @@ class SimulationConfig:
                     * self.gamma
                     * (
                         (self.uStar ** (self.m + self.gamma - 1))
-                        / ((1 + self.vStar) ** self.beta + 1e-10)
+                        / ((self.c + self.vStar) ** self.beta + 1e-10)
                     )
                     * (1 - self.mu / (self.mu - lambda_n + 1e-10))
                     - self.a * self.alpha
@@ -261,13 +265,34 @@ class SimulationConfig:
                     positive_sigmas.append(sigma_n)
         object.__setattr__(self, "positive_sigmas", positive_sigmas)
 
-        if self.eigen_index == 0:
-            if len(positive_sigmas) > 0:
-                object.__setattr__(self, "eigen_index", 1)
-                print("Second (first nonconstant) eigenfunction is chosen.\n")
-            else:
-                object.__setattr__(self, "eigen_index", 0)
-                print("first (constant) eigenfunction is chosen.\n")
+        # Eigenmode indexing (paper vs legacy):
+        #
+        # - Paper II indexes Neumann modes by n>=0 with n=0 the constant mode.
+        # - The legacy CLI flag `--eigen_index k` uses k=n+1, with k=0 reserved for auto selection.
+        # - The new flag `--eigen_mode_n n` directly specifies the paper mode index n (0-based).
+        #
+        # Precedence: if `--eigen_mode_n` is provided, it overrides `--eigen_index`.
+        if self.eigen_mode_n is not None:
+            if int(self.eigen_mode_n) < 0:
+                raise ValueError("--eigen_mode_n must be >= 0")
+            mode_n = int(self.eigen_mode_n)
+        else:
+            if self.eigen_index == 0:
+                if len(positive_sigmas) > 0:
+                    object.__setattr__(self, "eigen_index", 2)
+                    print(
+                        "Auto eigenmode: first nonconstant selected "
+                        "(mode n=1; --eigen_index=2).\n"
+                    )
+                else:
+                    object.__setattr__(self, "eigen_index", 1)
+                    print("Auto eigenmode: constant selected (mode n=0; --eigen_index=1).\n")
+
+            if int(self.eigen_index) < 1:
+                raise ValueError("--eigen_index must be >= 0")
+            mode_n = int(self.eigen_index) - 1
+
+        object.__setattr__(self, "eigen_mode_n_resolved", int(mode_n))
 
         x_values = np.linspace(0, self.L, int(self.meshsize) + 1, dtype=np.float64)
         if (self.restart_from or "").strip():
@@ -286,17 +311,17 @@ class SimulationConfig:
             u0 = (
                 u0
                 + self.epsilon
-                * np.cos(((self.eigen_index) * np.pi / self.L) * x_values)
+                * np.cos(((self.eigen_mode_n_resolved) * np.pi / self.L) * x_values)
                 + self.epsilon2
-                * np.cos(((self.eigen_index + 1) * np.pi / self.L) * x_values)
+                * np.cos(((self.eigen_mode_n_resolved + 1) * np.pi / self.L) * x_values)
             )
         else:
             u0 = (
                 self.uStar
                 + self.epsilon
-                * np.cos(((self.eigen_index) * np.pi / self.L) * x_values)
+                * np.cos(((self.eigen_mode_n_resolved) * np.pi / self.L) * x_values)
                 + self.epsilon2
-                * np.cos(((self.eigen_index + 1) * np.pi / self.L) * x_values)
+                * np.cos(((self.eigen_mode_n_resolved + 1) * np.pi / self.L) * x_values)
             )
 
         object.__setattr__(self, "uinit", u0)
@@ -328,7 +353,11 @@ class SimulationConfig:
         print("3. The v equation: ")
         print(f"\tmu = {self.mu}, nu = {self.nu}, gamma = {self.gamma}")
         print("4. Initial condition: ")
-        print(f"\tepsilon = {self.epsilon}, eigen_index = {self.eigen_index}")
+        emn = "unset" if self.eigen_mode_n is None else str(self.eigen_mode_n)
+        print(
+            f"\tepsilon = {self.epsilon}, eigen_index = {self.eigen_index}, "
+            f"eigen_mode_n = {emn} (resolved mode n = {self.eigen_mode_n_resolved})"
+        )
         print("5. Simulation Parameters:")
         print(f"\tMeshSize = {self.meshsize}, time = {self.time}")
 
@@ -346,7 +375,11 @@ class SimulationConfig:
         ]
         headers = ["Lambda", "Value", "Chi", "Value"]
         print(tabulate(data, headers=headers, tablefmt="grid"))
-        print(f"\nChi* = {self.ChiStar:.3f} and the choice of chi = {self.chi:.3f}")
+        print(
+            f"\nChi* (lower bound) = {self.ChiStar:.3f}; "
+            f"min discrete chi_(0,n)^* = {self.ChiStar_min:.3f}; "
+            f"chosen chi = {self.chi:.3f}"
+        )
 
         if self.positive_sigmas:
             print("\n# Positive sigma values")
@@ -751,7 +784,9 @@ def _laplacian_nbc_numpy(vector_f: np.ndarray, dx: float) -> np.ndarray:
 
 if njit is not None:  # pragma: no cover
 
-    @njit(cache=True)
+    # Numba caching is fragile on some filesystems / editable installs (e.g. symlinks),
+    # so keep caching disabled by default for robustness.
+    @njit(cache=False)
     def _first_derivative_nbc_numba(vector_f: np.ndarray, dx: float) -> np.ndarray:
         out = np.empty_like(vector_f)
         n = vector_f.shape[0]
@@ -762,7 +797,7 @@ if njit is not None:  # pragma: no cover
             out[i] = (vector_f[i + 1] - vector_f[i - 1]) * inv_2dx
         return out
 
-    @njit(cache=True)
+    @njit(cache=False)
     def _laplacian_nbc_numba(vector_f: np.ndarray, dx: float) -> np.ndarray:
         out = np.empty_like(vector_f)
         n = vector_f.shape[0]
@@ -994,7 +1029,7 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
     $a$ = {a}, $b$ = {b}, $c$ = {c}, $\alpha$ = {alpha};
     $m$ = {m}, $\beta$ = {beta}, $\chi_0$ = {chi};
     $\mu$ = {mu}, $\nu$ = {nu}, $\gamma$ = {gamma}; $N$ = {Nx}, $T$ = {T};
-    $u^*$ = {uStar}, $\epsilon$ = {epsilon}, $\epsilon_2$ = {epsilon2}, $n_0$ = {eigen_index}.
+    $u^*$ = {uStar}, $\epsilon$ = {epsilon}, $\epsilon_2$ = {epsilon2}, $n_0$ = {config.eigen_mode_n_resolved}.
     """
 
     # Create static plots
@@ -1194,7 +1229,7 @@ def RK4_until_converged(
     $m$ = {config.m}, $\beta$ = {config.beta}, $\chi_0$ = {config.chi};
     $\mu$ = {config.mu}, $\nu$ = {config.nu}, $\gamma$ = {config.gamma}; $N$ = {Nx}, $T_{{\max}}$ = {T_max};
     $T_{{stop}}$ = {stop_time:.2f};
-    $u^*$ = {config.uStar}, $\epsilon$ = {config.epsilon}, $\epsilon_2$ = {config.epsilon2}, $n_0$ = {config.eigen_index}.
+    $u^*$ = {config.uStar}, $\epsilon$ = {config.epsilon}, $\epsilon_2$ = {config.epsilon2}, $n_0$ = {config.eigen_mode_n_resolved}.
     """
 
     if config.save_static_plots == "yes":
@@ -1694,7 +1729,23 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--eigen_index",
         type=int,
         default=0,
-        help="Parameter eigen index (default: 0, letting system to choose)",
+        help=(
+            "Legacy eigen index for the initial cosine perturbation (kept for backward compatibility). "
+            "Interpretation: k=n+1 with paper mode n>=0, and k=0 means auto-select "
+            "(constant if stable; otherwise the first nonconstant). "
+            "Examples: k=1 -> n=0 (constant), k=2 -> n=1 (first nonconstant). "
+            "Prefer `--eigen_mode_n` for a paper-0-based mode index."
+        ),
+    )
+    grid_group.add_argument(
+        "--eigen_mode_n",
+        type=int,
+        default=None,
+        help=(
+            "Paper mode index n>=0 for the initial cosine perturbation "
+            "(n=0 constant, n=1 first nonconstant cos(pi x/L), etc). "
+            "If provided, this overrides `--eigen_index`."
+        ),
     )
     grid_group.add_argument(
         "--epsilon",
@@ -1816,6 +1867,7 @@ def main():
         print("  --config <yaml>            Load defaults from YAML")
         print("  --output_dir <dir>         Where to write outputs")
         print("  --basename <name>          Override output basename")
+        print("  --eigen_mode_n <n>         Paper mode index n>=0 (overrides --eigen_index)")
         print("  --save_data yes|no         Save .npz (default: yes)")
         print("  --save_summary6 yes|no     Save *_summary6.{png,jpeg} (default: yes)")
         print("  --save_static_plots yes|no Save <basename>.{png,jpeg} (default: yes)")
