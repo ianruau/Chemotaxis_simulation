@@ -349,6 +349,25 @@ class Inputs:
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    examples = """Examples:
+  # Full report from a YAML config
+  chemotaxis-constants --config config.example.yaml report
+
+  # Equivalent form (supported): --config after the subcommand
+  chemotaxis-constants report --config config.example.yaml
+
+  # Global threshold + equilibrium only
+  chemotaxis-constants --config config.example.yaml threshold
+
+  # Bifurcation coefficients at the default mode n0 (argmin of chi_a^* scan)
+  chemotaxis-constants --config config.example.yaml bifurcation
+
+  # Override n0 explicitly (e.g., compare modes)
+  chemotaxis-constants --config config.example.yaml bifurcation --n0 1
+
+  # JSON output (useful for scripts)
+  chemotaxis-constants --config config.example.yaml report --format json
+"""
     common = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     common.add_argument(
         "--config",
@@ -386,7 +405,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     common.add_argument("--early_stop_patience", type=int, default=2000)
 
-    parser = argparse.ArgumentParser(description=__doc__, parents=[common], allow_abbrev=False)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        epilog=examples,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[common],
+        allow_abbrev=False,
+    )
 
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser(

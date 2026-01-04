@@ -1646,8 +1646,26 @@ def _apply_parser_defaults_from_config(
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
+    examples = """Examples:
+  # Run from a YAML config (CLI flags override YAML values)
+  chemotaxis-sim --config config.example.yaml
+
+  # Paper-II eigenmode indexing (0-based): n=2 -> cos(2πx/L)
+  chemotaxis-sim --chi 30 --meshsize 100 --time 5 --eigen_mode_n 2 --epsilon 0.5
+
+  # Batch workflow: keep only summary6 + saved data (skip heavy 3D plots)
+  chemotaxis-sim --config config.example.yaml --save_data yes --save_summary6 yes --save_static_plots no
+
+  # Post-process heavy plots later from the saved .npz
+  chemotaxis-plot images/branch_capture/some_run.npz
+
+  # Legacy eigen indexing (backward compatible): k=n+1 (k=2 -> n=1 -> cos(πx/L))
+  chemotaxis-sim --chi 30 --meshsize 100 --time 5 --eigen_index 2 --epsilon 0.5
+"""
     parser = argparse.ArgumentParser(
-        description="A CLI tool for configuring parameters"
+        description="Run 1D chemotaxis simulations (parabolic-elliptic).",
+        epilog=examples,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     parser.add_argument(

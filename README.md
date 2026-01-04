@@ -48,6 +48,25 @@ running the following command
 chemotaxis-sim --help
 ```
 
+### Quick examples
+
+```bash
+# Run from a YAML config (CLI flags override YAML values)
+chemotaxis-sim --config config.example.yaml
+
+# Paper-II eigenmode indexing (0-based): n=2 -> cos(2πx/L)
+chemotaxis-sim --chi 30 --meshsize 100 --time 5 --eigen_mode_n 2 --epsilon 0.5
+
+# Batch workflow: keep only summary6 + saved data (skip heavy 3D plots)
+chemotaxis-sim --config config.example.yaml --save_data yes --save_summary6 yes --save_static_plots no
+
+# Post-process heavy 3D plots later from the saved .npz
+chemotaxis-plot images/branch_capture/some_run.npz
+
+# Implied constants / bifurcation diagnostics (Paper II)
+chemotaxis-constants --config config.example.yaml report
+```
+
 ### Shell completion (zsh)
 This package supports tab completion via `argcomplete`, but your shell must be configured.
 

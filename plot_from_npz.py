@@ -19,12 +19,21 @@ class PlotConfig:
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
+    examples = """Examples:
+  # Render <basename>.{png,jpeg} next to the .npz
+  chemotaxis-plot images/branch_capture/some_run.npz
+
+  # Put outputs in a specific directory with a new basename
+  chemotaxis-plot images/branch_capture/some_run.npz --output_dir images/plots --basename some_run_3d
+"""
     parser = argparse.ArgumentParser(
         description=(
             "Generate the main 3D static plots (<basename>.png/.jpeg) from a saved .npz.\n\n"
             "This is intended for batch workflows: run `chemotaxis-sim --save_static_plots no --save_data yes`,\n"
             "then render heavy plots later from the saved data."
-        )
+        ),
+        epilog=examples,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "npz_file",
