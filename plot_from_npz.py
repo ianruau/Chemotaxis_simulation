@@ -21,6 +21,8 @@ class PlotConfig:
     summary6: bool
     chi_star_n_max: int
     summary6_beta_n0: bool
+    summary6_bifurcation_curve: bool
+    summary6_a_pred_in_title: bool
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -34,8 +36,11 @@ def _build_arg_parser() -> argparse.ArgumentParser:
   # Also render the lightweight 6-slice summary figure (<basename>_summary6.{png,jpeg})
   chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes
 
-  # Include the bifurcation coefficient beta_{n0} in the summary title (super/subcritical)
+  # Include the bifurcation coefficient beta_{n0} in the summary title
   chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes --summary6_beta_n0 yes
+
+  # Overlay the leading-order bifurcation prediction (Paper II, Theorem "Local pitchfork bifurcation")
+  chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes --summary6_bifurcation_curve yes
 """
     parser = argparse.ArgumentParser(
         description=(
@@ -94,7 +99,22 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--summary6_beta_n0",
         choices=["yes", "no"],
         default="yes",
-        help="Include beta_{n0} and classification in the summary6 title (default: yes)",
+        help="Include beta_{n0} in the summary6 title (default: yes)",
+    )
+    parser.add_argument(
+        "--summary6_bifurcation_curve",
+        choices=["yes", "no"],
+        default="no",
+        help=(
+            "Overlay the leading-order bifurcation prediction u_pred^±(x) "
+            "computed from alpha_{n0}, beta_{n0}, and chi^* (default: no)."
+        ),
+    )
+    parser.add_argument(
+        "--summary6_a_pred_in_title",
+        choices=["yes", "no"],
+        default="yes",
+        help="When --summary6_bifurcation_curve yes, include A_pred in the summary6 title (default: yes)",
     )
     return parser
 
@@ -134,6 +154,8 @@ def _parse_args() -> PlotConfig:
     summary6 = args.summary6 == "yes"
     chi_star_n_max = int(args.chi_star_n_max)
     summary6_beta_n0 = args.summary6_beta_n0 == "yes"
+    summary6_bifurcation_curve = args.summary6_bifurcation_curve == "yes"
+    summary6_a_pred_in_title = args.summary6_a_pred_in_title == "yes"
     return PlotConfig(
         npz_file=npz_file,
         out_base=out_base,
@@ -141,6 +163,8 @@ def _parse_args() -> PlotConfig:
         summary6=summary6,
         chi_star_n_max=chi_star_n_max,
         summary6_beta_n0=summary6_beta_n0,
+        summary6_bifurcation_curve=summary6_bifurcation_curve,
+        summary6_a_pred_in_title=summary6_a_pred_in_title,
     )
 
 
@@ -192,8 +216,14 @@ def main() -> None:
 
     if cfg.summary6:
         beta_n0 = None
+        alpha_n0 = None
+        chi_star_mode_n0 = None
         mode_n0 = None
         chi_star_disc = None
+        u_pred_plus = None
+        u_pred_minus = None
+        u_pred_amplitude = None
+        u_pred_is_stable = None
         meshsize = config.get("meshsize", None)
         chi0 = float(config.get("chi", np.nan))
         try:
@@ -233,7 +263,7 @@ def main() -> None:
         except Exception:
             chi_star_disc = None
 
-        if cfg.summary6_beta_n0:
+        if cfg.summary6_beta_n0 or cfg.summary6_bifurcation_curve:
             mode_n0 = config.get("eigen_mode_n_resolved", None)
             if mode_n0 is None:
                 mode_n0 = config.get("eigen_mode_n", None)
@@ -262,8 +292,35 @@ def main() -> None:
                         }
                     )
                     beta_n0 = float(coeffs.get("beta_n0"))
+                    alpha_n0 = float(coeffs.get("alpha_n0"))
+                    chi_star_mode_n0 = float(coeffs.get("chi_star_mode_n0"))
             except Exception:
                 beta_n0 = None
+                alpha_n0 = None
+                chi_star_mode_n0 = None
+
+        if cfg.summary6_bifurcation_curve and mode_n0 is not None and int(mode_n0) >= 1:
+            if beta_n0 is not None and alpha_n0 is not None and chi_star_mode_n0 is not None:
+                if beta_n0 != 0.0:
+                    radicand = (alpha_n0 / beta_n0) * (chi0 - chi_star_mode_n0)
+                    if radicand > 0:
+                        u_pred_amplitude = float(np.sqrt(radicand))
+                        L = float(config.get("L", 1.0))
+                        phi = np.cos(int(mode_n0) * np.pi * x_values / L)
+                        u_pred_plus = u_star + u_pred_amplitude * phi
+                        u_pred_minus = u_star - u_pred_amplitude * phi
+                        u_pred_is_stable = bool(beta_n0 > 0)
+                        kind = "supercritical" if beta_n0 > 0 else "subcritical"
+                        stability = "stable" if u_pred_is_stable else "unstable"
+                        print(
+                            f"bifurcation prediction: mode n0={int(mode_n0)} ({kind}), "
+                            f"chi*={chi_star_mode_n0:.6f}, A_pred={u_pred_amplitude:.6g} ({stability})"
+                        )
+                    else:
+                        print(
+                            "bifurcation prediction: no real branch at this chi0 "
+                            f"(radicand={radicand:.3g})."
+                        )
 
         create_six_frame_summary(
             x_values=x_values,
@@ -277,6 +334,11 @@ def main() -> None:
             mode_n0=mode_n0,
             chi_star_disc=chi_star_disc,
             meshsize=(None if meshsize is None else int(meshsize)),
+            u_pred_plus=u_pred_plus,
+            u_pred_minus=u_pred_minus,
+            u_pred_amplitude=u_pred_amplitude,
+            u_pred_is_stable=u_pred_is_stable,
+            show_u_pred_amplitude_in_title=cfg.summary6_a_pred_in_title,
         )
         print(f"wrote: {cfg.out_base}_summary6.png")
         print(f"wrote: {cfg.out_base}_summary6.jpeg")

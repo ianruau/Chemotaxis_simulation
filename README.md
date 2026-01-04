@@ -112,7 +112,13 @@ chemotaxis-plot images/branch_capture/some_run.npz
 
 # Optionally also regenerate the lightweight 6-slice summary (<basename>_summary6.{png,jpeg})
 chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes
+
+# Optionally overlay the leading-order bifurcation prediction u_pred^± (Paper II, Local pitchfork bifurcation)
+chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes --summary6_bifurcation_curve yes
 ```
+
+Notes:
+- The overlay is labeled `stable` for supercritical cases (`beta_{n0}>0`) and `unstable` for subcritical cases (`beta_{n0}<0`).
 
 Implied constants / bifurcation diagnostics:
 

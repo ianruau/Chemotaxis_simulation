@@ -39,6 +39,11 @@ def create_six_frame_summary(
     mode_n0: Optional[int] = None,
     chi_star_disc: Optional[float] = None,
     meshsize: Optional[int] = None,
+    u_pred_plus: Optional[np.ndarray] = None,
+    u_pred_minus: Optional[np.ndarray] = None,
+    u_pred_amplitude: Optional[float] = None,
+    u_pred_is_stable: Optional[bool] = None,
+    show_u_pred_amplitude_in_title: bool = True,
 ) -> None:
     if t_values.size == 0:
         return
@@ -52,6 +57,9 @@ def create_six_frame_summary(
 
     u_min = float(np.min(u_num))
     u_max = float(np.max(u_num))
+    if u_pred_plus is not None and u_pred_minus is not None:
+        u_min = float(min(u_min, float(np.min(u_pred_plus)), float(np.min(u_pred_minus))))
+        u_max = float(max(u_max, float(np.max(u_pred_plus)), float(np.max(u_pred_minus))))
     u_pad = 0.05 * max(1e-12, u_max - u_min)
 
     cmap = plt.get_cmap("viridis")
@@ -68,8 +76,37 @@ def create_six_frame_summary(
             label = f"{pct}% (t={int(t_here)})"
         ax_u.plot(x_values, u_num[:, idx], color=color, linewidth=1.6, label=label)
 
+    if u_pred_plus is not None and u_pred_minus is not None:
+        pred_color = "black" if u_pred_is_stable else "gray"
+        pred_style = ":"
+        pred_lw = 1.2
+        if USE_TEX:
+            pred_label = r"$u_{\rm pred}^\pm$"
+        else:
+            pred_label = "u_pred±"
+
+        ax_u.plot(
+            x_values,
+            u_pred_plus,
+            color=pred_color,
+            linestyle=pred_style,
+            linewidth=pred_lw,
+            label=pred_label,
+        )
+        ax_u.plot(
+            x_values,
+            u_pred_minus,
+            color=pred_color,
+            linestyle=pred_style,
+            linewidth=pred_lw,
+            label="_nolegend_",
+        )
+
     title_suffix_tex = ""
     title_suffix_text = ""
+    if show_u_pred_amplitude_in_title and u_pred_amplitude is not None:
+        title_suffix_tex += rf",\ A_{{\rm pred}}={u_pred_amplitude:.3g}"
+        title_suffix_text += f", A_pred={u_pred_amplitude:.3g}"
     if chi_star_disc is not None:
         if meshsize is None:
             title_suffix_tex += rf",\ \chi^{{*,{{\rm disc}}}}={chi_star_disc:.4f}"
@@ -78,18 +115,17 @@ def create_six_frame_summary(
             title_suffix_tex += rf",\ \chi^{{*,{{\rm disc}}}}(N={int(meshsize)})={chi_star_disc:.4f}"
             title_suffix_text += f", chi_disc(N={int(meshsize)})={chi_star_disc:.4f}"
     if beta_n0 is not None:
-        kind = "supercritical" if beta_n0 > 0 else ("subcritical" if beta_n0 < 0 else "degenerate")
         if mode_n0 is None:
-            title_suffix_tex += rf",\ \beta={beta_n0:.4g}\,(\mathrm{{{kind}}})"
-            title_suffix_text += f", beta={beta_n0:.4g} ({kind})"
+            title_suffix_tex += rf",\ \beta={beta_n0:.4g}"
+            title_suffix_text += f", beta={beta_n0:.4g}"
         else:
-            title_suffix_tex += rf",\ \beta_{{{int(mode_n0)}}}={beta_n0:.4g}\,(\mathrm{{{kind}}})"
-            title_suffix_text += f", beta_{int(mode_n0)}={beta_n0:.4g} ({kind})"
+            title_suffix_tex += rf",\ \beta_{{{int(mode_n0)}}}={beta_n0:.4g}"
+            title_suffix_text += f", beta_{int(mode_n0)}={beta_n0:.4g}"
 
     if USE_TEX:
         ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.9, label=r"$u^*$")
         ax_u.set_title(
-            rf"$\chi_0={chi0:.4f},\ \chi^*(u^*)={chi_star:.4f}{title_suffix_tex}$",
+            rf"$\chi_0={chi0:.4f},\ \chi^*={chi_star:.4f}{title_suffix_tex}$",
             fontsize=11,
         )
         ax_u.set_xlabel(r"$x$")
