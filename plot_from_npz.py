@@ -20,6 +20,7 @@ class PlotConfig:
     overwrite: bool
     summary6: bool
     chi_star_n_max: int
+    summary6_beta_n0: bool
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -32,6 +33,9 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
   # Also render the lightweight 6-slice summary figure (<basename>_summary6.{png,jpeg})
   chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes
+
+  # Include the bifurcation coefficient beta_{n0} in the summary title (super/subcritical)
+  chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes --summary6_beta_n0 yes
 """
     parser = argparse.ArgumentParser(
         description=(
@@ -86,6 +90,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default=5000,
         help="Max n for chi^* scan used by --summary6 (default: 5000)",
     )
+    parser.add_argument(
+        "--summary6_beta_n0",
+        choices=["yes", "no"],
+        default="yes",
+        help="Include beta_{n0} and classification in the summary6 title (default: yes)",
+    )
     return parser
 
 
@@ -123,12 +133,14 @@ def _parse_args() -> PlotConfig:
     overwrite = args.overwrite == "yes"
     summary6 = args.summary6 == "yes"
     chi_star_n_max = int(args.chi_star_n_max)
+    summary6_beta_n0 = args.summary6_beta_n0 == "yes"
     return PlotConfig(
         npz_file=npz_file,
         out_base=out_base,
         overwrite=overwrite,
         summary6=summary6,
         chi_star_n_max=chi_star_n_max,
+        summary6_beta_n0=summary6_beta_n0,
     )
 
 
@@ -179,6 +191,8 @@ def main() -> None:
     print(f"wrote: {cfg.out_base}.jpeg")
 
     if cfg.summary6:
+        beta_n0 = None
+        mode_n0 = None
         chi0 = float(config.get("chi", np.nan))
         try:
             chi_star = chi_star_threshold_continuum_1d(
@@ -198,6 +212,38 @@ def main() -> None:
         except Exception:
             chi_star = float("nan")
 
+        if cfg.summary6_beta_n0:
+            mode_n0 = config.get("eigen_mode_n_resolved", None)
+            if mode_n0 is None:
+                mode_n0 = config.get("eigen_mode_n", None)
+            if mode_n0 is None and config.get("eigen_index", None) is not None:
+                try:
+                    mode_n0 = int(config.get("eigen_index")) - 1
+                except Exception:
+                    mode_n0 = None
+            try:
+                from implied_constants import compute_bifurcation_coefficients
+
+                if mode_n0 is not None:
+                    coeffs = compute_bifurcation_coefficients(
+                        {
+                            "a": float(config.get("a", 1.0)),
+                            "b": float(config.get("b", 1.0)),
+                            "c": float(config.get("c", 1.0)),
+                            "alpha": float(config.get("alpha", 1.0)),
+                            "beta": float(config.get("beta", 1.0)),
+                            "m": float(config.get("m", 1.0)),
+                            "mu": float(config.get("mu", 1.0)),
+                            "nu": float(config.get("nu", 1.0)),
+                            "gamma": float(config.get("gamma", 1.0)),
+                            "L": float(config.get("L", 1.0)),
+                            "n0": int(mode_n0),
+                        }
+                    )
+                    beta_n0 = float(coeffs.get("beta_n0"))
+            except Exception:
+                beta_n0 = None
+
         create_six_frame_summary(
             x_values=x_values,
             t_values=t_values,
@@ -206,6 +252,8 @@ def main() -> None:
             chi0=chi0,
             chi_star=float(chi_star),
             file_base_name=cfg.out_base,
+            beta_n0=beta_n0,
+            mode_n0=mode_n0,
         )
         print(f"wrote: {cfg.out_base}_summary6.png")
         print(f"wrote: {cfg.out_base}_summary6.jpeg")

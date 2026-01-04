@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 import tempfile
-from typing import List
+from typing import List, Optional
 
 # Matplotlib writes cache files (including TeX-related caches when usetex=True).
 # Ensure a writable cache directory even in sandboxed / restricted environments.
@@ -34,6 +34,9 @@ def create_six_frame_summary(
     chi0: float,
     chi_star: float,
     file_base_name: str,
+    *,
+    beta_n0: Optional[float] = None,
+    mode_n0: Optional[int] = None,
 ) -> None:
     if t_values.size == 0:
         return
@@ -63,14 +66,31 @@ def create_six_frame_summary(
             label = f"{pct}% (t={int(t_here)})"
         ax_u.plot(x_values, u_num[:, idx], color=color, linewidth=1.6, label=label)
 
+    title_suffix_tex = ""
+    title_suffix_text = ""
+    if beta_n0 is not None:
+        kind = "supercritical" if beta_n0 > 0 else ("subcritical" if beta_n0 < 0 else "degenerate")
+        if mode_n0 is None:
+            title_suffix_tex = rf",\ \beta={beta_n0:.4g}\,(\mathrm{{{kind}}})"
+            title_suffix_text = f", beta={beta_n0:.4g} ({kind})"
+        else:
+            title_suffix_tex = rf",\ \beta_{{{int(mode_n0)}}}={beta_n0:.4g}\,(\mathrm{{{kind}}})"
+            title_suffix_text = f", beta_{int(mode_n0)}={beta_n0:.4g} ({kind})"
+
     if USE_TEX:
         ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.9, label=r"$u^*$")
-        ax_u.set_title(rf"$\chi_0={chi0:.4f},\ \chi^*(u^*)={chi_star:.4f}$", fontsize=11)
+        ax_u.set_title(
+            rf"$\chi_0={chi0:.4f},\ \chi^*(u^*)={chi_star:.4f}{title_suffix_tex}$",
+            fontsize=11,
+        )
         ax_u.set_xlabel(r"$x$")
         ax_u.set_ylabel(r"$u(x,t)$")
     else:
         ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.9, label="u*")
-        ax_u.set_title(f"chi0={chi0:.4f}, chi*={chi_star:.4f}", fontsize=11)
+        ax_u.set_title(
+            f"chi0={chi0:.4f}, chi*={chi_star:.4f}{title_suffix_text}",
+            fontsize=11,
+        )
         ax_u.set_xlabel("x")
         ax_u.set_ylabel("u(x,t)")
 
@@ -180,4 +200,3 @@ def create_static_plots(
     - Image: {FileBaseName}.jpeg
     """
     )
-
