@@ -272,6 +272,8 @@ will be saved as well:
 
 For detailed information about the package and its functionalities, visit the [documentation webpage](https://chemotaxis-simulation.readthedocs.io/en/latest/).
 
+For a quick terminal overview of the available tools, run `chemotaxis --help`.
+
 ## TODO (performance / workflow)
 
 - Expose an explicit time-step/CFL knob (current `Nt ~ O(T N^2)` can be expensive for `T=100`).
