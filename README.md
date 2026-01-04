@@ -109,6 +109,9 @@ Post-processing heavy plots from saved data:
 ```bash
 # Later, regenerate the main 3D plots (<basename>.png/.jpeg) from the saved .npz
 chemotaxis-plot images/branch_capture/some_run.npz
+
+# Optionally also regenerate the lightweight 6-slice summary (<basename>_summary6.{png,jpeg})
+chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes
 ```
 
 Implied constants / bifurcation diagnostics:

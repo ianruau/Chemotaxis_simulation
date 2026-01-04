@@ -10,7 +10,16 @@ setup(
     author="Le Chen and Ian Ruau",
     author_email="chenle02@gmail.com",
     python_requires=">=3.7",
-    py_modules=["chemotaxis", "simulation", "paper2_constants", "plot_from_npz", "implied_constants"],
+    py_modules=[
+        "chemotaxis",
+        "simulation",
+        "paper2_constants",
+        "plot_from_npz",
+        "implied_constants",
+        "plots",
+        "npz_io",
+        "thresholds",
+    ],
     install_requires=[
         "numpy",
         "scipy",

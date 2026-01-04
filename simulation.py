@@ -58,7 +58,6 @@ if "MPLCONFIGDIR" not in os.environ:
     os.environ["MPLCONFIGDIR"] = mpl_config_dir
 
 import argparse
-import json
 import shutil
 import sys
 from dataclasses import asdict, dataclass, field
@@ -72,14 +71,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import questionary
 import termplotlib as tpl
-from matplotlib import rc
-from matplotlib.ticker import FormatStrFormatter, ScalarFormatter
+from plots import USE_TEX, create_six_frame_summary, create_static_plots
 
 # from scipy.linalg import solve_banded
 from scipy.sparse import diags
 from scipy.sparse.linalg import factorized, spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
+
+from npz_io import load_simulation_data_npz as _load_simulation_data_npz
+from npz_io import save_simulation_data_npz as _save_simulation_data_npz
+from thresholds import chi_star_threshold_continuum_1d
 
 # Optional acceleration: stencil derivatives can be JIT-compiled with Numba.
 try:  # pragma: no cover
@@ -91,15 +93,7 @@ except Exception:  # pragma: no cover
 # NOTE: keep the simulator self-contained: prefer NumPy `.npz` files for saved
 # data instead of pickled formats.
 
-# Matplotlib configurations
-# Use LaTeX rendering by default, but allow disabling it for robustness in long
-# batch runs (e.g., missing TeX packages, TeX errors, or restricted environments).
-_USE_TEX = os.environ.get("CHEMOTAXIS_SIM_USETEX", "yes").strip().lower() not in (
-    "0",
-    "no",
-    "false",
-)
-rc("text", usetex=_USE_TEX)
+# Matplotlib rc configuration (including usetex) is handled in `plots.py`.
 
 
 @dataclass(frozen=True)
@@ -536,25 +530,11 @@ class SimulationResult:
     setup_description: str
 
 
-def _downsample_time_indices(n_frames: int, max_frames: int) -> np.ndarray:
-    if max_frames <= 0:
-        raise ValueError("max_frames must be positive")
-    if n_frames <= max_frames:
-        return np.arange(n_frames, dtype=np.int64)
-    raw = np.linspace(0, n_frames - 1, num=max_frames)
-    idx = np.unique(np.round(raw).astype(np.int64))
-    if idx[0] != 0:
-        idx = np.insert(idx, 0, 0)
-    if idx[-1] != n_frames - 1:
-        idx = np.append(idx, n_frames - 1)
-    return idx
-
-
 def _config_metadata(config: SimulationConfig) -> dict:
     d = asdict(config)
     for key in ("uinit", "vinit"):
         d.pop(key, None)
-    d["usetex"] = bool(_USE_TEX)
+    d["usetex"] = bool(USE_TEX)
     return d
 
 
@@ -565,139 +545,43 @@ def save_simulation_data_npz(
     *,
     max_frames: Optional[int] = None,
 ) -> str:
-    max_frames = config.save_max_frames if max_frames is None else max_frames
-    idx = _downsample_time_indices(int(result.t_values.shape[0]), int(max_frames))
-    t_saved = result.t_values[idx]
-    u_saved = result.u_num[:, idx]
-    v_saved = result.v_num[:, idx]
-    step_indices = np.round(t_saved / float(result.dt)).astype(np.int64)
-
-    config_json = json.dumps(_config_metadata(config), sort_keys=True)
-    np.savez_compressed(
+    max_frames = config.save_max_frames if max_frames is None else int(max_frames)
+    return _save_simulation_data_npz(
         filename,
-        schema_version=np.asarray(1, dtype=np.int64),
-        config_json=np.asarray(config_json),
-        setup_description=np.asarray(result.setup_description),
-        stop_reason=np.asarray(result.stop_reason),
-        stop_time=np.asarray(result.stop_time, dtype=np.float64),
-        dt=np.asarray(result.dt, dtype=np.float64),
-        x_values=np.asarray(result.x_values, dtype=np.float64),
-        t_values=np.asarray(t_saved, dtype=np.float64),
-        u_num=np.asarray(u_saved, dtype=np.float64),
-        v_num=np.asarray(v_saved, dtype=np.float64),
-        downsample_indices=np.asarray(idx, dtype=np.int64),
-        step_indices=np.asarray(step_indices, dtype=np.int64),
+        config_metadata=_config_metadata(config),
+        setup_description=result.setup_description,
+        stop_reason=result.stop_reason,
+        stop_time=result.stop_time,
+        dt=result.dt,
+        x_values=result.x_values,
+        t_values=result.t_values,
+        u_num=result.u_num,
+        v_num=result.v_num,
+        max_frames=int(max_frames),
     )
-    return filename
 
 
 def load_simulation_data_npz(filename: str) -> dict:
-    with np.load(filename, allow_pickle=False) as data:
-        out = {k: data[k] for k in data.files}
-    out["schema_version"] = int(out["schema_version"].item())
-    out["config"] = json.loads(str(out["config_json"].item()))
-    out["setup_description"] = str(out["setup_description"].item())
-    out["stop_reason"] = str(out["stop_reason"].item())
-    out["stop_time"] = float(out["stop_time"].item())
-    out["dt"] = float(out["dt"].item())
-    out["config_json"] = str(out["config_json"].item())
-    return out
+    return _load_simulation_data_npz(filename)
 
 
 def chi_star_threshold_discrete(
     config: SimulationConfig, *, n_max: int = 5000
 ) -> float:
-    """
-    Compute the discrete threshold chi^*(u^*) (Paper II Eq. (1.12)) on (0,L)
-    using 1D Neumann eigenvalues lambda_n = (n*pi/L)^2 for n>=1.
-
-    Notes:
-    - This uses (c + v^*)^beta to match the simulator's sensitivity denominator.
-      In the manuscript, c=1.
-    - The infimum is approximated by scanning n=1..n_max.
-    """
-    if n_max < 1:
-        raise ValueError("n_max must be >= 1")
-    if config.uStar <= 0:
-        raise ValueError("uStar must be positive to compute chi^*.")
-    if config.nu == 0 or config.gamma == 0:
-        raise ValueError("nu and gamma must be nonzero to compute chi^*.")
-    if config.L <= 0:
-        raise ValueError("L must be positive to compute chi^*.")
-
-    prefactor = ((config.c + config.vStar) ** config.beta) / (
-        config.nu * config.gamma * (config.uStar ** (config.m + config.gamma - 1.0))
+    return chi_star_threshold_continuum_1d(
+        u_star=float(config.uStar),
+        v_star=float(config.vStar),
+        c=float(config.c),
+        a=float(config.a),
+        alpha=float(config.alpha),
+        mu=float(config.mu),
+        nu=float(config.nu),
+        gamma=float(config.gamma),
+        m=float(config.m),
+        beta=float(config.beta),
+        L=float(config.L),
+        n_max=int(n_max),
     )
-    n = np.arange(1, int(n_max) + 1, dtype=np.float64)
-    lam = (n * np.pi / config.L) ** 2
-    values = prefactor * (((lam + config.a * config.alpha) * (config.mu + lam)) / lam)
-    return float(np.min(values))
-
-
-def create_six_frame_summary(
-    x_values: np.ndarray,
-    t_values: np.ndarray,
-    u_num: np.ndarray,
-    uStar: float,
-    chi0: float,
-    chi_star: float,
-    file_base_name: str,
-) -> None:
-    if t_values.size == 0:
-        return
-    t_end = float(t_values[-1])
-    fractions = np.linspace(0.0, 1.0, 6)
-    targets = t_end * fractions
-    indices: List[int] = []
-    for t_target in targets:
-        idx = int(np.argmin(np.abs(t_values - t_target)))
-        indices.append(idx)
-
-    u_min = float(np.min(u_num))
-    u_max = float(np.max(u_num))
-    u_pad = 0.05 * max(1e-12, u_max - u_min)
-
-    cmap = plt.get_cmap("viridis")
-    color_positions = np.linspace(0.15, 0.9, len(indices))
-    colors = [cmap(float(p)) for p in color_positions]
-
-    fig, ax_u = plt.subplots(1, 1, figsize=(7.5, 4.8), dpi=300)
-    for idx, frac, color in zip(indices, fractions, colors):
-        t_here = float(t_values[idx])
-        pct = int(round(float(frac) * 100))
-        if _USE_TEX:
-            label = rf"{pct}\% ($t={int(t_here)}$)"
-        else:
-            label = f"{pct}% (t={int(t_here)})"
-        ax_u.plot(x_values, u_num[:, idx], color=color, linewidth=1.6, label=label)
-
-    if _USE_TEX:
-        ax_u.axhline(
-            y=uStar, color="red", linestyle="--", linewidth=0.9, label=r"$u^*$"
-        )
-        ax_u.set_title(
-            rf"$\chi_0={chi0:.4f},\ \chi^*(u^*)={chi_star:.4f}$",
-            fontsize=11,
-        )
-        ax_u.set_xlabel(r"$x$")
-        ax_u.set_ylabel(r"$u(x,t)$")
-    else:
-        ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.9, label="u*")
-        ax_u.set_title(f"chi0={chi0:.4f}, chi*={chi_star:.4f}", fontsize=11)
-        ax_u.set_xlabel("x")
-        ax_u.set_ylabel("u(x,t)")
-
-    ax_u.set_ylim(u_min - u_pad, u_max + u_pad)
-    y_formatter = ScalarFormatter(useOffset=False)
-    y_formatter.set_scientific(False)
-    ax_u.yaxis.set_major_formatter(y_formatter)
-
-    ax_u.legend(loc="best", fontsize=8, frameon=False)
-
-    plt.tight_layout()
-    fig.savefig(f"{file_base_name}_summary6.png", bbox_inches="tight")
-    fig.savefig(f"{file_base_name}_summary6.jpeg", bbox_inches="tight")
-    plt.close(fig)
 
 
 def first_derivative_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
@@ -1260,146 +1144,6 @@ def RK4_until_converged(
         stop_reason=stop_reason,
         dt=float(dt),
         setup_description=SetupDes,
-    )
-
-
-def create_static_plots(
-    t_mesh: np.ndarray,
-    x_mesh: np.ndarray,
-    u_data: np.ndarray,
-    v_data: np.ndarray,
-    uStar: float,
-    vStar: float,
-    SetupDes: str,
-    FileBaseName: str,
-) -> None:
-    """
-    Create and save static 3D plots of the simulation data.
-
-    Parameters:
-    - t_mesh (np.ndarray): Temporal mesh points for the simulation.
-    - x_mesh (np.ndarray): Spatial mesh points for the simulation.
-    - u_data (np.ndarray): 2D array of simulation data values for each (time, space) pair.
-    - v_data (np.ndarray): 2D array of additional simulation data values for each (time, space) pair.
-    - uStar (float): Reference value for creating a constant plane in the 3D plot of `u`.
-    - vStar (float): Reference value for creating a constant plane in the 3D plot of `v`.
-    - SetupDes (str): Description of the setup, used as the title of the plot.
-    - FileBaseName (str): Base name for saving the output plot files.
-
-    The function generates:
-    - A 3D surface plot of `u_data` and `v_data` over time and space.
-    - A reference plane at `uStar` and another at zero for comparison in the plot of `u`.
-    - A reference plane at `vStar` and another at zero for comparison in the plot of `v`.
-    - Saves the plot as PNG and JPEG files with the specified base name.
-
-    Returns:
-    - None: The function saves the plots to files and does not return any value.
-    """
-    # Create two subplots side by side
-    fig_3d = plt.figure(figsize=(15, 6), dpi=300)
-
-    # First subplot for u(t,x)
-    ax_3d_u = fig_3d.add_subplot(121, projection="3d")
-    T_grid, X_grid = np.meshgrid(t_mesh, x_mesh, indexing="xy")
-    ax_3d_u.plot_surface(T_grid, X_grid, u_data, cmap="viridis", alpha=0.8)
-
-    # Adjust the spacing between subplots
-    # Reduce horizontal space between subplots, default 0.2
-    plt.subplots_adjust(wspace=-0.7)
-
-    # # Add colorbar for u
-    # fig_3d.colorbar(surf_u, ax=ax_3d_u, label='u(t,x)')
-
-    # Plot reference planes for u at the levels uStar and the tx-plane
-    U_grid = np.full_like(T_grid, uStar)
-    Zero_grid = np.full_like(T_grid, 0)
-
-    ax_3d_u.plot_surface(
-        T_grid,
-        X_grid,
-        U_grid,
-        alpha=0.5,
-        rstride=100,
-        cstride=100,
-        color="r",
-    )
-
-    ax_3d_u.plot_surface(
-        T_grid,
-        X_grid,
-        Zero_grid,
-        alpha=0.2,
-        rstride=100,
-        cstride=100,
-        color="lightgray",
-    )
-
-    # Setup the u plot
-    ax_3d_u.set_xlabel(r"Time $t$")
-    ax_3d_u.set_ylabel(r"Space $x$")
-    # ax_3d_u.set_zlabel(r"$u(t,x)$")
-    # ax_3d_u.set_zlim(-0.05, u_data.max())
-    u_min, u_max = u_data.min(), u_data.max()
-    ax_3d_u.set_zlim(u_min, u_max)
-    ax_3d_u.set_zticks(np.linspace(u_min, u_max, 5))
-    ax_3d_u.zaxis.set_major_formatter(FormatStrFormatter("%.5f"))
-    ax_3d_u.set_title("Solution u(t,x)", pad=10)
-
-    # Second subplot for v(t,x)
-    ax_3d_v = fig_3d.add_subplot(122, projection="3d")
-    ax_3d_v.plot_surface(T_grid, X_grid, v_data, cmap="viridis", alpha=0.8)
-
-    # # Add colorbar for v
-    # fig_3d.colorbar(surf_v, ax=ax_3d_v, label='v(t,x)')
-
-    # Plot reference planes for v at the levels vStar and the tx-plane
-    V_grid = np.full_like(T_grid, vStar)
-
-    ax_3d_v.plot_surface(
-        T_grid,
-        X_grid,
-        V_grid,
-        alpha=0.5,
-        rstride=100,
-        cstride=100,
-        color="r",
-    )
-
-    ax_3d_v.plot_surface(
-        T_grid,
-        X_grid,
-        Zero_grid,
-        alpha=0.2,
-        rstride=100,
-        cstride=100,
-        color="lightgray",
-    )
-    # Setup the v plot
-    ax_3d_v.set_xlabel(r"Time $t$")
-    ax_3d_v.set_ylabel(r"Space $x$")
-    # ax_3d_v.set_zlabel(r"$v(t,x)$")
-    # ax_3d_v.set_zlim(-0.05, v_data.max())
-    v_min, v_max = v_data.min(), v_data.max()
-    ax_3d_v.set_zlim(v_min, v_max)
-    ax_3d_v.set_zticks(np.linspace(v_min, v_max, 5))
-    ax_3d_v.zaxis.set_major_formatter(FormatStrFormatter("%.5f"))
-    ax_3d_v.set_title("Solution v(t,x)", pad=10)
-
-    # Add overall title
-    fig_3d.suptitle(SetupDes, fontsize=10)
-    plt.tight_layout()
-    # Adjust layout with more right margin
-    # plt.tight_layout(rect=[0, 0, 1.10, 1])  # [left, bottom, right, top]
-
-    # Save the plot as PNG and JPEG
-    fig_3d.savefig(f"{FileBaseName}.png", bbox_inches="tight")
-    fig_3d.savefig(f"{FileBaseName}.jpeg", bbox_inches="tight")
-    print(
-        f"""
-    Output files saved:
-    - Image: {FileBaseName}.png
-    - Image: {FileBaseName}.jpeg
-    """
     )
 
 

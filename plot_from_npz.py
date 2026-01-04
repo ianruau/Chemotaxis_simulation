@@ -8,7 +8,9 @@ from typing import Optional
 
 import numpy as np
 
-from simulation import create_static_plots, load_simulation_data_npz
+from npz_io import load_simulation_data_npz
+from plots import create_six_frame_summary, create_static_plots
+from thresholds import chi_star_threshold_continuum_1d
 
 
 @dataclass(frozen=True)
@@ -16,6 +18,8 @@ class PlotConfig:
     npz_file: str
     out_base: str
     overwrite: bool
+    summary6: bool
+    chi_star_n_max: int
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -25,6 +29,9 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
   # Put outputs in a specific directory with a new basename
   chemotaxis-plot images/branch_capture/some_run.npz --output_dir images/plots --basename some_run_3d
+
+  # Also render the lightweight 6-slice summary figure (<basename>_summary6.{png,jpeg})
+  chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes
 """
     parser = argparse.ArgumentParser(
         description=(
@@ -67,6 +74,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default="yes",
         help="Overwrite existing output images (default: yes)",
     )
+    parser.add_argument(
+        "--summary6",
+        choices=["yes", "no"],
+        default="no",
+        help="Also render <out_base>_summary6.{png,jpeg} (default: no)",
+    )
+    parser.add_argument(
+        "--chi_star_n_max",
+        type=int,
+        default=5000,
+        help="Max n for chi^* scan used by --summary6 (default: 5000)",
+    )
     return parser
 
 
@@ -102,7 +121,15 @@ def _parse_args() -> PlotConfig:
         out_base = os.path.splitext(npz_file)[0]
 
     overwrite = args.overwrite == "yes"
-    return PlotConfig(npz_file=npz_file, out_base=out_base, overwrite=overwrite)
+    summary6 = args.summary6 == "yes"
+    chi_star_n_max = int(args.chi_star_n_max)
+    return PlotConfig(
+        npz_file=npz_file,
+        out_base=out_base,
+        overwrite=overwrite,
+        summary6=summary6,
+        chi_star_n_max=chi_star_n_max,
+    )
 
 
 def _maybe_remove_existing(out_base: str, *, overwrite: bool) -> None:
@@ -150,6 +177,38 @@ def main() -> None:
 
     print(f"wrote: {cfg.out_base}.png")
     print(f"wrote: {cfg.out_base}.jpeg")
+
+    if cfg.summary6:
+        chi0 = float(config.get("chi", np.nan))
+        try:
+            chi_star = chi_star_threshold_continuum_1d(
+                u_star=u_star,
+                v_star=v_star,
+                c=float(config.get("c", 1.0)),
+                a=float(config.get("a", 1.0)),
+                alpha=float(config.get("alpha", 1.0)),
+                mu=float(config.get("mu", 1.0)),
+                nu=float(config.get("nu", 1.0)),
+                gamma=float(config.get("gamma", 1.0)),
+                m=float(config.get("m", 1.0)),
+                beta=float(config.get("beta", 1.0)),
+                L=float(config.get("L", 1.0)),
+                n_max=int(cfg.chi_star_n_max),
+            )
+        except Exception:
+            chi_star = float("nan")
+
+        create_six_frame_summary(
+            x_values=x_values,
+            t_values=t_values,
+            u_num=u_num,
+            uStar=u_star,
+            chi0=chi0,
+            chi_star=float(chi_star),
+            file_base_name=cfg.out_base,
+        )
+        print(f"wrote: {cfg.out_base}_summary6.png")
+        print(f"wrote: {cfg.out_base}_summary6.jpeg")
 
 
 if __name__ == "__main__":
