@@ -10,7 +10,7 @@ import numpy as np
 
 from npz_io import load_simulation_data_npz
 from plots import create_six_frame_summary, create_static_plots
-from thresholds import chi_star_threshold_continuum_1d
+from thresholds import chi_star_disc_fd, chi_star_threshold_continuum_1d
 
 
 @dataclass(frozen=True)
@@ -193,6 +193,8 @@ def main() -> None:
     if cfg.summary6:
         beta_n0 = None
         mode_n0 = None
+        chi_star_disc = None
+        meshsize = config.get("meshsize", None)
         chi0 = float(config.get("chi", np.nan))
         try:
             chi_star = chi_star_threshold_continuum_1d(
@@ -211,6 +213,25 @@ def main() -> None:
             )
         except Exception:
             chi_star = float("nan")
+
+        try:
+            if meshsize is not None:
+                chi_star_disc, _, _ = chi_star_disc_fd(
+                    u_star=u_star,
+                    v_star=v_star,
+                    c=float(config.get("c", 1.0)),
+                    a=float(config.get("a", 1.0)),
+                    alpha=float(config.get("alpha", 1.0)),
+                    mu=float(config.get("mu", 1.0)),
+                    nu=float(config.get("nu", 1.0)),
+                    gamma=float(config.get("gamma", 1.0)),
+                    m=float(config.get("m", 1.0)),
+                    beta=float(config.get("beta", 1.0)),
+                    L=float(config.get("L", 1.0)),
+                    meshsize=int(meshsize),
+                )
+        except Exception:
+            chi_star_disc = None
 
         if cfg.summary6_beta_n0:
             mode_n0 = config.get("eigen_mode_n_resolved", None)
@@ -254,6 +275,8 @@ def main() -> None:
             file_base_name=cfg.out_base,
             beta_n0=beta_n0,
             mode_n0=mode_n0,
+            chi_star_disc=chi_star_disc,
+            meshsize=(None if meshsize is None else int(meshsize)),
         )
         print(f"wrote: {cfg.out_base}_summary6.png")
         print(f"wrote: {cfg.out_base}_summary6.jpeg")

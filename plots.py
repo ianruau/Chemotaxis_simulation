@@ -37,6 +37,8 @@ def create_six_frame_summary(
     *,
     beta_n0: Optional[float] = None,
     mode_n0: Optional[int] = None,
+    chi_star_disc: Optional[float] = None,
+    meshsize: Optional[int] = None,
 ) -> None:
     if t_values.size == 0:
         return
@@ -68,14 +70,21 @@ def create_six_frame_summary(
 
     title_suffix_tex = ""
     title_suffix_text = ""
+    if chi_star_disc is not None:
+        if meshsize is None:
+            title_suffix_tex += rf",\ \chi^{{*,{{\rm disc}}}}={chi_star_disc:.4f}"
+            title_suffix_text += f", chi_disc={chi_star_disc:.4f}"
+        else:
+            title_suffix_tex += rf",\ \chi^{{*,{{\rm disc}}}}(N={int(meshsize)})={chi_star_disc:.4f}"
+            title_suffix_text += f", chi_disc(N={int(meshsize)})={chi_star_disc:.4f}"
     if beta_n0 is not None:
         kind = "supercritical" if beta_n0 > 0 else ("subcritical" if beta_n0 < 0 else "degenerate")
         if mode_n0 is None:
-            title_suffix_tex = rf",\ \beta={beta_n0:.4g}\,(\mathrm{{{kind}}})"
-            title_suffix_text = f", beta={beta_n0:.4g} ({kind})"
+            title_suffix_tex += rf",\ \beta={beta_n0:.4g}\,(\mathrm{{{kind}}})"
+            title_suffix_text += f", beta={beta_n0:.4g} ({kind})"
         else:
-            title_suffix_tex = rf",\ \beta_{{{int(mode_n0)}}}={beta_n0:.4g}\,(\mathrm{{{kind}}})"
-            title_suffix_text = f", beta_{int(mode_n0)}={beta_n0:.4g} ({kind})"
+            title_suffix_tex += rf",\ \beta_{{{int(mode_n0)}}}={beta_n0:.4g}\,(\mathrm{{{kind}}})"
+            title_suffix_text += f", beta_{int(mode_n0)}={beta_n0:.4g} ({kind})"
 
     if USE_TEX:
         ax_u.axhline(y=uStar, color="red", linestyle="--", linewidth=0.9, label=r"$u^*$")
