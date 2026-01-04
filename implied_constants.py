@@ -343,6 +343,7 @@ class Inputs:
     nu: float
     gamma: float
     L: float
+    meshsize: Optional[int]
     n0: Optional[int]
     n_max: int
     early_stop_patience: int
@@ -367,6 +368,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
   # JSON output (useful for scripts)
   chemotaxis-constants --config config.example.yaml report --format json
+
+  # Also compute the mesh-dependent threshold chi^{*,disc} for N grid subintervals
+  chemotaxis-constants --config config.example.yaml report --meshsize 50
 """
     common = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     common.add_argument(
@@ -391,6 +395,12 @@ def _build_parser() -> argparse.ArgumentParser:
     common.add_argument("--nu", type=float, default=1.0)
     common.add_argument("--gamma", type=float, default=1.0)
     common.add_argument("--L", type=float, default=1.0)
+    common.add_argument(
+        "--meshsize",
+        type=int,
+        default=None,
+        help="If set, also compute mesh-dependent chi^{*,disc} for this grid (default: not computed)",
+    )
     common.add_argument(
         "--n0",
         type=int,
@@ -481,6 +491,7 @@ def _parse_inputs(argv: list[str]) -> tuple[argparse.Namespace, Inputs]:
         nu=float(args.nu),
         gamma=float(args.gamma),
         L=float(args.L),
+        meshsize=(None if args.meshsize is None else int(args.meshsize)),
         n0=(None if args.n0 is None else int(args.n0)),
         n_max=int(args.n_max),
         early_stop_patience=int(args.early_stop_patience),
@@ -521,6 +532,7 @@ def main() -> None:
             L=inp.L,
             n_max=inp.n_max,
             early_stop_patience=inp.early_stop_patience,
+            meshsize=inp.meshsize,
         )
         if effective_n0 is None:
             effective_n0 = int(threshold_constants.n_min)
@@ -540,6 +552,7 @@ def main() -> None:
             "nu": inp.nu,
             "gamma": inp.gamma,
             "L": inp.L,
+            "meshsize": inp.meshsize,
             "n0": effective_n0,
             "n_max": inp.n_max,
             "early_stop_patience": inp.early_stop_patience,
@@ -555,6 +568,10 @@ def main() -> None:
             "chi_a_star": cst.chi_a_star,
             "n_min": int(cst.n_min),
             "lambda_min": float(cst.lambda_min),
+            "chi_star_disc": cst.chi_star_disc,
+            "n_min_disc": cst.n_min_disc,
+            "lambda_min_disc": cst.lambda_min_disc,
+            "meshsize": cst.meshsize,
         }
 
     if args.cmd in ("bifurcation", "report"):
@@ -607,6 +624,13 @@ def main() -> None:
         print(f"  argmin n:    {thr['n_min']}")
         print(f"  lambda_min:  {thr['lambda_min']}")
         print()
+        if thr.get("chi_star_disc") is not None:
+            print("Threshold (finite-difference mesh):")
+            print(f"  meshsize N:    {thr['meshsize']}")
+            print(f"  chi^{{*,disc}}:  {thr['chi_star_disc']}")
+            print(f"  argmin n:      {thr['n_min_disc']}")
+            print(f"  lambda_min:    {thr['lambda_min_disc']}")
+            print()
 
     if "bifurcation" in report:
         bf = report["bifurcation"]

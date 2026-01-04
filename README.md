@@ -198,6 +198,14 @@ python paper2_constants.py --config config.example.yaml
 python paper2_constants.py --config config.example.yaml --beta 0 --L 1
 ```
 
+If you also want the mesh-dependent discrete threshold \(\chi^{*,{\rm disc}}\)
+(using the eigenvalues of the finite-difference Neumann Laplacian on `meshsize = N`
+subintervals), pass `--meshsize`:
+
+```bash
+python paper2_constants.py --config config.example.yaml --meshsize 50
+```
+
 Or import it in Python:
 
 ```python
@@ -206,6 +214,9 @@ from paper2_constants import paper2_eq112_constants
 c = paper2_eq112_constants(a=10, b=1, alpha=1, mu=1, nu=1, gamma=1, m=1, beta=0)
 print(c.u_star, c.v_star, c.chi_a_star)
 ```
+
+The CLI `chemotaxis-constants` reports the same values; add `--meshsize N` to
+include \(\chi^{*,{\rm disc}}\) in the output.
 
 ### Stopping automatically when converged
 If you do not want to guess a sufficiently large final time, you can run with
