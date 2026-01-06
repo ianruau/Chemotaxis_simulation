@@ -343,7 +343,8 @@ class Inputs:
     nu: float
     gamma: float
     L: float
-    meshsize: Optional[int]
+    meshsize: Optional[float]
+    meshsize_abs: Optional[int]
     n0: Optional[int]
     n_max: int
     early_stop_patience: int
@@ -369,8 +370,10 @@ def _build_parser() -> argparse.ArgumentParser:
   # JSON output (useful for scripts)
   chemotaxis-constants --config config.example.yaml report --format json
 
-  # Also compute the mesh-dependent threshold chi^{*,disc} for N grid subintervals
-  chemotaxis-constants --config config.example.yaml report --meshsize 50
+	  # Also compute the mesh-dependent threshold chi^{*,disc} using N=ceil(meshsize*L) subintervals
+	  chemotaxis-constants --config config.example.yaml report --meshsize 50
+	  # Or specify N directly
+	  chemotaxis-constants --config config.example.yaml report --meshsize_abs 50
 """
     common = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     common.add_argument(
@@ -397,9 +400,18 @@ def _build_parser() -> argparse.ArgumentParser:
     common.add_argument("--L", type=float, default=1.0)
     common.add_argument(
         "--meshsize",
+        type=float,
+        default=None,
+        help=(
+            "If set, also compute mesh-dependent chi^{*,disc}. "
+            "Interpreted as mesh density per unit length (effective N=ceil(meshsize*L))."
+        ),
+    )
+    common.add_argument(
+        "--meshsize_abs",
         type=int,
         default=None,
-        help="If set, also compute mesh-dependent chi^{*,disc} for this grid (default: not computed)",
+        help="Absolute number of subintervals N (overrides --meshsize if set).",
     )
     common.add_argument(
         "--n0",
@@ -491,7 +503,8 @@ def _parse_inputs(argv: list[str]) -> tuple[argparse.Namespace, Inputs]:
         nu=float(args.nu),
         gamma=float(args.gamma),
         L=float(args.L),
-        meshsize=(None if args.meshsize is None else int(args.meshsize)),
+        meshsize=(None if args.meshsize is None else float(args.meshsize)),
+        meshsize_abs=(None if args.meshsize_abs is None else int(args.meshsize_abs)),
         n0=(None if args.n0 is None else int(args.n0)),
         n_max=int(args.n_max),
         early_stop_patience=int(args.early_stop_patience),
@@ -533,6 +546,7 @@ def main() -> None:
             n_max=inp.n_max,
             early_stop_patience=inp.early_stop_patience,
             meshsize=inp.meshsize,
+            meshsize_abs=inp.meshsize_abs,
         )
         if effective_n0 is None:
             effective_n0 = int(threshold_constants.n_min)
@@ -553,6 +567,7 @@ def main() -> None:
             "gamma": inp.gamma,
             "L": inp.L,
             "meshsize": inp.meshsize,
+            "meshsize_abs": inp.meshsize_abs,
             "n0": effective_n0,
             "n_max": inp.n_max,
             "early_stop_patience": inp.early_stop_patience,
@@ -572,6 +587,7 @@ def main() -> None:
             "n_min_disc": cst.n_min_disc,
             "lambda_min_disc": cst.lambda_min_disc,
             "meshsize": cst.meshsize,
+            "mesh_per_unit": cst.mesh_per_unit,
         }
 
     if args.cmd in ("bifurcation", "report"):
@@ -626,7 +642,9 @@ def main() -> None:
         print()
         if thr.get("chi_star_disc") is not None:
             print("Threshold (finite-difference mesh):")
-            print(f"  meshsize N:    {thr['meshsize']}")
+            print(f"  meshsize N:      {thr['meshsize']}")
+            if thr.get("mesh_per_unit") is not None:
+                print(f"  mesh_per_unit:   {thr['mesh_per_unit']}")
             print(f"  chi^{{*,disc}}:  {thr['chi_star_disc']}")
             print(f"  argmin n:      {thr['n_min_disc']}")
             print(f"  lambda_min:    {thr['lambda_min_disc']}")

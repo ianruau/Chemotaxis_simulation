@@ -33,6 +33,7 @@ def _build_parser() -> argparse.ArgumentParser:
   # Compute Paper II thresholds / bifurcation coefficients (same as chemotaxis-constants)
   chemotaxis constants --config config.example.yaml report
   chemotaxis constants --config config.example.yaml report --meshsize 50
+  chemotaxis constants --config config.example.yaml report --meshsize_abs 50
 
   # Render static plots from a saved .npz (same as chemotaxis-plot)
   chemotaxis plot images/branch_capture/some_run.npz
@@ -134,4 +135,3 @@ def main(argv: Optional[list[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
-

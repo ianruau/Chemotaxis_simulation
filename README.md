@@ -70,6 +70,10 @@ chemotaxis-plot images/branch_capture/some_run.npz
 chemotaxis-constants --config config.example.yaml report
 ```
 
+Notes:
+- `--meshsize` is a mesh density (subintervals per unit length). The solver uses an effective uniform mesh with `N = ceil(meshsize * L)` subintervals (so there are `N+1` grid points).
+- Use `--meshsize_abs N` to force an absolute number of subintervals independent of `L`.
+
 ### Shell completion (zsh)
 This package supports tab completion via `argcomplete`, but your shell must be configured.
 
@@ -228,8 +232,8 @@ python paper2_constants.py --config config.example.yaml --beta 0 --L 1
 ```
 
 If you also want the mesh-dependent discrete threshold \(\chi^{*,{\rm disc}}\)
-(using the eigenvalues of the finite-difference Neumann Laplacian on `meshsize = N`
-subintervals), pass `--meshsize`:
+(using the eigenvalues of the finite-difference Neumann Laplacian on `N` subintervals),
+pass `--meshsize` (mesh density per unit length; effective `N=ceil(meshsize*L)`) or `--meshsize_abs N`:
 
 ```bash
 python paper2_constants.py --config config.example.yaml --meshsize 50
@@ -244,8 +248,8 @@ c = paper2_eq112_constants(a=10, b=1, alpha=1, mu=1, nu=1, gamma=1, m=1, beta=0)
 print(c.u_star, c.v_star, c.chi_a_star)
 ```
 
-The CLI `chemotaxis-constants` reports the same values; add `--meshsize N` to
-include \(\chi^{*,{\rm disc}}\) in the output.
+The CLI `chemotaxis-constants` reports the same values; add `--meshsize 50` (or
+`--meshsize_abs N`) to include \(\chi^{*,{\rm disc}}\) in the output.
 
 ### Stopping automatically when converged
 If you do not want to guess a sufficiently large final time, you can run with

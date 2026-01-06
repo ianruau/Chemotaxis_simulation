@@ -18,6 +18,7 @@ We evaluate the infimum over n>=1 by scanning n and taking the minimum.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 import os
 import sys
 from typing import Any, Optional, Tuple
@@ -38,6 +39,28 @@ class Paper2Constants:
     n_min_disc: Optional[int] = None
     lambda_min_disc: Optional[float] = None
     meshsize: Optional[int] = None
+    mesh_per_unit: Optional[float] = None
+
+
+def _resolve_meshsize(
+    *, L: float, meshsize: Optional[float], meshsize_abs: Optional[int]
+) -> tuple[Optional[int], Optional[float]]:
+    if meshsize_abs is not None:
+        N = int(meshsize_abs)
+        if N < 1:
+            raise ValueError("meshsize_abs must be >= 1")
+        if L <= 0:
+            raise ValueError("L must be > 0")
+        return N, float(N) / float(L)
+    if meshsize is None:
+        return None, None
+    mesh_per_unit = float(meshsize)
+    if mesh_per_unit <= 0:
+        raise ValueError("meshsize must be > 0 (mesh density per unit length)")
+    if L <= 0:
+        raise ValueError("L must be > 0")
+    N = max(1, int(math.ceil(mesh_per_unit * float(L))))
+    return N, mesh_per_unit
 
 
 def equilibrium_u_v_star(*, a: float, b: float, alpha: float, mu: float, nu: float, gamma: float) -> Tuple[float, float]:
@@ -145,7 +168,8 @@ def paper2_eq112_constants(
     L: float = 1.0,
     n_max: int = 200000,
     early_stop_patience: int = 2000,
-    meshsize: Optional[int] = None,
+    meshsize: Optional[float] = None,
+    meshsize_abs: Optional[int] = None,
 ) -> Paper2Constants:
     """
     Convenience wrapper: compute (u^*, v^*) [Eq. (1.8)] and chi_a^*(u^*) [Eq. (1.12)].
@@ -169,7 +193,8 @@ def paper2_eq112_constants(
     chi_star_disc = None
     n_min_disc = None
     lambda_min_disc = None
-    if meshsize is not None:
+    mesh_N, mesh_per_unit = _resolve_meshsize(L=L, meshsize=meshsize, meshsize_abs=meshsize_abs)
+    if mesh_N is not None:
         chi_star_disc, n_min_disc, lambda_min_disc = chi_star_disc_fd(
             u_star=u_star,
             v_star=v_star,
@@ -182,7 +207,7 @@ def paper2_eq112_constants(
             m=m,
             beta=beta,
             L=L,
-            meshsize=int(meshsize),
+            meshsize=int(mesh_N),
         )
     return Paper2Constants(
         u_star=u_star,
@@ -193,7 +218,8 @@ def paper2_eq112_constants(
         chi_star_disc=chi_star_disc,
         n_min_disc=n_min_disc,
         lambda_min_disc=lambda_min_disc,
-        meshsize=int(meshsize) if meshsize is not None else None,
+        meshsize=int(mesh_N) if mesh_N is not None else None,
+        mesh_per_unit=mesh_per_unit,
     )
 
 
@@ -297,9 +323,18 @@ def main() -> None:
         parser.add_argument("--L", type=float, default=1.0, help="Domain length L (default: 1.0)")
         parser.add_argument(
             "--meshsize",
+            type=float,
+            default=None,
+            help=(
+                "If set, also compute mesh-dependent chi^{*,disc}. "
+                "Interpreted as mesh density per unit length (effective N=ceil(meshsize*L))."
+            ),
+        )
+        parser.add_argument(
+            "--meshsize_abs",
             type=int,
             default=None,
-            help="If set, also compute mesh-dependent chi^{*,disc} for this grid (default: not computed)",
+            help="Absolute number of subintervals N (overrides --meshsize if set).",
         )
         parser.add_argument("--n_max", type=int, default=200000)
         parser.add_argument("--early_stop_patience", type=int, default=2000)
@@ -363,9 +398,18 @@ def main() -> None:
     parser.add_argument("--L", type=float, default=1.0, help="Domain length L (default: 1.0)")
     parser.add_argument(
         "--meshsize",
+        type=float,
+        default=None,
+        help=(
+            "If set, also compute mesh-dependent chi^{*,disc}. "
+            "Interpreted as mesh density per unit length (effective N=ceil(meshsize*L))."
+        ),
+    )
+    parser.add_argument(
+        "--meshsize_abs",
         type=int,
         default=None,
-        help="If set, also compute mesh-dependent chi^{*,disc} for this grid (default: not computed)",
+        help="Absolute number of subintervals N (overrides --meshsize if set).",
     )
     parser.add_argument("--n_max", type=int, default=200000)
     parser.add_argument("--early_stop_patience", type=int, default=2000)
@@ -396,6 +440,7 @@ def main() -> None:
         n_max=args.n_max,
         early_stop_patience=args.early_stop_patience,
         meshsize=args.meshsize,
+        meshsize_abs=args.meshsize_abs,
     )
 
     print(f"u* = {c.u_star}")
@@ -404,7 +449,9 @@ def main() -> None:
     print(f"argmin n = {c.n_min} (lambda_n = {c.lambda_min})")
     if c.chi_star_disc is not None:
         print()
-        print(f"chi^{{*,disc}} (meshsize={c.meshsize}) = {c.chi_star_disc}")
+        print(
+            f"chi^{{*,disc}} (N={c.meshsize}, mesh_per_unit={c.mesh_per_unit:g}) = {c.chi_star_disc}"
+        )
         print(f"argmin n = {c.n_min_disc} (lambda_n^disc = {c.lambda_min_disc})")
 
 

@@ -26,7 +26,8 @@ Parameters:
     --gamma FLOAT     Parameter gamma for v equation (default: 1)
 
     Simulation Parameters:
-    --meshsize INT    Number of spatial grid points (default: 50)
+    --meshsize FLOAT  Mesh density (subintervals per unit length); effective N is ceil(meshsize * L)
+    --meshsize_abs INT  Absolute number of subintervals N (overrides --meshsize)
     --time FLOAT      Total simulation time (default: 2.5)
     --eigen_index INT  Parameter eigen_index (default: 0, letting system choose)
     --epsilon FLOAT   Parameter perturbation epsilon (default: 0.001)
@@ -58,6 +59,7 @@ if "MPLCONFIGDIR" not in os.environ:
     os.environ["MPLCONFIGDIR"] = mpl_config_dir
 
 import argparse
+import math
 import shutil
 import sys
 from dataclasses import asdict, dataclass, field
@@ -145,6 +147,8 @@ class SimulationConfig:
 
     # Simulation parameters
     meshsize: int = 50
+    mesh_per_unit: Optional[float] = None
+    meshsize_abs: Optional[int] = None
     time: float = 2.5
     eigen_index: int = 0
     eigen_mode_n: Optional[int] = None
@@ -356,7 +360,15 @@ class SimulationConfig:
             f"eigen_mode_n = {emn} (resolved mode n = {self.eigen_mode_n_resolved})"
         )
         print("5. Simulation Parameters:")
-        print(f"\tL = {self.L}, MeshSize = {self.meshsize}, time = {self.time}")
+        mesh_density = (
+            float(self.mesh_per_unit)
+            if self.mesh_per_unit is not None
+            else float(self.meshsize) / float(self.L)
+        )
+        print(
+            f"\tL = {self.L}, mesh_per_unit = {mesh_density:g}, "
+            f"MeshSize(N) = {self.meshsize}, time = {self.time}"
+        )
 
         print("\n# Asymptotic solutions and related constants")
         print(
@@ -538,6 +550,11 @@ def _config_metadata(config: SimulationConfig) -> dict:
     for key in ("uinit", "vinit"):
         d.pop(key, None)
     d["usetex"] = bool(USE_TEX)
+    if d.get("mesh_per_unit") is None:
+        try:
+            d["mesh_per_unit"] = float(config.meshsize) / float(config.L)
+        except Exception:
+            pass
     return d
 
 
@@ -1270,7 +1287,8 @@ def parse_args() -> SimulationConfig:
     --mu (float): Parameter mu (default: 1).
     --nu (float): Parameter nu (default: 1).
     --gamma (float): Parameter gamma (default: 1).
-    --meshsize (int): Parameter for spatial mesh size (default: 50).
+	    --meshsize (float): Mesh density (subintervals per unit length); effective N is ceil(meshsize * L).
+	    --meshsize_abs (int): Absolute number of subintervals N (overrides --meshsize if set).
     --time (float): Parameter for time to lapse (default: 2.5).
     --eigen_index (int): Parameter eigen index (default: 0, letting system choose).
     --epsilon (float): Parameter perturbation epsilon (default: 0.001).
@@ -1313,6 +1331,28 @@ def parse_args() -> SimulationConfig:
     args_dict = vars(args)
     args_dict.pop("config", None)
     args_dict.pop("config_warn_unknown", None)
+
+    L = float(args_dict.get("L", 1.0))
+    if L <= 0:
+        raise ValueError(f"L must be > 0, got {L!r}")
+
+    meshsize_abs = args_dict.get("meshsize_abs", None)
+    mesh_per_unit = float(args_dict.get("meshsize", 0.0))
+    if meshsize_abs is not None:
+        mesh_N = int(meshsize_abs)
+        if mesh_N < 1:
+            raise ValueError(f"meshsize_abs must be >= 1, got {mesh_N!r}")
+        mesh_per_unit_eff = float(mesh_N) / float(L)
+    else:
+        if mesh_per_unit <= 0:
+            raise ValueError(f"meshsize must be > 0, got {mesh_per_unit!r}")
+        mesh_N = max(1, int(math.ceil(mesh_per_unit * L)))
+        mesh_per_unit_eff = float(mesh_per_unit)
+
+    args_dict["meshsize"] = int(mesh_N)
+    args_dict["mesh_per_unit"] = float(mesh_per_unit_eff)
+    args_dict["meshsize_abs"] = None if meshsize_abs is None else int(meshsize_abs)
+
     return SimulationConfig(**args_dict)
 
 
@@ -1514,9 +1554,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     grid_group.add_argument(
         "--meshsize",
+        type=float,
+        default=50.0,
+        help=(
+            "Mesh density: number of uniform subintervals per unit length. "
+            "The effective mesh uses N=ceil(meshsize*L) subintervals (N+1 grid points)."
+        ),
+    )
+    grid_group.add_argument(
+        "--meshsize_abs",
         type=int,
-        default=50,
-        help="Parameter for spatial mesh size (default: 50)",
+        default=None,
+        help="Absolute number of subintervals N (overrides --meshsize if set).",
     )
     grid_group.add_argument(
         "--time",
@@ -1677,7 +1726,10 @@ def main():
         print()
         print("Usage:")
         print("  chemotaxis-sim --config <config.yaml> [overrides...]")
-        print("  chemotaxis-sim --chi <chi0> --meshsize <N> --time <T> --eigen_index <k> [options]")
+        print(
+            "  chemotaxis-sim --chi <chi0> --meshsize <mesh_per_unit> --L <L> --time <T> "
+            "--eigen_index <k> [options]"
+        )
         print()
         print("Common options:")
         print("  --config <yaml>            Load defaults from YAML")

@@ -31,6 +31,7 @@ model:
 
 grid:
   L: 1.0
+  # Mesh density: subintervals per unit length (effective N = ceil(meshsize * L))
   meshsize: 50
   time: 100.0
   eigen_index: 2
