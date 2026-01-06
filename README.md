@@ -97,6 +97,20 @@ Notes:
 - `--save_max_frames` controls the maximum number of time snapshots kept for outputs (plots/summary/video) and written to the saved `.npz` (default: `2000`).
 - When using `--until_converged yes`, the in-run snapshot cap is instead `--max_saved_frames` (default: `2000`).
 
+Numerics / stability controls (optional):
+
+```bash
+# Reduce dt (more stable, slower): larger values => smaller dt
+chemotaxis-sim --dt_factor 4
+
+# Stop early if u or v becomes NaN/Inf (default: yes)
+chemotaxis-sim --stop_on_nonfinite yes
+```
+
+Notes:
+- If `--stop_on_nonfinite yes` triggers, the run stops early with `stop_reason=nonfinite` saved in the `.npz`.
+- If you see `RuntimeWarning: overflow` during time stepping, increase `--dt_factor` (and/or reduce `--time`) and rerun.
+
 Batch-run output control (optional):
 
 ```bash

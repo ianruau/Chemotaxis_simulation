@@ -166,6 +166,8 @@ class SimulationConfig:
     save_max_frames: int = 2000
     save_static_plots: str = "yes"
     save_summary6: str = "yes"
+    dt_factor: float = 2.0
+    stop_on_nonfinite: str = "yes"
     basename: str = ""
     output_dir: str = ""
 
@@ -819,7 +821,9 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
     # Here we make sure that Delta t/Delta x^2 is small by letting it equal to 1/4.
     # We multiply by 2 to make sure that the time step is small enough. This
     # factor should be adjusted based on the problem.
-    Nt = 2 * (int(4 * T * Nx * Nx / L**2) + 1)
+    if float(config.dt_factor) <= 0:
+        raise ValueError(f"dt_factor must be positive, got {config.dt_factor!r}")
+    Nt = max(1, int(float(config.dt_factor) * (int(4 * T * Nx * Nx / L**2) + 1)))
     # dx = L / Nx
     dt = T / Nt
 
@@ -846,6 +850,8 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
     save_pos += 1
 
     # Time integration
+    stop_step: Optional[int] = None
+    stop_reason = "t_max"
     for n in tqdm(range(Nt), desc="Progress..."):
         # rk4 steps
         k1 = rhs(u_current, v_current, config)
@@ -895,6 +901,12 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
             diagnostic=diagnostic,
         )
 
+        if config.stop_on_nonfinite == "yes":
+            if not (np.isfinite(u_current).all() and np.isfinite(v_current).all()):
+                stop_step = int(n) + 1
+                stop_reason = "nonfinite"
+                break
+
         now_step = int(n) + 1
         while save_pos < n_saved and now_step == int(save_indices[save_pos]):
             saved_times[save_pos] = float(now_step) * float(dt)
@@ -902,10 +914,12 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
             saved_v[save_pos, :] = v_current
             save_pos += 1
 
-    if save_pos != n_saved:
-        raise RuntimeError(
-            f"Internal error: saved {save_pos} frames but expected {n_saved}."
-        )
+    if stop_reason == "t_max" and save_pos != n_saved:
+        raise RuntimeError(f"Internal error: saved {save_pos} frames but expected {n_saved}.")
+
+    saved_times = saved_times[:save_pos]
+    saved_u = saved_u[:save_pos, :]
+    saved_v = saved_v[:save_pos, :]
 
     u_num = saved_u.T
     v_num = saved_v.T
@@ -934,8 +948,8 @@ def RK4(config: SimulationConfig, FileBaseName="Simulation") -> SimulationResult
         t_values=np.asarray(t_values, dtype=np.float64),
         u_num=np.asarray(u_num, dtype=np.float64),
         v_num=np.asarray(v_num, dtype=np.float64),
-        stop_time=float(T),
-        stop_reason="t_max",
+        stop_time=float((T if stop_step is None else stop_step * dt)),
+        stop_reason=stop_reason,
         dt=float(dt),
         setup_description=SetupDes,
     )
@@ -959,8 +973,11 @@ def RK4_until_converged(
     gamma = config.gamma
     diagnostic = config.diagnostic
 
-    # Match the legacy dt choice derived from `Nt = 2*(int(4*T*Nx^2/L^2)+1)`.
-    Nt_max = 2 * (int(4 * T_max * Nx * Nx / L**2) + 1)
+    # Match the legacy dt choice derived from `Nt = 2*(int(4*T*Nx^2/L^2)+1)`,
+    # but allow an optional refinement factor.
+    if float(config.dt_factor) <= 0:
+        raise ValueError(f"dt_factor must be positive, got {config.dt_factor!r}")
+    Nt_max = max(1, int(float(config.dt_factor) * (int(4 * T_max * Nx * Nx / L**2) + 1)))
     dt = T_max / Nt_max
 
     window_steps = max(1, int(config.convergence_window_time / dt))
@@ -1077,6 +1094,14 @@ def RK4_until_converged(
         now_step = step + 1
         now_time = now_step * dt
 
+        if config.stop_on_nonfinite == "yes":
+            if not (np.isfinite(u_current).all() and np.isfinite(v_current).all()):
+                stop_step = now_step
+                stop_reason = "nonfinite"
+                if config.verbose == "yes":
+                    print(f"[stop] nonfinite encountered at step={stop_step} t={now_time:.6g}")
+                break
+
         if now_step % save_stride == 0 or now_step == Nt_max:
             save_snapshot(now_step, now_time)
 
@@ -1101,6 +1126,8 @@ def RK4_until_converged(
             f"Stopped early at T_stop={stop_time:.6g} (converged; "
             f"tol={config.convergence_tol}, window={config.convergence_window_time}, min_time={config.convergence_min_time})."
         )
+    elif stop_reason == "nonfinite":
+        print(f"Stopped early at T_stop={stop_time:.6g} (non-finite values encountered).")
     else:
         print(
             f"Reached T_max={T_max:.6g} without convergence ("
@@ -1605,6 +1632,23 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         type=str,
         default="",
         help="Output directory for saved files (default: current working directory)",
+    )
+
+    numerics_group = parser.add_argument_group("Numerics / stability")
+    numerics_group.add_argument(
+        "--dt_factor",
+        type=float,
+        default=2.0,
+        help=(
+            "Multiply the default time-step refinement factor (default: 2.0). "
+            "Larger values reduce dt and may improve stability at higher cost."
+        ),
+    )
+    numerics_group.add_argument(
+        "--stop_on_nonfinite",
+        choices=["yes", "no"],
+        default="yes",
+        help="Stop early if NaN/Inf occurs in u or v (default: yes)",
     )
 
     return parser
