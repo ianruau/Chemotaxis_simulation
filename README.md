@@ -57,6 +57,9 @@ chemotaxis-sim --config config.example.yaml
 # Paper-II eigenmode indexing (0-based): n=2 -> cos(2πx/L)
 chemotaxis-sim --chi 30 --meshsize 100 --time 5 --eigen_mode_n 2 --epsilon 0.5
 
+# Domain length (overrides YAML if provided)
+chemotaxis-sim --config config.example.yaml --L 5.3
+
 # Batch workflow: keep only summary6 + saved data (skip heavy 3D plots)
 chemotaxis-sim --config config.example.yaml --save_data yes --save_summary6 yes --save_static_plots no
 

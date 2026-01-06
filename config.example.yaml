@@ -30,6 +30,7 @@ model:
   gamma: 1.0
 
 grid:
+  L: 1.0
   meshsize: 50
   time: 100.0
   eigen_index: 2

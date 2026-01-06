@@ -79,6 +79,7 @@ from scipy.sparse.linalg import factorized, spsolve
 from tabulate import tabulate
 from tqdm import tqdm  # Import tqdm for progress bar
 
+from npz_io import _downsample_time_indices
 from npz_io import load_simulation_data_npz as _load_simulation_data_npz
 from npz_io import save_simulation_data_npz as _save_simulation_data_npz
 from thresholds import chi_star_threshold_continuum_1d
@@ -355,7 +356,7 @@ class SimulationConfig:
             f"eigen_mode_n = {emn} (resolved mode n = {self.eigen_mode_n_resolved})"
         )
         print("5. Simulation Parameters:")
-        print(f"\tMeshSize = {self.meshsize}, time = {self.time}")
+        print(f"\tL = {self.L}, MeshSize = {self.meshsize}, time = {self.time}")
 
         print("\n# Asymptotic solutions and related constants")
         print(
@@ -1505,6 +1506,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
 
     grid_group = parser.add_argument_group("Grid / initial condition")
+    grid_group.add_argument(
+        "--L",
+        type=float,
+        default=1.0,
+        help="Domain length L (default: 1.0)",
+    )
     grid_group.add_argument(
         "--meshsize",
         type=int,
