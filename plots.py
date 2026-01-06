@@ -47,6 +47,18 @@ def create_six_frame_summary(
 ) -> None:
     if t_values.size == 0:
         return
+
+    def _finite_min_max(arr: Optional[np.ndarray]) -> tuple[Optional[float], Optional[float]]:
+        if arr is None:
+            return None, None
+        if getattr(arr, "size", 0) == 0:
+            return None, None
+        finite = np.isfinite(arr)
+        if not np.any(finite):
+            return None, None
+        vals = arr[finite]
+        return float(np.min(vals)), float(np.max(vals))
+
     t_end = float(t_values[-1])
     fractions = np.linspace(0.0, 1.0, 6)
     targets = t_end * fractions
@@ -55,12 +67,22 @@ def create_six_frame_summary(
         idx = int(np.argmin(np.abs(t_values - t_target)))
         indices.append(idx)
 
-    u_min = float(np.min(u_num))
-    u_max = float(np.max(u_num))
+    u_min, u_max = _finite_min_max(u_num)
     if u_pred_plus is not None and u_pred_minus is not None:
-        u_min = float(min(u_min, float(np.min(u_pred_plus)), float(np.min(u_pred_minus))))
-        u_max = float(max(u_max, float(np.max(u_pred_plus)), float(np.max(u_pred_minus))))
-    u_pad = 0.05 * max(1e-12, u_max - u_min)
+        pred_min_p, pred_max_p = _finite_min_max(u_pred_plus)
+        pred_min_m, pred_max_m = _finite_min_max(u_pred_minus)
+        mins = [v for v in (u_min, pred_min_p, pred_min_m) if v is not None]
+        maxs = [v for v in (u_max, pred_max_p, pred_max_m) if v is not None]
+        u_min = min(mins) if mins else None
+        u_max = max(maxs) if maxs else None
+
+    u_pad: Optional[float]
+    if u_min is None or u_max is None or not np.isfinite(u_min) or not np.isfinite(u_max):
+        u_pad = None
+    else:
+        span = float(u_max - u_min)
+        scale = max(1e-12, span, abs(u_min), abs(u_max))
+        u_pad = 0.05 * scale
 
     cmap = plt.get_cmap("viridis")
     color_positions = np.linspace(0.15, 0.9, len(indices))
@@ -139,7 +161,8 @@ def create_six_frame_summary(
         ax_u.set_xlabel("x")
         ax_u.set_ylabel("u(x,t)")
 
-    ax_u.set_ylim(u_min - u_pad, u_max + u_pad)
+    if u_pad is not None and u_min is not None and u_max is not None:
+        ax_u.set_ylim(u_min - u_pad, u_max + u_pad)
     y_formatter = ScalarFormatter(useOffset=False)
     y_formatter.set_scientific(False)
     ax_u.yaxis.set_major_formatter(y_formatter)

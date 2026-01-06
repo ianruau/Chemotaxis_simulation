@@ -18,6 +18,7 @@ class PlotConfig:
     npz_file: str
     out_base: str
     overwrite: bool
+    save_static_plots: bool
     summary6: bool
     chi_star_n_max: int
     summary6_beta_n0: bool
@@ -44,7 +45,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 """
     parser = argparse.ArgumentParser(
         description=(
-            "Generate the main 3D static plots (<basename>.png/.jpeg) from a saved .npz.\n\n"
+            "Generate plots from a saved .npz (static 3D and/or summary6).\n\n"
             "This is intended for batch workflows: run `chemotaxis-sim --save_static_plots no --save_data yes`,\n"
             "then render heavy plots later from the saved data."
         ),
@@ -82,6 +83,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         choices=["yes", "no"],
         default="yes",
         help="Overwrite existing output images (default: yes)",
+    )
+    parser.add_argument(
+        "--save_static_plots",
+        choices=["yes", "no"],
+        default="yes",
+        help="Save the main 3D static plots (<out_base>.png/.jpeg) (default: yes)",
     )
     parser.add_argument(
         "--summary6",
@@ -151,6 +158,7 @@ def _parse_args() -> PlotConfig:
         out_base = os.path.splitext(npz_file)[0]
 
     overwrite = args.overwrite == "yes"
+    save_static_plots = args.save_static_plots == "yes"
     summary6 = args.summary6 == "yes"
     chi_star_n_max = int(args.chi_star_n_max)
     summary6_beta_n0 = args.summary6_beta_n0 == "yes"
@@ -160,6 +168,7 @@ def _parse_args() -> PlotConfig:
         npz_file=npz_file,
         out_base=out_base,
         overwrite=overwrite,
+        save_static_plots=save_static_plots,
         summary6=summary6,
         chi_star_n_max=chi_star_n_max,
         summary6_beta_n0=summary6_beta_n0,
@@ -168,17 +177,32 @@ def _parse_args() -> PlotConfig:
     )
 
 
-def _maybe_remove_existing(out_base: str, *, overwrite: bool) -> None:
-    png_path = f"{out_base}.png"
-    jpeg_path = f"{out_base}.jpeg"
-    if overwrite:
+def _refuse_overwrite(existing: list[str]) -> None:
+    raise FileExistsError(
+        "Refusing to overwrite existing outputs (use --overwrite yes): "
+        + ", ".join(existing)
+    )
+
+
+def _check_overwrite(cfg: PlotConfig) -> None:
+    if cfg.overwrite:
         return
-    existing = [p for p in (png_path, jpeg_path) if os.path.exists(p)]
+    existing: list[str] = []
+    if cfg.save_static_plots:
+        existing += [
+            p for p in (f"{cfg.out_base}.png", f"{cfg.out_base}.jpeg") if os.path.exists(p)
+        ]
+    if cfg.summary6:
+        existing += [
+            p
+            for p in (
+                f"{cfg.out_base}_summary6.png",
+                f"{cfg.out_base}_summary6.jpeg",
+            )
+            if os.path.exists(p)
+        ]
     if existing:
-        raise FileExistsError(
-            "Refusing to overwrite existing outputs (use --overwrite yes): "
-            + ", ".join(existing)
-        )
+        _refuse_overwrite(existing)
 
 
 def main() -> None:
@@ -198,21 +222,22 @@ def main() -> None:
     if not np.isfinite(u_star) or not np.isfinite(v_star):
         raise ValueError("Missing uStar/vStar in npz config metadata; re-save with a newer chemotaxis-sim.")
 
-    _maybe_remove_existing(cfg.out_base, overwrite=cfg.overwrite)
+    _check_overwrite(cfg)
 
-    create_static_plots(
-        t_values,
-        x_values,
-        u_num,
-        v_num,
-        u_star,
-        v_star,
-        setup_description,
-        cfg.out_base,
-    )
+    if cfg.save_static_plots:
+        create_static_plots(
+            t_values,
+            x_values,
+            u_num,
+            v_num,
+            u_star,
+            v_star,
+            setup_description,
+            cfg.out_base,
+        )
 
-    print(f"wrote: {cfg.out_base}.png")
-    print(f"wrote: {cfg.out_base}.jpeg")
+        print(f"wrote: {cfg.out_base}.png")
+        print(f"wrote: {cfg.out_base}.jpeg")
 
     if cfg.summary6:
         beta_n0 = None

@@ -113,6 +113,9 @@ chemotaxis-plot images/branch_capture/some_run.npz
 # Optionally also regenerate the lightweight 6-slice summary (<basename>_summary6.{png,jpeg})
 chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes
 
+# Generate only the lightweight summary6 (skip heavy 3D static plots)
+chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes --save_static_plots no
+
 # Optionally overlay the leading-order bifurcation prediction u_pred^± (Paper II, Local pitchfork bifurcation)
 chemotaxis-plot images/branch_capture/some_run.npz --summary6 yes --summary6_bifurcation_curve yes
 ```
