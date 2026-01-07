@@ -62,7 +62,7 @@ import argparse
 import math
 import shutil
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from functools import lru_cache
 from collections import deque
 from typing import Any, Final, List, Optional
@@ -155,6 +155,7 @@ class SimulationConfig:
     epsilon: float = 0.001
     epsilon2: float = 0.0
     restart_from: str = ""
+    continue_from: str = ""
 
     # Output control
     confirm: str = "no"
@@ -296,8 +297,27 @@ class SimulationConfig:
         object.__setattr__(self, "eigen_mode_n_resolved", int(mode_n))
 
         x_values = np.linspace(0, self.L, int(self.meshsize) + 1, dtype=np.float64)
-        if (self.restart_from or "").strip():
-            data = load_simulation_data_npz(self.restart_from)
+        restart_from = (self.restart_from or "").strip()
+        continue_from = (self.continue_from or "").strip()
+        if restart_from and continue_from:
+            raise ValueError("Use at most one of `--restart_from` and `--continue_from`.")
+
+        if continue_from:
+            data = load_simulation_data_npz(continue_from)
+            u_num = np.asarray(data.get("u_num"))
+            if u_num.ndim != 2:
+                raise ValueError(
+                    f"`--continue_from` expects a 2D `u_num` array in the .npz, got shape {u_num.shape}"
+                )
+            u0 = np.asarray(u_num[:, -1], dtype=np.float64)
+            if u0.shape[0] != x_values.shape[0]:
+                raise ValueError(
+                    "`--continue_from` mesh mismatch: expected u0 with "
+                    f"{x_values.shape[0]} points (meshsize={self.meshsize}), got {u0.shape[0]}."
+                )
+            # Continue exactly from the last saved state (ignore epsilon perturbations).
+        elif restart_from:
+            data = load_simulation_data_npz(restart_from)
             u_num = np.asarray(data.get("u_num"))
             if u_num.ndim != 2:
                 raise ValueError(
@@ -369,6 +389,10 @@ class SimulationConfig:
             f"\tL = {self.L}, mesh_per_unit = {mesh_density:g}, "
             f"MeshSize(N) = {self.meshsize}, time = {self.time}"
         )
+        if (self.restart_from or "").strip():
+            print(f"\trestart_from = {self.restart_from}")
+        if (self.continue_from or "").strip():
+            print(f"\tcontinue_from = {self.continue_from} (time interpreted as T_final)")
 
         print("\n# Asymptotic solutions and related constants")
         print(
@@ -583,6 +607,174 @@ def save_simulation_data_npz(
 
 def load_simulation_data_npz(filename: str) -> dict:
     return _load_simulation_data_npz(filename)
+
+
+def _validate_continue_from_config(
+    *,
+    current: SimulationConfig,
+    previous_config: dict,
+    npz_path: str,
+) -> None:
+    """
+    Best-effort compatibility check for `--continue_from`.
+
+    We require the same spatial grid (L, meshsize) and model parameters. Output
+    options (like `save_*`) may differ and are ignored.
+    """
+
+    def req_same(key: str) -> None:
+        if key not in previous_config:
+            raise ValueError(f"`--continue_from` missing `{key}` in saved config: {npz_path}")
+        a = getattr(current, key)
+        b = previous_config.get(key)
+        try:
+            if isinstance(a, (int, float)) and isinstance(b, (int, float, str)):
+                if float(a) != float(b):
+                    raise ValueError(
+                        f"`--continue_from` mismatch for `{key}`: current={a!r}, saved={b!r} ({npz_path})"
+                    )
+                return
+        except Exception:
+            pass
+        if a != b:
+            raise ValueError(
+                f"`--continue_from` mismatch for `{key}`: current={a!r}, saved={b!r} ({npz_path})"
+            )
+
+    for k in (
+        "m",
+        "beta",
+        "alpha",
+        "chi",
+        "a",
+        "b",
+        "c",
+        "mu",
+        "nu",
+        "gamma",
+        "L",
+        "meshsize",
+    ):
+        req_same(k)
+
+
+def continue_from_npz(config: SimulationConfig, FileBaseName: str) -> SimulationResult:
+    """
+    Continue a simulation from a previously saved `.npz` file, without recomputing
+    the early time interval.
+
+    Semantics:
+    - `config.continue_from` points to the prior `.npz` file.
+    - `config.time` is interpreted as the desired *final* time T_final.
+    - The returned result contains the concatenated (downsampled) history from
+      the prior `.npz` and the new segment, with consistent time coordinates.
+
+    Notes:
+    - The continuation segment is run via the existing `restart_from` mechanism
+      (starting from the last saved state) with `epsilon=epsilon2=0`.
+    - Static plots and videos are generated only for the concatenated result.
+    """
+    npz_path = (config.continue_from or "").strip()
+    if not npz_path:
+        raise ValueError("continue_from_npz called with empty config.continue_from")
+
+    data = load_simulation_data_npz(npz_path)
+    prev_cfg = data.get("config", {})
+    if not isinstance(prev_cfg, dict):
+        raise ValueError(f"Invalid saved config in {npz_path}: expected dict, got {type(prev_cfg).__name__}")
+    _validate_continue_from_config(current=config, previous_config=prev_cfg, npz_path=npz_path)
+
+    prev_stop_time = float(data.get("stop_time", 0.0))
+    prev_stop_reason = str(data.get("stop_reason", ""))
+    prev_t = np.asarray(data.get("t_values"), dtype=np.float64)
+    prev_u = np.asarray(data.get("u_num"), dtype=np.float64)
+    prev_v = np.asarray(data.get("v_num"), dtype=np.float64)
+    prev_x = np.asarray(data.get("x_values"), dtype=np.float64)
+
+    if prev_t.ndim != 1:
+        raise ValueError(f"Invalid `t_values` in {npz_path}: expected 1D, got shape {prev_t.shape}")
+    if prev_u.ndim != 2 or prev_v.ndim != 2:
+        raise ValueError(
+            f"Invalid `u_num`/`v_num` in {npz_path}: expected 2D, got {prev_u.shape} / {prev_v.shape}"
+        )
+    if prev_u.shape != prev_v.shape:
+        raise ValueError(f"Invalid `u_num`/`v_num` in {npz_path}: shape mismatch {prev_u.shape} vs {prev_v.shape}")
+    if prev_u.shape[1] != prev_t.shape[0]:
+        raise ValueError(
+            f"Invalid saved arrays in {npz_path}: u_num has {prev_u.shape[1]} frames but t_values has {prev_t.shape[0]}"
+        )
+
+    if prev_t.size > 0:
+        prev_stop_time = max(prev_stop_time, float(prev_t[-1]))
+
+    T_final = float(config.time)
+    if not (T_final > prev_stop_time):
+        raise ValueError(
+            f"`--continue_from` requires --time > prior stop time. "
+            f"Got time={T_final:g}, prior stop_time={prev_stop_time:g} ({npz_path})."
+        )
+
+    T_remaining = T_final - prev_stop_time
+
+    cont_cfg = replace(
+        config,
+        time=T_remaining,
+        restart_from=npz_path,
+        continue_from="",
+        epsilon=0.0,
+        epsilon2=0.0,
+        save_static_plots="no",
+        generate_video="no",
+        save_summary6="no",
+    )
+    if cont_cfg.until_converged == "yes":
+        seg = RK4_until_converged(config=cont_cfg, FileBaseName=FileBaseName)
+    else:
+        seg = RK4(config=cont_cfg, FileBaseName=FileBaseName)
+
+    if seg.x_values.shape != prev_x.shape or not np.allclose(seg.x_values, prev_x):
+        raise ValueError(
+            f"`--continue_from` internal error: x_values mismatch between previous run and continuation segment ({npz_path})."
+        )
+
+    seg_t = np.asarray(seg.t_values, dtype=np.float64) + prev_stop_time
+    seg_u = np.asarray(seg.u_num, dtype=np.float64)
+    seg_v = np.asarray(seg.v_num, dtype=np.float64)
+
+    if seg_t.size == 0:
+        raise RuntimeError("Continuation segment produced empty time history.")
+
+    # Drop the duplicated join point (segment t=0 corresponds to prev_stop_time).
+    seg_t = seg_t[1:]
+    seg_u = seg_u[:, 1:]
+    seg_v = seg_v[:, 1:]
+
+    t_values = np.concatenate([prev_t, seg_t], axis=0)
+    u_num = np.concatenate([prev_u, seg_u], axis=1)
+    v_num = np.concatenate([prev_v, seg_v], axis=1)
+
+    setup_prev = str(data.get("setup_description", "")).strip()
+    setup_description = (
+        setup_prev
+        + ("\n\n" if setup_prev else "")
+        + (
+            "Continued run:\n"
+            f"  previous: stop_time={prev_stop_time:g} stop_reason={prev_stop_reason}\n"
+            f"  target:   T_final={T_final:g}\n"
+            f"  segment:  T_remaining={T_remaining:g} stop_time={prev_stop_time + seg.stop_time:g} stop_reason={seg.stop_reason}\n"
+        )
+    )
+
+    return SimulationResult(
+        x_values=np.asarray(prev_x, dtype=np.float64),
+        t_values=np.asarray(t_values, dtype=np.float64),
+        u_num=np.asarray(u_num, dtype=np.float64),
+        v_num=np.asarray(v_num, dtype=np.float64),
+        stop_time=float(prev_stop_time + seg.stop_time),
+        stop_reason=str(f"continued_{seg.stop_reason}"),
+        dt=float(seg.dt),
+        setup_description=setup_description,
+    )
 
 
 def chi_star_threshold_discrete(
@@ -1293,6 +1485,8 @@ def parse_args() -> SimulationConfig:
     --eigen_index (int): Parameter eigen index (default: 0, letting system choose).
     --epsilon (float): Parameter perturbation epsilon (default: 0.001).
     --epsilon2 (float): Parameter perturbation epsilon2 (default: 0.0).
+    --restart_from (str): Restart from a saved .npz (last saved u becomes u0; epsilon terms are added on top).
+    --continue_from (str): Continue from a saved .npz up to a new final time (append time history; does not redo early time).
     """
     argv = sys.argv[1:]
 
@@ -1613,6 +1807,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default="",
         help="Restart from a saved .npz (uses the last saved u as u0; epsilon terms are added on top; default: none)",
     )
+    grid_group.add_argument(
+        "--continue_from",
+        type=str,
+        default="",
+        help=(
+            "Continue from a saved .npz without recomputing the early time interval. "
+            "`--time` is interpreted as the desired final time T_final and must be > the saved stop_time. "
+            "The output `.npz` contains the concatenated (downsampled) history. "
+            "In this mode, epsilon perturbations are ignored (continue exactly from the last saved state). "
+            "This is different from `--restart_from`, which starts a new run at t=0."
+        ),
+    )
 
     stopping_group = parser.add_argument_group("Stopping criteria")
     stopping_group.add_argument(
@@ -1736,6 +1942,8 @@ def main():
         print("  --output_dir <dir>         Where to write outputs")
         print("  --basename <name>          Override output basename")
         print("  --eigen_mode_n <n>         Paper mode index n>=0 (overrides --eigen_index)")
+        print("  --restart_from <npz>       Start a new run from the last saved u (t=0)")
+        print("  --continue_from <npz>      Continue an existing run up to a new final time")
         print("  --save_data yes|no         Save .npz (default: yes)")
         print("  --save_summary6 yes|no     Save *_summary6.{png,jpeg} (default: yes)")
         print("  --save_static_plots yes|no Save <basename>.{png,jpeg} (default: yes)")
@@ -1774,10 +1982,37 @@ def main():
         or questionary.confirm("Do you want to continue the simulation?").ask()
     ):
         print("Continuing simulation...")
-        if config.until_converged == "yes":
-            result = RK4_until_converged(config=config, FileBaseName=file_base)
+        if (config.restart_from or "").strip() and (config.continue_from or "").strip():
+            raise ValueError("Use at most one of `--restart_from` and `--continue_from`.")
+
+        if (config.continue_from or "").strip():
+            result = continue_from_npz(config=config, FileBaseName=file_base)
+            if config.save_static_plots == "yes":
+                create_static_plots(
+                    result.t_values,
+                    result.x_values,
+                    result.u_num,
+                    result.v_num,
+                    config.uStar,
+                    config.vStar,
+                    result.setup_description,
+                    file_base,
+                )
+            if config.generate_video == "yes":
+                create_animation(
+                    result.t_values,
+                    result.u_num,
+                    result.v_num,
+                    config.uStar,
+                    config.vStar,
+                    result.setup_description,
+                    file_base,
+                )
         else:
-            result = RK4(config=config, FileBaseName=file_base)
+            if config.until_converged == "yes":
+                result = RK4_until_converged(config=config, FileBaseName=file_base)
+            else:
+                result = RK4(config=config, FileBaseName=file_base)
 
         if config.save_summary6 == "yes":
             chi_star = chi_star_threshold_discrete(config)

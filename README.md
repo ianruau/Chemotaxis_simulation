@@ -290,6 +290,23 @@ compressed NumPy file:
 This `.npz` contains (downsampled) `x_values`, `t_values`, `u_num`, `v_num`,
 plus a JSON-encoded copy of the run configuration and some metadata.
 
+### Continuing from a saved `.npz`
+If you want to run longer without redoing the early time interval, use `--continue_from`.
+In this mode, `--time` is interpreted as the desired *final* time \(T_{\rm final}\) (and must be larger than the saved `stop_time`).
+The output `.npz` contains the concatenated (downsampled) time history.
+
+Example:
+
+```bash
+# First run (writes <out>.npz in the current directory)
+chemotaxis-sim --chi 2.19 --meshsize 50 --time 100 --eigen_mode_n 2 --epsilon 0.001 --save_data yes --save_summary6 yes
+
+# Continue to T_final=200 into a new output folder/basename (keeps the original run for comparison)
+chemotaxis-sim --continue_from <out>.npz --chi 2.19 --meshsize 50 --time 200 --output_dir images/continued --basename run_T200 --save_data yes --save_summary6 yes
+```
+
+This is different from `--restart_from`, which starts a new run at \(t=0\) using the last saved \(u\) as the initial condition (optionally adding the epsilon cosine perturbations).
+
 The CLI also writes a quick diagnostic figure with 6 time slices of $u(x,t)$
 (0%, 20%, …, 100%). The title shows $\chi_0$ and the critical threshold
 $\chi^*(u^*)$:
