@@ -25,6 +25,7 @@
 - Formatting: `./Format.sh simulation.py` (expects `black`, `isort`, `autopep8` installed).
 - Keep CLI options backward compatible; if flags/outputs change, update `README.md` and `docs/`.
 - Dependency hygiene: keep imports in sync with `setup.py:install_requires` and `requirements.txt`.
+- Eigenvalue indexing consistency: Paper II indexes Neumann eigenpairs by `n≥0` with `λ_0=0` (constant mode). The simulator’s `--eigen_index k` is 1-based; with `--epsilon2 0`, it adds `ε cos((k-1)πx/L)`, so the paper’s mode `n` corresponds to `k=n+1` (first nonconstant: `k=2`).
 
 ## Testing Guidelines
 
