@@ -109,7 +109,7 @@ def _gamma_n0_cubic(params: Dict[str, sp.Expr], lambda_n0: sp.Expr) -> sp.Expr:
     C3_n0 = _C3(params, lambda_n0)
 
     pref1 = (PI ** 2 * n0 ** 2) / (2 * L ** 2)
-    pref2 = (PI ** 2 * n0 ** 2) / (4 * L ** 2)
+    pref2 = (PI ** 2 * n0 ** 2) / (8 * L ** 2)
 
     leading = (
         2 * u_star ** params["m"] / (c + v_star) ** params["beta"] * (3 * C3_n0)
@@ -158,10 +158,20 @@ def _gamma_2n0(params: Dict[str, sp.Expr], chi_star: sp.Expr) -> sp.Expr:
     v_star = params["v_star"]
     c = params["c"]
 
-    kappa = n0 * PI / L
+    lambda_0 = _laplace_eigenvalue(0, L)
+    lambda_n0 = _laplace_eigenvalue(n0, L)
+    lambda_2n0 = _laplace_eigenvalue(2 * n0, L)
+    C2_0 = _C2(params, lambda_0)
+    C2_2n0 = _C2(params, lambda_2n0)
+
     u_sum = amp * sp.cos(n0 * PI * x / L)
-    v_sum = params["C_n0"] * amp * sp.cos(n0 * PI * x / L)
-    grad_sum = kappa * params["C_n0"] * amp * sp.sin(n0 * PI * x / L)
+    v_sum = (
+        _C1(params, lambda_n0) * amp * sp.cos(n0 * PI * x / L)
+        + C2_0 * amp**2
+        + C2_2n0 * amp**2 * sp.cos(2 * n0 * PI * x / L)
+    )
+    # In the PDE the chemotactic drift uses `-∇v`.
+    grad_sum = -sp.diff(v_sum, x)
 
     B0 = u_star ** params["m"] / (c + v_star) ** params["beta"]
     B1 = params["m"] * u_star ** (params["m"] - 1) / (c + v_star) ** params["beta"]
@@ -201,7 +211,7 @@ def _gamma_2n0(params: Dict[str, sp.Expr], chi_star: sp.Expr) -> sp.Expr:
     )
     G_expr = (2 / (L * chi0)) * projection
     coeff = sp.expand(G_expr).coeff(amp, 2)
-    return sp.simplify(2 * coeff.subs(chi0, chi_star))
+    return sp.simplify(coeff.subs(chi0, chi_star))
 
 
 def _prepare_params(raw: Dict[str, Any]) -> Dict[str, sp.Expr]:
