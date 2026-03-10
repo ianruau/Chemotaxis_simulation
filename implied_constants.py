@@ -47,8 +47,11 @@ def _chi_star_mode(params: Dict[str, sp.Expr], lambda_n0: sp.Expr) -> sp.Expr:
         * params["gamma"]
         * u_star ** (params["m"] + params["gamma"] - 1)
     )
-    factor = (lambda_n0 + params["a"] * params["alpha"])
-    factor *= (params["mu"] + lambda_n0) / lambda_n0
+    if str(params.get("equilibrium_mode", "logistic")) == "fixed":
+        factor = params["mu"] + lambda_n0
+    else:
+        factor = (lambda_n0 + params["a"] * params["alpha"])
+        factor *= (params["mu"] + lambda_n0) / lambda_n0
     return numerator / denominator * factor
 
 
@@ -60,6 +63,8 @@ def _sigma(lambda_n: sp.Expr, chi_value: sp.Expr, params: Dict[str, sp.Expr]) ->
     prefactor *= params["nu"] * params["gamma"] * u_star ** (params["m"] + params["gamma"] - 1)
     prefactor /= (c + v_star) ** params["beta"]
     prefactor *= lambda_n / (params["mu"] + lambda_n)
+    if str(params.get("equilibrium_mode", "logistic")) == "fixed":
+        return -lambda_n + prefactor
     return -lambda_n + prefactor - params["a"] * params["alpha"]
 
 
@@ -227,8 +232,16 @@ def _prepare_params(raw: Dict[str, Any]) -> Dict[str, sp.Expr]:
     params.setdefault("L", _to_sympy(1))
     params.setdefault("n0", _to_sympy(1))
     params.setdefault("c", _to_sympy(1))
-
-    params["u_star"] = (params["a"] / params["b"]) ** (1 / params["alpha"])
+    equilibrium_mode = str(raw.get("equilibrium_mode", "logistic")).strip().lower()
+    if equilibrium_mode not in {"logistic", "fixed"}:
+        raise ValueError("equilibrium_mode must be 'logistic' or 'fixed'.")
+    params["equilibrium_mode"] = equilibrium_mode
+    if equilibrium_mode == "fixed":
+        if "u_star_fixed" not in raw:
+            raise ValueError("u_star_fixed is required when equilibrium_mode='fixed'.")
+        params["u_star"] = _to_sympy(raw["u_star_fixed"])
+    else:
+        params["u_star"] = (params["a"] / params["b"]) ** (1 / params["alpha"])
     params["v_star"] = (params["nu"] / params["mu"]) * params["u_star"] ** params["gamma"]
     params["n0"] = int(params["n0"])
     return params
@@ -253,7 +266,19 @@ def compute_bifurcation_coefficients(raw_params: Dict[str, Any]) -> Dict[str, fl
     C3_n0 = _C3(params, lambda_n0)
     params["C_n0"] = C1_n0
 
-    chi_star = _chi_star_mode(params, lambda_n0)
+    mode = str(params["equilibrium_mode"])
+    if mode == "fixed":
+        chi_star = (
+            (params["c"] + params["v_star"]) ** params["beta"]
+            / (
+                params["nu"]
+                * params["gamma"]
+                * params["u_star"] ** (params["m"] + params["gamma"] - 1)
+            )
+            * (params["mu"] + lambda_n0)
+        )
+    else:
+        chi_star = _chi_star_mode(params, lambda_n0)
     alpha_n0 = (
         params["nu"]
         * params["gamma"]
@@ -266,29 +291,34 @@ def compute_bifurcation_coefficients(raw_params: Dict[str, Any]) -> Dict[str, fl
     gamma_n0_cubic = _gamma_n0_cubic(params, lambda_n0)
     gamma_2n0 = _gamma_2n0(params, chi_star)
 
-    a01 = (
-        (1 + params["alpha"])
-        * params["alpha"]
-        * params["b"]
-        * params["u_star"] ** (params["alpha"] - 1)
-        / (
-            4
-            * (params["a"] - (1 + params["alpha"]) * params["b"] * params["u_star"] ** params["alpha"])
-        )
-    )
-
     sigma_2n0 = _sigma(lambda_2n0, chi_star, params)
-    a2n0 = (
-        (1 + params["alpha"]) * params["alpha"] * params["b"] * params["u_star"] ** (params["alpha"] - 1) / 4
-        - chi_star * gamma_2n0
-    ) / sigma_2n0
+    a01 = None
+    a2n0 = None
+    if mode == "fixed":
+        beta_n0 = chi_star * gamma_n0_cubic
+    else:
+        a01 = (
+            (1 + params["alpha"])
+            * params["alpha"]
+            * params["b"]
+            * params["u_star"] ** (params["alpha"] - 1)
+            / (
+                4
+                * (params["a"] - (1 + params["alpha"]) * params["b"] * params["u_star"] ** params["alpha"])
+            )
+        )
 
-    beta_n0 = (
-        (1 + params["alpha"]) * params["alpha"] * params["b"] * params["u_star"] ** (params["alpha"] - 1) / 4
-        * (4 * a01 + 2 * a2n0)
-        + chi_star * gamma_n0_cubic
-        + (1 + params["alpha"]) * params["alpha"] * (params["alpha"] - 1) * params["b"] * params["u_star"] ** (params["alpha"] - 2) / 8
-    )
+        a2n0 = (
+            (1 + params["alpha"]) * params["alpha"] * params["b"] * params["u_star"] ** (params["alpha"] - 1) / 4
+            - chi_star * gamma_2n0
+        ) / sigma_2n0
+
+        beta_n0 = (
+            (1 + params["alpha"]) * params["alpha"] * params["b"] * params["u_star"] ** (params["alpha"] - 1) / 4
+            * (4 * a01 + 2 * a2n0)
+            + chi_star * gamma_n0_cubic
+            + (1 + params["alpha"]) * params["alpha"] * (params["alpha"] - 1) * params["b"] * params["u_star"] ** (params["alpha"] - 2) / 8
+        )
 
     beta_float = float(sp.N(beta_n0))
     return {
@@ -300,8 +330,8 @@ def compute_bifurcation_coefficients(raw_params: Dict[str, Any]) -> Dict[str, fl
         "gamma_cubic": float(sp.N(gamma_n0_cubic)),
         "gamma_2n0": float(sp.N(gamma_2n0)),
         "sigma_2n0": float(sp.N(sigma_2n0)),
-        "a01": float(sp.N(a01)),
-        "a2n0": float(sp.N(a2n0)),
+        "a01": (None if a01 is None else float(sp.N(a01))),
+        "a2n0": (None if a2n0 is None else float(sp.N(a2n0))),
         "C1_n0": float(sp.N(C1_n0)),
         "C2_0": float(sp.N(C2_0)),
         "C2_2n0": float(sp.N(C2_2n0)),
@@ -346,6 +376,8 @@ class Inputs:
     a: float
     b: float
     c: float
+    equilibrium_mode: str
+    u_star_fixed: Optional[float]
     alpha: float
     beta: float
     m: float
@@ -401,6 +433,18 @@ def _build_parser() -> argparse.ArgumentParser:
     common.add_argument("--a", type=float, default=1.0)
     common.add_argument("--b", type=float, default=1.0)
     common.add_argument("--c", type=float, default=1.0)
+    common.add_argument(
+        "--equilibrium_mode",
+        choices=["logistic", "fixed"],
+        default="logistic",
+        help="How the positive equilibrium is chosen (`logistic` or `fixed`).",
+    )
+    common.add_argument(
+        "--u_star_fixed",
+        type=float,
+        default=None,
+        help="Prescribed positive equilibrium u* when equilibrium_mode=fixed.",
+    )
     common.add_argument("--alpha", type=float, default=1.0)
     common.add_argument("--beta", type=float, default=1.0)
     common.add_argument("--m", type=float, default=1.0)
@@ -506,6 +550,8 @@ def _parse_inputs(argv: list[str]) -> tuple[argparse.Namespace, Inputs]:
         a=float(args.a),
         b=float(args.b),
         c=float(args.c),
+        equilibrium_mode=str(args.equilibrium_mode),
+        u_star_fixed=(None if args.u_star_fixed is None else float(args.u_star_fixed)),
         alpha=float(args.alpha),
         beta=float(args.beta),
         m=float(args.m),
@@ -536,7 +582,14 @@ def main() -> None:
     args, inp = _parse_inputs(sys.argv[1:])
 
     u_star, v_star = equilibrium_u_v_star(
-        a=inp.a, b=inp.b, alpha=inp.alpha, mu=inp.mu, nu=inp.nu, gamma=inp.gamma
+        a=inp.a,
+        b=inp.b,
+        alpha=inp.alpha,
+        mu=inp.mu,
+        nu=inp.nu,
+        gamma=inp.gamma,
+        equilibrium_mode=inp.equilibrium_mode,
+        u_star_fixed=inp.u_star_fixed,
     )
 
     effective_n0: Optional[int] = inp.n0
@@ -553,6 +606,8 @@ def main() -> None:
             m=inp.m,
             beta=inp.beta,
             L=inp.L,
+            equilibrium_mode=inp.equilibrium_mode,
+            u_star_fixed=inp.u_star_fixed,
             n_max=inp.n_max,
             early_stop_patience=inp.early_stop_patience,
             meshsize=inp.meshsize,
@@ -569,6 +624,8 @@ def main() -> None:
             "a": inp.a,
             "b": inp.b,
             "c": inp.c,
+            "equilibrium_mode": inp.equilibrium_mode,
+            "u_star_fixed": inp.u_star_fixed,
             "alpha": inp.alpha,
             "beta": inp.beta,
             "m": inp.m,
@@ -606,6 +663,8 @@ def main() -> None:
                 "a": inp.a,
                 "b": inp.b,
                 "c": inp.c,
+                "equilibrium_mode": inp.equilibrium_mode,
+                "u_star_fixed": inp.u_star_fixed,
                 "alpha": inp.alpha,
                 "beta": inp.beta,
                 "m": inp.m,

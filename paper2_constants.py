@@ -25,7 +25,12 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from thresholds import chi_star_disc_fd
+from thresholds import (
+    chi_mode_threshold_1d,
+    chi_star_disc_fd,
+    equilibrium_v_star_from_u,
+    resolve_equilibrium_u_v_star,
+)
 
 
 @dataclass(frozen=True)
@@ -63,19 +68,33 @@ def _resolve_meshsize(
     return N, mesh_per_unit
 
 
-def equilibrium_u_v_star(*, a: float, b: float, alpha: float, mu: float, nu: float, gamma: float) -> Tuple[float, float]:
+def equilibrium_u_v_star(
+    *,
+    a: float,
+    b: float,
+    alpha: float,
+    mu: float,
+    nu: float,
+    gamma: float,
+    equilibrium_mode: str = "logistic",
+    u_star_fixed: Optional[float] = None,
+) -> Tuple[float, float]:
     """
-    Return (u^*, v^*) from Paper II Eq. (1.8) [E:equilibrium] for a,b>0.
+    Return (u^*, v^*) for either:
+    - the Paper II logistic equilibrium (`equilibrium_mode="logistic"`), or
+    - a fixed positive equilibrium (`equilibrium_mode="fixed"`), used by the
+      minimal-model workflows in Paper III.
     """
-    if a <= 0 or b <= 0:
-        raise ValueError("Eq. (1.8) requires a>0 and b>0.")
-    if alpha == 0:
-        raise ValueError("alpha must be nonzero.")
-    if mu == 0:
-        raise ValueError("mu must be nonzero.")
-    u_star = (a / b) ** (1.0 / alpha)
-    v_star = (nu / mu) * (u_star**gamma)
-    return float(u_star), float(v_star)
+    return resolve_equilibrium_u_v_star(
+        a=a,
+        b=b,
+        alpha=alpha,
+        mu=mu,
+        nu=nu,
+        gamma=gamma,
+        equilibrium_mode=equilibrium_mode,
+        u_star_fixed=u_star_fixed,
+    )
 
 
 def neumann_eigenvalue_1d(*, n: int, L: float = 1.0) -> float:
@@ -103,6 +122,7 @@ def chi_a_star_eq112_discrete(
     m: float,
     beta: float,
     L: float = 1.0,
+    equilibrium_mode: str = "logistic",
     n_max: int = 200000,
     early_stop_patience: int = 2000,
 ) -> Tuple[float, int, float]:
@@ -123,8 +143,6 @@ def chi_a_star_eq112_discrete(
     if c + v_star <= 0:
         raise ValueError("Eq. (1.12) requires c + v_star > 0.")
 
-    prefactor = ((c + v_star) ** beta) / (nu * gamma * (u_star ** (m + gamma - 1.0)))
-
     best_val = float("inf")
     best_n = 1
     best_lambda = neumann_eigenvalue_1d(n=1, L=L)
@@ -134,7 +152,20 @@ def chi_a_star_eq112_discrete(
 
     for n in range(1, n_max + 1):
         lam = neumann_eigenvalue_1d(n=n, L=L)
-        val = prefactor * (((lam + a * alpha) * (mu + lam)) / lam)
+        val = chi_mode_threshold_1d(
+            lambda_n=float(lam),
+            u_star=u_star,
+            v_star=v_star,
+            c=c,
+            a=a,
+            alpha=alpha,
+            mu=mu,
+            nu=nu,
+            gamma=gamma,
+            m=m,
+            beta=beta,
+            equilibrium_mode=equilibrium_mode,
+        )
 
         if val < best_val:
             best_val = float(val)
@@ -166,15 +197,30 @@ def paper2_eq112_constants(
     m: float,
     beta: float,
     L: float = 1.0,
+    equilibrium_mode: str = "logistic",
+    u_star_fixed: Optional[float] = None,
     n_max: int = 200000,
     early_stop_patience: int = 2000,
     meshsize: Optional[float] = None,
     meshsize_abs: Optional[int] = None,
 ) -> Paper2Constants:
     """
-    Convenience wrapper: compute (u^*, v^*) [Eq. (1.8)] and chi_a^*(u^*) [Eq. (1.12)].
+    Convenience wrapper for equilibrium + threshold data.
+
+    In the default logistic mode this matches Paper II Eq. (1.8)/(1.12).
+    In fixed mode it computes the analogous threshold at a prescribed positive
+    equilibrium `u_star_fixed`.
     """
-    u_star, v_star = equilibrium_u_v_star(a=a, b=b, alpha=alpha, mu=mu, nu=nu, gamma=gamma)
+    u_star, v_star = equilibrium_u_v_star(
+        a=a,
+        b=b,
+        alpha=alpha,
+        mu=mu,
+        nu=nu,
+        gamma=gamma,
+        equilibrium_mode=equilibrium_mode,
+        u_star_fixed=u_star_fixed,
+    )
     chi_a_star, n_min, lambda_min = chi_a_star_eq112_discrete(
         u_star=u_star,
         v_star=v_star,
@@ -187,6 +233,7 @@ def paper2_eq112_constants(
         m=m,
         beta=beta,
         L=L,
+        equilibrium_mode=equilibrium_mode,
         n_max=n_max,
         early_stop_patience=early_stop_patience,
     )
@@ -208,6 +255,7 @@ def paper2_eq112_constants(
             beta=beta,
             L=L,
             meshsize=int(mesh_N),
+            equilibrium_mode=equilibrium_mode,
         )
     return Paper2Constants(
         u_star=u_star,

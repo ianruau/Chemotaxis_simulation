@@ -264,6 +264,7 @@ def main() -> None:
                 m=float(config.get("m", 1.0)),
                 beta=float(config.get("beta", 1.0)),
                 L=float(config.get("L", 1.0)),
+                equilibrium_mode=str(config.get("equilibrium_mode", "logistic")),
                 n_max=int(cfg.chi_star_n_max),
             )
         except Exception:
@@ -284,6 +285,7 @@ def main() -> None:
                     beta=float(config.get("beta", 1.0)),
                     L=float(config.get("L", 1.0)),
                     meshsize=int(meshsize),
+                    equilibrium_mode=str(config.get("equilibrium_mode", "logistic")),
                 )
         except Exception:
             chi_star_disc = None
@@ -306,6 +308,8 @@ def main() -> None:
                             "a": float(config.get("a", 1.0)),
                             "b": float(config.get("b", 1.0)),
                             "c": float(config.get("c", 1.0)),
+                            "equilibrium_mode": str(config.get("equilibrium_mode", "logistic")),
+                            "u_star_fixed": config.get("u_star_fixed", None),
                             "alpha": float(config.get("alpha", 1.0)),
                             "beta": float(config.get("beta", 1.0)),
                             "m": float(config.get("m", 1.0)),

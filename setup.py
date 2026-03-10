@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="chemotaxis-sim",
-    version="0.1.0",
+    version="0.1.1",
     description="Chemotaxis simulation CLI tool",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",

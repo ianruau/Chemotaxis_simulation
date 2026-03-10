@@ -21,6 +21,8 @@ Parameters:
     --chi FLOAT       Parameter chi for chemotaxis (default: -1)
     --a FLOAT         Parameter a for logistic growth (default: 1)
     --b FLOAT         Parameter b for logistic growth (default: 1)
+    --equilibrium_mode STR  `logistic` or `fixed` equilibrium selection
+    --u_star_fixed FLOAT    Prescribed positive equilibrium when `equilibrium_mode=fixed`
     --mu FLOAT        Parameter mu for v equation (default: 1)
     --nu FLOAT        Parameter nu for v equation (default: 1)
     --gamma FLOAT     Parameter gamma for v equation (default: 1)
@@ -84,7 +86,12 @@ from tqdm import tqdm  # Import tqdm for progress bar
 from npz_io import _downsample_time_indices
 from npz_io import load_simulation_data_npz as _load_simulation_data_npz
 from npz_io import save_simulation_data_npz as _save_simulation_data_npz
-from thresholds import chi_star_threshold_continuum_1d
+from thresholds import (
+    chi_mode_threshold_1d,
+    chi_star_threshold_continuum_1d,
+    resolve_equilibrium_u_v_star,
+    sigma_mode_1d,
+)
 
 # Optional acceleration: stencil derivatives can be JIT-compiled with Numba.
 try:  # pragma: no cover
@@ -140,6 +147,8 @@ class SimulationConfig:
     a: float = 1.0
     b: float = 1.0
     c: float = 1.0
+    equilibrium_mode: str = "logistic"
+    u_star_fixed: Optional[float] = None
     mu: float = 1.0
     nu: float = 1.0
     gamma: float = 1.0
@@ -191,21 +200,40 @@ class SimulationConfig:
     eigen_mode_n_resolved: int = field(init=False, default=None)
 
     def __post_init__(self):
-        # Using object.__setattr__ because the class is frozen
-        object.__setattr__(self, "uStar", (self.a / self.b) ** (1 / self.alpha))
-        object.__setattr__(
-            self,
-            "vStar",
-            self.nu / self.mu * (self.a / self.b) ** (self.gamma / self.alpha),
+        mode = str(self.equilibrium_mode or "logistic").strip().lower()
+        if mode not in {"logistic", "fixed"}:
+            raise ValueError("equilibrium_mode must be 'logistic' or 'fixed'.")
+        object.__setattr__(self, "equilibrium_mode", mode)
+
+        # Using object.__setattr__ because the class is frozen.
+        u_star, v_star = resolve_equilibrium_u_v_star(
+            a=float(self.a),
+            b=float(self.b),
+            alpha=float(self.alpha),
+            mu=float(self.mu),
+            nu=float(self.nu),
+            gamma=float(self.gamma),
+            equilibrium_mode=mode,
+            u_star_fixed=self.u_star_fixed,
         )
+        object.__setattr__(self, "uStar", float(u_star))
+        object.__setattr__(self, "vStar", float(v_star))
 
         # Compute ChiStar
-        if self.c + self.vStar <= 0:
-            raise ValueError("Expected c + vStar > 0 for sensitivity (c+v)^(-beta).")
-        chistar = (
-            (self.c + self.vStar) ** self.beta
-            * (np.sqrt(self.a * self.alpha) + np.sqrt(self.mu)) ** 2
-            / (self.nu * self.gamma * self.uStar ** (self.m + self.gamma - 1) + 1e-10)
+        chistar = chi_star_threshold_continuum_1d(
+            u_star=float(self.uStar),
+            v_star=float(self.vStar),
+            c=float(self.c),
+            a=float(self.a),
+            alpha=float(self.alpha),
+            mu=float(self.mu),
+            nu=float(self.nu),
+            gamma=float(self.gamma),
+            m=float(self.m),
+            beta=float(self.beta),
+            L=float(self.L),
+            equilibrium_mode=mode,
+            n_max=5000,
         )
         object.__setattr__(self, "ChiStar", chistar)
 
@@ -213,30 +241,37 @@ class SimulationConfig:
         betatilde = 0 if self.beta < 0.5 else min(1, 2 * self.beta - 1)
         object.__setattr__(self, "betaTilde", betatilde)
 
-        chidstar = np.sqrt(
-            self.b
-            * 16
-            * (1 + betatilde * self.vStar)
-            * self.mu
-            / (self.nu**2 * self.uStar ** (2 - self.alpha) + 1e-10)
-        )
+        if mode == "logistic":
+            chidstar = np.sqrt(
+                self.b
+                * 16
+                * (1 + betatilde * self.vStar)
+                * self.mu
+                / (self.nu**2 * self.uStar ** (2 - self.alpha) + 1e-10)
+            )
+        else:
+            chidstar = float("nan")
         object.__setattr__(self, "ChiDStar", chidstar)
 
         # Compute Lambdas and Chi vector
-        lambdas = [-(((n + 1) * np.pi / self.L) ** 2) for n in range(6)]
+        lambdas = [((n + 1) * np.pi / self.L) ** 2 for n in range(6)]
         object.__setattr__(self, "lambdas", lambdas)
 
         chi_vector = []
         for lam in lambdas:
-            if lam == self.mu:
-                continue  # Avoid division by zero
-            chi_val = (
-                ((self.a * self.alpha - lam) / (self.nu * self.gamma + 1e-10))
-                * (
-                    ((self.c + self.vStar) ** self.beta)
-                    / ((self.uStar) ** (self.m + self.gamma - 1) + 1e-10)
-                )
-                * ((lam - self.mu) / (lam + 1e-10))
+            chi_val = chi_mode_threshold_1d(
+                lambda_n=float(lam),
+                u_star=float(self.uStar),
+                v_star=float(self.vStar),
+                c=float(self.c),
+                a=float(self.a),
+                alpha=float(self.alpha),
+                mu=float(self.mu),
+                nu=float(self.nu),
+                gamma=float(self.gamma),
+                m=float(self.m),
+                beta=float(self.beta),
+                equilibrium_mode=mode,
             )
             chi_vector.append(chi_val)
         object.__setattr__(self, "chi_vector", chi_vector)
@@ -244,24 +279,27 @@ class SimulationConfig:
 
         # Compute positive sigmas
         positive_sigmas = []
-        if self.chi >= self.ChiStar:
+        if np.isfinite(self.chi) and self.chi >= self.ChiStar:
             n = 0
             sigma_n = 1.0
             max_iterations = 100  # Prevent infinite loop
             while sigma_n > 0 and n < max_iterations:
                 n += 1
-                lambda_n = -((n * np.pi / self.L) ** 2)
-                sigma_n = (
-                    lambda_n
-                    + self.chi
-                    * self.nu
-                    * self.gamma
-                    * (
-                        (self.uStar ** (self.m + self.gamma - 1))
-                        / ((self.c + self.vStar) ** self.beta + 1e-10)
-                    )
-                    * (1 - self.mu / (self.mu - lambda_n + 1e-10))
-                    - self.a * self.alpha
+                lambda_n = ((n * np.pi / self.L) ** 2)
+                sigma_n = sigma_mode_1d(
+                    lambda_n=float(lambda_n),
+                    chi=float(self.chi),
+                    u_star=float(self.uStar),
+                    v_star=float(self.vStar),
+                    c=float(self.c),
+                    a=float(self.a),
+                    alpha=float(self.alpha),
+                    mu=float(self.mu),
+                    nu=float(self.nu),
+                    gamma=float(self.gamma),
+                    m=float(self.m),
+                    beta=float(self.beta),
+                    equilibrium_mode=mode,
                 )
                 if sigma_n > 0:
                     positive_sigmas.append(sigma_n)
@@ -369,6 +407,10 @@ class SimulationConfig:
         print("Model Parameters:")
         print("1. Logistic term: ")
         print(f"\ta = {self.a}, b = {self.b}, c = {self.c}, alpha = {self.alpha}")
+        print(
+            f"\tequilibrium_mode = {self.equilibrium_mode}, "
+            f"u_star_fixed = {self.u_star_fixed}"
+        )
         print("2. Reaction term: ")
         print(f"\tm = {self.m}, beta = {self.beta}, chi = {self.chi}")
         print("3. The v equation: ")
@@ -399,7 +441,10 @@ class SimulationConfig:
             f"Asymptotic solutions: u^* = {self.uStar:.2f} and v^* = {self.vStar:.2f}"
         )
         print(f"A lower bound for Chi* is {self.ChiStar:.2f}")
-        print(f"Chi** = {self.ChiDStar:.2f} and beta tilde = {self.betaTilde:.2f}")
+        if np.isfinite(self.ChiDStar):
+            print(f"Chi** = {self.ChiDStar:.2f} and beta tilde = {self.betaTilde:.2f}")
+        else:
+            print(f"Chi** = n/a in fixed-equilibrium mode and beta tilde = {self.betaTilde:.2f}")
 
         print("\n# Chi* values\n")
         data = [
@@ -780,20 +825,21 @@ def continue_from_npz(config: SimulationConfig, FileBaseName: str) -> Simulation
 def chi_star_threshold_discrete(
     config: SimulationConfig, *, n_max: int = 5000
 ) -> float:
-    return chi_star_threshold_continuum_1d(
-        u_star=float(config.uStar),
-        v_star=float(config.vStar),
-        c=float(config.c),
-        a=float(config.a),
-        alpha=float(config.alpha),
-        mu=float(config.mu),
-        nu=float(config.nu),
-        gamma=float(config.gamma),
-        m=float(config.m),
-        beta=float(config.beta),
-        L=float(config.L),
-        n_max=int(n_max),
-    )
+        return chi_star_threshold_continuum_1d(
+            u_star=float(config.uStar),
+            v_star=float(config.vStar),
+            c=float(config.c),
+            a=float(config.a),
+            alpha=float(config.alpha),
+            mu=float(config.mu),
+            nu=float(config.nu),
+            gamma=float(config.gamma),
+            m=float(config.m),
+            beta=float(config.beta),
+            L=float(config.L),
+            equilibrium_mode=str(config.equilibrium_mode),
+            n_max=int(n_max),
+        )
 
 
 def first_derivative_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
@@ -1662,6 +1708,9 @@ def _build_arg_parser() -> argparse.ArgumentParser:
   # Batch workflow: keep only summary6 + saved data (skip heavy 3D plots)
   chemotaxis-sim --config config.example.yaml --save_data yes --save_summary6 yes --save_static_plots no
 
+  # Paper III minimal-model workflow (a=b=0 with prescribed u*)
+  chemotaxis-sim --equilibrium_mode fixed --u_star_fixed 1 --a 0 --b 0 --m 2 --beta 1 --gamma 2 --chi 2.05 --time 20
+
   # Post-process heavy plots later from the saved .npz
   chemotaxis-plot images/branch_capture/some_run.npz
 
@@ -1728,6 +1777,21 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     model_group.add_argument(
         "--c", type=float, default=1.0, help="Parameter c (default: 1.0)"
+    )
+    model_group.add_argument(
+        "--equilibrium_mode",
+        choices=["logistic", "fixed"],
+        default="logistic",
+        help=(
+            "How the positive equilibrium is chosen. `logistic` uses "
+            "u*=(a/b)^(1/alpha); `fixed` uses --u_star_fixed."
+        ),
+    )
+    model_group.add_argument(
+        "--u_star_fixed",
+        type=float,
+        default=None,
+        help="Prescribed positive equilibrium u* when --equilibrium_mode fixed.",
     )
     model_group.add_argument(
         "--mu", type=float, default=1.0, help="Parameter mu (default: 1.0)"
@@ -1941,6 +2005,8 @@ def main():
         print("  --config <yaml>            Load defaults from YAML")
         print("  --output_dir <dir>         Where to write outputs")
         print("  --basename <name>          Override output basename")
+        print("  --equilibrium_mode <mode>  logistic|fixed")
+        print("  --u_star_fixed <u*>        Prescribed positive equilibrium for fixed mode")
         print("  --eigen_mode_n <n>         Paper mode index n>=0 (overrides --eigen_index)")
         print("  --restart_from <npz>       Start a new run from the last saved u (t=0)")
         print("  --continue_from <npz>      Continue an existing run up to a new final time")
@@ -1971,7 +2037,13 @@ def main():
         )
 
     # Using the above parameters to generate a file base name string
-    auto_basename = f"a={config.a}_b={config.b}_c={config.c}_alpha={config.alpha}_m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_epsilon={config.epsilon}_epsilon2={config.epsilon2}_eigen_index={config.eigen_index}"
+    auto_basename = (
+        f"eqmode={config.equilibrium_mode}_u_star_fixed={config.u_star_fixed}_"
+        f"a={config.a}_b={config.b}_c={config.c}_alpha={config.alpha}_"
+        f"m={config.m}_beta={config.beta}_chi={config.chi}_mu={config.mu}_nu={config.nu}_"
+        f"gamma={config.gamma}_meshsize={config.meshsize}_time={config.time}_"
+        f"epsilon={config.epsilon}_epsilon2={config.epsilon2}_eigen_index={config.eigen_index}"
+    )
     basename = (user_basename or auto_basename).replace(".", "-")
     file_base = os.path.join(output_dir, basename)
     print(f"Output files will be saved with the basename:\n\t {file_base}\n")

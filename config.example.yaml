@@ -21,6 +21,12 @@ model:
   a: 10.0
   b: 1.0
   c: 1.0
+  # `logistic` uses u*=(a/b)^(1/alpha); `fixed` uses `u_star_fixed`.
+  equilibrium_mode: "logistic"
+  # For Paper III minimal-model runs, set:
+  # equilibrium_mode: "fixed"
+  # u_star_fixed: 1.0
+  u_star_fixed:
   alpha: 1.0
   m: 1.0
   beta: 0.0

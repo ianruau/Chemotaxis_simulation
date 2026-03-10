@@ -34,6 +34,8 @@ pip install chemotaxis-sim
 ## Features
 
 - Run chemotaxis simulations with customizable parameters.
+- Support both the logistic equilibrium used in Paper II and fixed positive
+  equilibria used by the Paper III minimal-model workflow.
 - Terminal plots of initial conditions via termplotlib.
 - 3D static surface plots (PNG/JPEG) and optional MP4 animations.
 - Progress bar and verbose logging.
@@ -62,6 +64,9 @@ chemotaxis-sim --config config.example.yaml --L 5.3
 
 # Batch workflow: keep only summary6 + saved data (skip heavy 3D plots)
 chemotaxis-sim --config config.example.yaml --save_data yes --save_summary6 yes --save_static_plots no
+
+# Paper III minimal-model run with a prescribed positive equilibrium u*
+chemotaxis-sim --equilibrium_mode fixed --u_star_fixed 1 --a 0 --b 0 --m 2 --beta 1 --gamma 2 --chi 2.05
 
 # Post-process heavy 3D plots later from the saved .npz
 chemotaxis-plot images/branch_capture/some_run.npz
@@ -164,6 +169,9 @@ chemotaxis-constants report --config config.example.yaml --format json
 
 # Sensitivity shift c is supported (defaults to c=1)
 chemotaxis-constants report --config config.example.yaml --c 1
+
+# Paper III minimal-model diagnostics at a fixed equilibrium
+chemotaxis-constants report --equilibrium_mode fixed --u_star_fixed 1 --a 0 --b 0 --m 2 --beta 1 --gamma 2 --mu 1 --nu 1 --L 1 --n0 1
 ```
 
 Why override `--n0`?
@@ -172,6 +180,23 @@ Why override `--n0`?
 - Reproducibility: match tables/figures that report coefficients at a fixed mode (often `n0=1`).
 - Sensitivity studies: track how the cubic coefficient `beta_{n0}` varies with `n0`.
 - Domain effects: compare the same `n0` across changes in `L` even when the argmin mode shifts.
+
+### Fixed-equilibrium mode (`--equilibrium_mode fixed`)
+For the Paper III minimal model, the positive equilibrium is not generated from
+`a/b`; instead one prescribes a positive value `u^*` and sets
+`v^*=(nu/mu)(u^*)^gamma`.
+
+Use:
+
+```bash
+chemotaxis-sim --equilibrium_mode fixed --u_star_fixed 1 --a 0 --b 0 --m 1 --beta 1 --gamma 1 --chi 11.95
+chemotaxis-constants report --equilibrium_mode fixed --u_star_fixed 1 --a 0 --b 0 --m 1 --beta 1 --gamma 1 --mu 1 --nu 1 --L 1 --n0 1
+```
+
+Notes:
+- In fixed mode, `--u_star_fixed` is required.
+- The simulator still saves `uStar` and `vStar` into the `.npz`, so
+  `chemotaxis-plot` can regenerate `summary6` and threshold overlays later.
 
 Output naming controls (optional):
 
