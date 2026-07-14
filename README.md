@@ -181,6 +181,43 @@ Why override `--n0`?
 - Sensitivity studies: track how the cubic coefficient `beta_{n0}` varies with `n0`.
 - Domain effects: compare the same `n0` across changes in `L` even when the argmin mode shifts.
 
+### Paper III stationary-branch validation
+
+`stationary_branch_validation.py` validates the local pitchfork calculation
+without relying on time integration. It prescribes the signed first-cosine
+amplitude, solves the stationary finite-difference equations, and fits
+
+```text
+chi - chi_star_disc = c2 A^2 + c4 A^4.
+```
+
+The default run covers supercritical and subcritical examples in both the
+logistic and fixed-mass minimal models on meshes `N=40,80,160`. Its acceptance
+gates check every nodal `u`-equation residual, the independently reconstructed
+elliptic residual, fixed mass, positivity, reflection symmetry, branch-direction
+sign, threshold intercept, second-order mesh refinement, and convergence of
+`c2` to the analytical ratio `beta_n0/alpha_n0`.
+
+```bash
+python stationary_branch_validation.py \
+  --output-dir /tmp/paper3-stationary-validation \
+  --check
+```
+
+The deterministic output bundle contains scalar and profile CSV files, a
+machine-readable fit summary, an indexed NPZ archive, PDF/PNG figures, and a
+`SHA256SUMS` manifest. Its fit summary records the exact Git revisions and
+runtime versions. Every amplitude magnitude must be supplied with both signs,
+and the output directory must be absent or empty. Select a subset with repeated
+`--case` options; run `python stationary_branch_validation.py --help` for the
+complete interface.
+
+Focused tests:
+
+```bash
+python -m unittest tests.test_stationary_branch_validation
+```
+
 ### Fixed-equilibrium mode (`--equilibrium_mode fixed`)
 For the Paper III minimal model, the positive equilibrium is not generated from
 `a/b`; instead one prescribes a positive value `u^*` and sets
