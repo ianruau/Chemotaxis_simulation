@@ -98,7 +98,21 @@ def _C3(params: Dict[str, sp.Expr], lambda_k: sp.Expr) -> sp.Expr:
     )
 
 
-def _gamma_n0_cubic(params: Dict[str, sp.Expr], lambda_n0: sp.Expr) -> sp.Expr:
+def _gamma_n0_cubic(
+    params: Dict[str, sp.Expr],
+    lambda_n0: sp.Expr,
+    a01: sp.Expr,
+    a2n0: sp.Expr,
+) -> sp.Expr:
+    """Return the full cubic chemotactic coefficient on the center graph.
+
+    The quadratic center-graph correction is
+
+        U = A cos(qx) + A^2 (a01 + a2n0 cos(2qx)).
+
+    Omitting ``a01`` and ``a2n0`` gives only the bare cubic projection and
+    does not produce the cubic coefficient in the reduced amplitude equation.
+    """
     u_star = params["u_star"]
     v_star = params["v_star"]
     c = params["c"]
@@ -108,48 +122,62 @@ def _gamma_n0_cubic(params: Dict[str, sp.Expr], lambda_n0: sp.Expr) -> sp.Expr:
     lambda_0 = _laplace_eigenvalue(0, L)
     lambda_2n0 = _laplace_eigenvalue(2 * n0, L)
 
+    C1_0 = _C1(params, lambda_0)
     C1_n0 = _C1(params, lambda_n0)
+    C1_2n0 = _C1(params, lambda_2n0)
     C2_0 = _C2(params, lambda_0)
+    C2_n0 = _C2(params, lambda_n0)
     C2_2n0 = _C2(params, lambda_2n0)
     C3_n0 = _C3(params, lambda_n0)
 
-    pref1 = (PI ** 2 * n0 ** 2) / (2 * L ** 2)
-    pref2 = (PI ** 2 * n0 ** 2) / (8 * L ** 2)
-
-    leading = (
-        2 * u_star ** params["m"] / (c + v_star) ** params["beta"] * (3 * C3_n0)
-        + 2
-        * params["m"]
+    sensitivity_shift = c + v_star
+    mobility_0 = u_star ** params["m"] / sensitivity_shift ** params["beta"]
+    mobility_u = (
+        params["m"]
         * u_star ** (params["m"] - 1)
-        / (c + v_star) ** params["beta"]
-        * C2_2n0
-        - params["beta"]
-        * u_star ** params["m"]
-        / (c + v_star) ** (params["beta"] + 1)
-        * C1_n0
-        * (2 * C2_0 + C2_2n0)
+        / sensitivity_shift ** params["beta"]
     )
-
-    tail = (
+    mobility_v = (
+        -params["beta"]
+        * u_star ** params["m"]
+        / sensitivity_shift ** (params["beta"] + 1)
+    )
+    mobility_uu = (
         params["m"]
         * (params["m"] - 1)
         * u_star ** (params["m"] - 2)
-        / (c + v_star) ** params["beta"]
-        * C1_n0
-        - 2
-        * params["m"]
+        / (2 * sensitivity_shift ** params["beta"])
+    )
+    mobility_uv = (
+        -params["m"]
         * params["beta"]
         * u_star ** (params["m"] - 1)
-        / (c + v_star) ** (params["beta"] + 1)
-        * C1_n0 ** 2
-        + params["beta"]
+        / sensitivity_shift ** (params["beta"] + 1)
+    )
+    mobility_vv = (
+        params["beta"]
         * (params["beta"] + 1)
         * u_star ** params["m"]
-        / (c + v_star) ** (params["beta"] + 2)
-        * C1_n0 ** 3
+        / (2 * sensitivity_shift ** (params["beta"] + 2))
     )
 
-    return pref1 * leading + pref2 * tail
+    v1 = C1_n0
+    v0 = C1_0 * a01 + C2_0
+    v2 = C1_2n0 * a2n0 + C2_2n0
+    v1_cubic = C2_n0 * (4 * a01 + 2 * a2n0) + 3 * C3_n0
+
+    gamma_full = lambda_n0 * (
+        mobility_0 * v1_cubic
+        + mobility_u * a01 * v1
+        - mobility_u * a2n0 * v1 / 2
+        + mobility_u * v2
+        + mobility_uu * v1 / 4
+        + mobility_uv * v1**2 / 4
+        + mobility_v * v0 * v1
+        + mobility_v * v1 * v2 / 2
+        + mobility_vv * v1**3 / 4
+    )
+    return sp.simplify(gamma_full)
 
 
 def _gamma_2n0(params: Dict[str, sp.Expr], chi_star: sp.Expr) -> sp.Expr:
@@ -288,36 +316,54 @@ def compute_bifurcation_coefficients(raw_params: Dict[str, Any]) -> Dict[str, fl
         / (params["mu"] + lambda_n0)
     )
 
-    gamma_n0_cubic = _gamma_n0_cubic(params, lambda_n0)
     gamma_2n0 = _gamma_2n0(params, chi_star)
 
     sigma_2n0 = _sigma(lambda_2n0, chi_star, params)
-    a01 = None
-    a2n0 = None
+    logistic_quadratic = (
+        (1 + params["alpha"])
+        * params["alpha"]
+        * params["b"]
+        * params["u_star"] ** (params["alpha"] - 1)
+        / 4
+    )
+    logistic_cubic = (
+        (1 + params["alpha"])
+        * params["alpha"]
+        * (params["alpha"] - 1)
+        * params["b"]
+        * params["u_star"] ** (params["alpha"] - 2)
+        / 8
+    )
+
     if mode == "fixed":
-        beta_n0 = chi_star * gamma_n0_cubic
+        # The minimal model is reduced on the fixed-mass hyperplane.  Its
+        # constant center-graph mode therefore vanishes, while the stable
+        # second harmonic is still present.
+        a01 = sp.S.Zero
+        a2n0 = -chi_star * gamma_2n0 / sigma_2n0
     else:
         a01 = (
-            (1 + params["alpha"])
-            * params["alpha"]
-            * params["b"]
-            * params["u_star"] ** (params["alpha"] - 1)
+            logistic_quadratic
             / (
-                4
-                * (params["a"] - (1 + params["alpha"]) * params["b"] * params["u_star"] ** params["alpha"])
+                params["a"]
+                - (1 + params["alpha"])
+                * params["b"]
+                * params["u_star"] ** params["alpha"]
             )
         )
 
         a2n0 = (
-            (1 + params["alpha"]) * params["alpha"] * params["b"] * params["u_star"] ** (params["alpha"] - 1) / 4
-            - chi_star * gamma_2n0
+            logistic_quadratic - chi_star * gamma_2n0
         ) / sigma_2n0
 
+    gamma_n0_cubic = _gamma_n0_cubic(params, lambda_n0, a01, a2n0)
+    if mode == "fixed":
+        beta_n0 = -chi_star * gamma_n0_cubic
+    else:
         beta_n0 = (
-            (1 + params["alpha"]) * params["alpha"] * params["b"] * params["u_star"] ** (params["alpha"] - 1) / 4
-            * (4 * a01 + 2 * a2n0)
-            + chi_star * gamma_n0_cubic
-            + (1 + params["alpha"]) * params["alpha"] * (params["alpha"] - 1) * params["b"] * params["u_star"] ** (params["alpha"] - 2) / 8
+            logistic_quadratic * (4 * a01 + 2 * a2n0)
+            + logistic_cubic
+            - chi_star * gamma_n0_cubic
         )
 
     beta_float = float(sp.N(beta_n0))
@@ -330,8 +376,8 @@ def compute_bifurcation_coefficients(raw_params: Dict[str, Any]) -> Dict[str, fl
         "gamma_cubic": float(sp.N(gamma_n0_cubic)),
         "gamma_2n0": float(sp.N(gamma_2n0)),
         "sigma_2n0": float(sp.N(sigma_2n0)),
-        "a01": (None if a01 is None else float(sp.N(a01))),
-        "a2n0": (None if a2n0 is None else float(sp.N(a2n0))),
+        "a01": float(sp.N(a01)),
+        "a2n0": float(sp.N(a2n0)),
         "C1_n0": float(sp.N(C1_n0)),
         "C2_0": float(sp.N(C2_0)),
         "C2_2n0": float(sp.N(C2_2n0)),

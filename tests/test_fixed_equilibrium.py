@@ -52,10 +52,10 @@ class TestFixedEquilibriumSupport(unittest.TestCase):
                 "c": 1.0,
                 "alpha": 1.0,
                 "beta": 1.0,
-                "m": 2.0,
+                "m": 1.0,
                 "mu": 1.0,
                 "nu": 1.0,
-                "gamma": 2.0,
+                "gamma": 1.0,
                 "L": 1.0,
                 "n0": 1,
             }
@@ -69,18 +69,22 @@ class TestFixedEquilibriumSupport(unittest.TestCase):
                 "c": 1.0,
                 "alpha": 1.0,
                 "beta": 1.0,
-                "m": 1.0,
+                "m": 2.0,
                 "mu": 1.0,
                 "nu": 1.0,
-                "gamma": 1.0,
+                "gamma": 2.0,
                 "L": 1.0,
                 "n0": 1,
             }
         )
+        self.assertAlmostEqual(supercritical["beta_n0"], 0.873037741187703, places=12)
+        self.assertAlmostEqual(subcritical["beta_n0"], -1.04291767762561, places=12)
         self.assertGreater(supercritical["beta_n0"], 0.0)
         self.assertLess(subcritical["beta_n0"], 0.0)
-        self.assertIsNone(supercritical["a01"])
-        self.assertIsNone(supercritical["a2n0"])
+        self.assertEqual(supercritical["a01"], 0.0)
+        self.assertEqual(subcritical["a01"], 0.0)
+        self.assertAlmostEqual(supercritical["a2n0"], 0.326055090774634, places=12)
+        self.assertAlmostEqual(subcritical["a2n0"], 0.743886946852796, places=12)
 
     def test_simulation_config_fixed_mode(self) -> None:
         cfg = SimulationConfig(
