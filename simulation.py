@@ -927,6 +927,37 @@ def _laplacian_nbc_numpy(vector_f: np.ndarray, dx: float) -> np.ndarray:
     return out
 
 
+def _conservative_transport_rhs(
+    u: np.ndarray,
+    v: np.ndarray,
+    *,
+    dx: float,
+    m: float,
+    beta: float,
+    chi: float,
+    c: float,
+) -> np.ndarray:
+    """Discretize the conservative diffusion--chemotaxis flux.
+
+    The nodal unknowns at the endpoints represent half control volumes.  Setting
+    the exterior boundary fluxes to zero therefore gives the factors of two in
+    the endpoint updates.  With trapezoidal quadrature, the resulting discrete
+    divergence has an exactly telescoping weighted sum (up to roundoff).
+    """
+    mobility = np.power(u, m) * np.power(c + v, -beta)
+    mobility_at_faces = 0.5 * (mobility[:-1] + mobility[1:])
+    du_at_faces = (u[1:] - u[:-1]) / dx
+    dv_at_faces = (v[1:] - v[:-1]) / dx
+    flux_at_faces = du_at_faces - chi * mobility_at_faces * dv_at_faces
+
+    out = np.empty_like(u, dtype=np.float64)
+    inv_dx = 1.0 / dx
+    out[0] = 2.0 * flux_at_faces[0] * inv_dx
+    out[1:-1] = (flux_at_faces[1:] - flux_at_faces[:-1]) * inv_dx
+    out[-1] = -2.0 * flux_at_faces[-1] * inv_dx
+    return out
+
+
 if njit is not None:  # pragma: no cover
 
     # Numba caching is fragile on some filesystems / editable installs (e.g. symlinks),
@@ -990,6 +1021,21 @@ def rhs(u: np.ndarray, v: np.ndarray, config: SimulationConfig) -> np.ndarray:
 
     u_vec = np.ascontiguousarray(u, dtype=np.float64)
     v_vec = np.ascontiguousarray(v, dtype=np.float64)
+
+    # The Paper III minimal model has no reaction term, so its total mass must
+    # be conserved.  Discretize the spatial operator as a face-flux divergence
+    # to preserve that invariant under the nodal trapezoidal quadrature.  Keep
+    # the legacy expanded-form discretization below for the logistic model.
+    if a == 0.0 and b == 0.0:
+        return _conservative_transport_rhs(
+            u_vec,
+            v_vec,
+            dx=L / Nx,
+            m=m,
+            beta=beta,
+            chi=chi,
+            c=c,
+        )
 
     u_xx = laplacian_NBC(L, Nx, u_vec)
     u_x = first_derivative_NBC(L, Nx, u_vec)
