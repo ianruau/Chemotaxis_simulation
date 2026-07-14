@@ -88,6 +88,7 @@ from npz_io import load_simulation_data_npz as _load_simulation_data_npz
 from npz_io import save_simulation_data_npz as _save_simulation_data_npz
 from thresholds import (
     chi_mode_threshold_1d,
+    chi_star_disc_fd,
     chi_star_threshold_continuum_1d,
     resolve_equilibrium_u_v_star,
     sigma_mode_1d,
@@ -825,21 +826,26 @@ def continue_from_npz(config: SimulationConfig, FileBaseName: str) -> Simulation
 def chi_star_threshold_discrete(
     config: SimulationConfig, *, n_max: int = 5000
 ) -> float:
-        return chi_star_threshold_continuum_1d(
-            u_star=float(config.uStar),
-            v_star=float(config.vStar),
-            c=float(config.c),
-            a=float(config.a),
-            alpha=float(config.alpha),
-            mu=float(config.mu),
-            nu=float(config.nu),
-            gamma=float(config.gamma),
-            m=float(config.m),
-            beta=float(config.beta),
-            L=float(config.L),
-            equilibrium_mode=str(config.equilibrium_mode),
-            n_max=int(n_max),
-        )
+    # Keep ``n_max`` in the public signature for backward compatibility.  The
+    # discrete spectrum has exactly ``meshsize`` nonconstant modes, so it does
+    # not need a separate truncation parameter.
+    _ = n_max
+    chi_star, _, _ = chi_star_disc_fd(
+        u_star=float(config.uStar),
+        v_star=float(config.vStar),
+        c=float(config.c),
+        a=float(config.a),
+        alpha=float(config.alpha),
+        mu=float(config.mu),
+        nu=float(config.nu),
+        gamma=float(config.gamma),
+        m=float(config.m),
+        beta=float(config.beta),
+        L=float(config.L),
+        meshsize=int(config.meshsize),
+        equilibrium_mode=str(config.equilibrium_mode),
+    )
+    return float(chi_star)
 
 
 def first_derivative_NBC(L: float, Nx: int, vector_f: np.ndarray) -> np.ndarray:
@@ -1582,7 +1588,7 @@ def parse_args() -> SimulationConfig:
     """
     argv = sys.argv[1:]
 
-    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     pre_parser.add_argument(
         "--config",
         type=str,
