@@ -184,6 +184,7 @@ class SimulationConfig:
     save_summary6: str = "yes"
     dt_factor: float = 2.0
     stop_on_nonfinite: str = "yes"
+    require_admissible: str = "no"
     basename: str = ""
     output_dir: str = ""
 
@@ -401,6 +402,21 @@ class SimulationConfig:
             ),
         )
 
+    def admissibility_verdict(self):
+        """Paper I verdict for these parameters, or None if the module is unavailable."""
+        try:
+            from admissibility import admissibility
+        except Exception:
+            return None
+        try:
+            return admissibility(
+                a=float(self.a), b=float(self.b), alpha=float(self.alpha),
+                m=float(self.m), beta=float(self.beta), gamma=float(self.gamma),
+                chi=float(self.chi),
+            )
+        except Exception:
+            return None
+
     def display_parameters(self) -> None:
         """Display all computed parameters in a formatted way."""
 
@@ -416,6 +432,9 @@ class SimulationConfig:
         print(f"\tm = {self.m}, beta = {self.beta}, chi = {self.chi}")
         print("3. The v equation: ")
         print(f"\tmu = {self.mu}, nu = {self.nu}, gamma = {self.gamma}")
+        verdict = self.admissibility_verdict()
+        if verdict is not None:
+            print(f"\t{verdict.line()}")
         print("4. Initial condition: ")
         emn = "unset" if self.eigen_mode_n is None else str(self.eigen_mode_n)
         print(
@@ -625,6 +644,10 @@ def _config_metadata(config: SimulationConfig) -> dict:
             d["mesh_per_unit"] = float(config.meshsize) / float(config.L)
         except Exception:
             pass
+    verdict = config.admissibility_verdict()
+    if verdict is not None:
+        d["admissibility_status"] = verdict.status
+        d["admissibility_basis"] = verdict.basis
     return d
 
 
@@ -2028,6 +2051,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default="yes",
         help="Stop early if NaN/Inf occurs in u or v (default: yes)",
     )
+    numerics_group.add_argument(
+        "--require_admissible",
+        choices=["yes", "no"],
+        default="no",
+        help=(
+            "Refuse to run unless Paper I guarantees a global solution for these "
+            "parameters (default: no, i.e. report the verdict and continue). "
+            "The conditions are sufficient only, so running outside them is "
+            "legitimate; this flag exists for reproducibility runs."
+        ),
+    )
 
     return parser
 
@@ -2076,6 +2110,18 @@ def main():
 
     # # Display the parsed arguments
     config.display_parameters()
+
+    if config.require_admissible == "yes":
+        verdict = config.admissibility_verdict()
+        if verdict is None:
+            raise SystemExit(
+                "--require_admissible=yes but the admissibility module is unavailable"
+            )
+        if not verdict.is_global:
+            raise SystemExit(
+                "refusing to run: --require_admissible=yes and Paper I does not "
+                f"guarantee a global solution here ({verdict.status}: {verdict.basis})"
+            )
 
     output_dir = (config.output_dir or "").strip() or "."
     os.makedirs(output_dir, exist_ok=True)
