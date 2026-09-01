@@ -10,7 +10,7 @@
 # ./simulation.py --a 1 --b 1 --alpha 1 --m 1 --beta 3 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.5 --meshsize_abs 100 --eigen_mode_n 1 --chi 95.7660 --time 30 --save_static_plots no --output_dir section_6-4 --save_data no
 #
 
-#Theorem 1.3: Chi increases
+#Theorem 1.3: Chi increases non-minimal model
 # ./simulation.py --a 1 --b 1 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.01 --meshsize_abs 30 --eigen_mode_n 1 --chi 50.0000 --time 1000 --save_static_plots no --output_dir chi_increases --save_data no
 # ./simulation.py --a 1 --b 1 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.01 --meshsize_abs 30 --eigen_mode_n 1 --chi 60.0000 --time 1000 --save_static_plots no --output_dir chi_increases --save_data no
 # ./simulation.py --a 1 --b 1 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.01 --meshsize_abs 30 --eigen_mode_n 1 --chi 70.0000 --time 1000 --save_static_plots no --output_dir chi_increases --save_data no
@@ -18,8 +18,18 @@
 # ./simulation.py --a 1 --b 1 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.01 --meshsize_abs 30 --eigen_mode_n 1 --chi 200.0000 --time 1000 --save_static_plots no --output_dir chi_increases --save_data no
 # ./simulation.py --a 1 --b 1 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.01 --meshsize_abs 30 --eigen_mode_n 1 --chi 500.0000 --time 1000 --save_static_plots no --output_dir chi_increases --save_data no
 # ./simulation.py --a 1 --b 1 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.01 --meshsize_abs 30 --eigen_mode_n 1 --chi 1000.0000 --time 1000 --save_static_plots no --output_dir chi_increases --save_data no
-./simulation.py --a 1 --b 1 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.01 --meshsize_abs 30 --eigen_mode_n 1 --chi 2000.0000 --time 1000 --save_static_plots no --output_dir chi_increases --save_data no
+# ./simulation.py --a 1 --b 1 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.01 --meshsize_abs 30 --eigen_mode_n 1 --chi 2000.0000 --time 1000 --save_static_plots no --output_dir chi_increases --save_data no
 
+#Theorem 1.3: Chi increases minimal model
+./simulation.py --a 0 --b 0 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.5 --meshsize_abs 30 --eigen_mode_n 1 --chi 50.0000 --time 100 --save_static_plots no --output_dir chi_increases_minimal_model --save_data no
+./simulation.py --a 0 --b 0 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.5 --meshsize_abs 30 --eigen_mode_n 1 --chi 60.0000 --time 100 --save_static_plots no --output_dir chi_increases_minimal_model --save_data no
+./simulation.py --a 0 --b 0 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.5 --meshsize_abs 30 --eigen_mode_n 1 --chi 70.0000 --time 100 --save_static_plots no --output_dir chi_increases_minimal_model --save_data no
+./simulation.py --a 0 --b 0 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.5 --meshsize_abs 30 --eigen_mode_n 1 --chi 100.0000 --time 100 --save_static_plots no --output_dir chi_increases_minimal_model --save_data no
+./simulation.py --a 0 --b 0 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.5 --meshsize_abs 30 --eigen_mode_n 1 --chi 200.0000 --time 100 --save_static_plots no --output_dir chi_increases_minimal_model --save_data no
+./simulation.py --a 0 --b 0 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.5 --meshsize_abs 30 --eigen_mode_n 1 --chi 500.0000 --time 100 --save_static_plots no --output_dir chi_increases_minimal_model --save_data no
+./simulation.py --a 0 --b 0 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.5 --meshsize_abs 30 --eigen_mode_n 1 --chi 1000.0000 --time 100 --save_static_plots no --output_dir chi_increases_minimal_model --save_data no
+./simulation.py --a 0 --b 0 --alpha 1 --m 1 --beta 2 --gamma 1 --mu 1 --nu 1 --L 1 --epsilon 0.5 --meshsize_abs 30 --eigen_mode_n 1 --chi 2000.0000 --time 100 --save_static_plots no --output_dir chi_increases_minimal_model --save_data no
+#
 # # Second row table 3.2 T=100
 # ./simulation.py --a 1 --b 1 --alpha 3 --m 1 --beta 1 --gamma 2 --mu 100 --nu 10 --L 1 --epsilon 0.5 --meshsize_abs 100 --eigen_mode_n 1 --chi 7.50 --time 100 --save_static_plots no --output_dir table_3_2_2nd_row --save_data no
 # ./simulation.py --a 1 --b 1 --alpha 3 --m 1 --beta 1 --gamma 2 --mu 100 --nu 10 --L 1 --epsilon 0.5 --meshsize_abs 100 --eigen_mode_n 1 --chi 7.80 --time 100 --save_static_plots no --output_dir table_3_2_2nd_row --save_data no
