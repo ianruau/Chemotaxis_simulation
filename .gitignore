@@ -51,3 +51,6 @@ batch_t_1000.sh
 chemotaxis_sim.egg-info
 chemotaxis_sim.egg-info
 .venv
+
+# Keep Paper III numerical experiment figures tracked despite the image rules above
+!paper_iii_numerical_experiments/**
