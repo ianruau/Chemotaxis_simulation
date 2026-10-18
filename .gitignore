@@ -52,5 +52,35 @@ chemotaxis_sim.egg-info
 chemotaxis_sim.egg-info
 .venv
 
+# Archived experiment scripts and outputs kept locally
+/batch_*.sh
+/chi_increases/
+/increasing_chi/
+/subcritical_approach/
+/subcritical_approach_1/
+/subcritical_approach_2/
+/supercritical_approach/
+/section_6-4/
+/table_3_2/
+/table_3_2_*/
+/paper_iii_numerical_experiments_old_version/
+
+# Earlier research scratchwork and reproduction material kept locally
+/Mathematica/
+/documents/
+/Reproducing_Previous_Results/
+
+# Old editing notes and loose example outputs
+/Refinement.md
+/command.vim
+/mpv-shot0001.jpg
+/3d_plot.png
+/3d_plot.jpeg
+/simulation.mp4
+/subplots_Nt=10000_Nx=50.png
+
+# Keep repository webpage images and videos despite the media rules above
+!/homepage/**
+
 # Keep Paper III numerical experiment figures tracked despite the image rules above
 !paper_iii_numerical_experiments/**
